@@ -1,0 +1,8 @@
+Log of changes to the EEG microstate toolbox as of Jan. 21:
+
+11.1.2021: 
+    Fixed a bug in the user interface that wrongly used the AAHC algorithm when the the k-means had been selected.
+
+14.1.2021:
+    We discovered an issue with the currently implemented AAHC algorithm and data normalization. The combination of the
+    AAHC algorithm and normalization has been disabled for the moment.
