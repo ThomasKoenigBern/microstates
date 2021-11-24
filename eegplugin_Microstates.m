@@ -151,7 +151,11 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'  catch_strings.add_to_hist];
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
     comSilhouetteMSNumber  = [try_strings.no_check '[           LASTCOM] = pop_MS_Silhouette(ALLEEG,CURRENTSET);'           catch_strings.add_to_hist];
-    
+    comDaviesBouldinMSNumber = [try_strings.no_check '[         LASTCOM] = pop_MS_DaviesBouldin(ALLEEG,CURRENTSET);'        catch_strings.add_to_hist];
+    comCalinskiHarabaszMSNumber = [try_strings.no_check '[        LASTCOM] = pop_MS_CalinskiHarabasz(ALLEEG,CURRENTSET);'     catch_strings.add_to_hist];    
+    comDispersionMSNumber = [try_strings.no_check '[        LASTCOM] = pop_MS_Dispersion(ALLEEG,CURRENTSET);'     catch_strings.add_to_hist];    
+
+
     comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],false ,ALLEEG);'        catch_strings.add_to_hist];
     comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],true  ,ALLEEG);'        catch_strings.store_and_hist];
     comShowIndMSDyn        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,false);'             catch_strings.store_and_hist];
@@ -174,6 +178,9 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     uimenu( toolssubmenu, 'Label', 'Compute grand mean microstate maps across means'       , 'CallBack', comCombineMSMeans    , 'position', 3, 'userdata', 'study:on');
 %    uimenu( toolssubmenu, 'Label', 'Crossvalidate optimal number of classes'              , 'CallBack', comBootStrapMSNumber , 'position', 4, 'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Use silhouette plots to choose number of classes'      , 'CallBack', comSilhouetteMSNumber , 'position', 4, 'userdata', 'study:on');    
+    uimenu( toolssubmenu, 'Label', 'Use Davies Bouldin plots to choose number of classes'      , 'CallBack', comDaviesBouldinMSNumber , 'position', 16, 'userdata', 'study:on');        
+    uimenu( toolssubmenu, 'Label', 'Use Calinski Harabasz plots to choose number of classes'      , 'CallBack', comCalinskiHarabaszMSNumber , 'position', 17, 'userdata', 'study:on');        
+    uimenu( toolssubmenu, 'Label', 'Use Dispersion plots to choose number of classes'      , 'CallBack', comDispersionMSNumber , 'position', 18, 'userdata', 'study:on');        
 
     uimenu( toolssubmenu, 'Label', 'Sort individual microstate maps according to mean'     , 'CallBack', comSortMSTemplates, 'position', 5, 'userdata', 'study:on','Separator','on');
     uimenu(toolssubmenu, 'label',  'Sort individual microstate maps according to published template' , 'CallBack', comSortMSTemplatesT,'position', 6, 'userdata', 'study:on');
