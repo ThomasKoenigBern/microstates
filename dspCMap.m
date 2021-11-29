@@ -304,7 +304,7 @@ switch cmap
             end
         end
 
-        colormap(cm);
+        colormap(gca,cm);
         contour(xm,ym,imap,ContourLevel(ContourLevel < 0),'LineColor',[0.99 0.99 0.99],'LineWidth',2);
 
     case 'ww'
@@ -327,7 +327,7 @@ switch cmap
         size(hot(cntpos))
         cm = [zeros(negpos,3);hot(cntpos)];
         
-        colormap(cm);
+        colormap(gca,cm);
         
     case 'br'
         if verLessThan('matlab','8.0')
@@ -354,7 +354,7 @@ switch cmap
 %            dummy = colormap(bluered)
            % contourcmap('bluered',ll)
 
-            colormap(bluered);
+            colormap(gca,bluered);
         end
         LabBkG = 1;
     case 'rr'
@@ -368,7 +368,7 @@ switch cmap
                 cm(i,:) = [1 0.875-l 0.875-l];
             end
         end
-        colormap(cm);
+        colormap(gca,cm);
         
         LabBkG = 1;
 %        if (ll(1) < 0)

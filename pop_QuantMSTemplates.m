@@ -188,8 +188,11 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
         par = SetFittingParameters(MinClasses:MaxClasses,par);
     end
     
-%    MSStats = table();
     
+    if size(TheChosenTemplate.msinfo.MSMaps(par.nClasses).Maps,1) ~= par.nClasses
+        errordlg2('The chosen template does not contain the chosen number of clusters','Microstate fitting');
+    end
+        
     if isfield(FitParameters,'SingleEpochFileTemplate')
         SingleEpochFileTemplate = FitParameters.SingleEpochFileTemplate;
     else 
@@ -200,27 +203,33 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     set(h,'Name','Quantifying microstates, please wait...');
     set(findall(h,'type','text'),'Interpreter','none');
 
-%    MSStats(numel(SelectedSet)).DataSet = '';
     for s = 1:numel(SelectedSet)
         sIdx = SelectedSet(s);
-        waitbar((s-1) / numel(SelectedSet),h,sprintf('Working on %s',AllEEG(sIdx).setname),'Interpreter','none');
-        DataInfo.subject   = AllEEG(sIdx).subject;
-        DataInfo.group     = AllEEG(sIdx).group;
-        DataInfo.condition = AllEEG(sIdx).condition;
-        DataInfo.setname   = AllEEG(sIdx).setname;
+
+        if ischar(AllEEG(sIdx).data)
+            ActiveEEG = pop_loadset('eeg',AllEEG(sIdx));
+        else
+            ActiveEEG = AllEEG(sIdx);
+        end
+        waitbar((s-1) / numel(SelectedSet),h,sprintf('Working on %s',ActiveEEG.setname),'Interpreter','none');
+        DataInfo.subject   = ActiveEEG.subject;
+        DataInfo.group     = ActiveEEG.group;
+        DataInfo.condition = ActiveEEG.condition;
+        DataInfo.setname   = ActiveEEG.setname;
         Labels = [];
-        
+        AllEEG(sIdx).msinfo.FitPar = par;
+
         if UseMeanTmpl == 0
-            if isfield(AllEEG(sIdx).msinfo.MSMaps(par.nClasses),'Labels')
-                Labels = AllEEG(sIdx).msinfo.MSMaps(par.nClasses).Labels;
+            if isfield(ActiveEEG.msinfo.MSMaps(par.nClasses),'Labels')
+                Labels = ActiveEEG.msinfo.MSMaps(par.nClasses).Labels;
             end
-            Maps = NormDimL2(AllEEG(sIdx).msinfo.MSMaps(par.nClasses).Maps,2);
+            Maps = NormDimL2(ActiveEEG.msinfo.MSMaps(par.nClasses).Maps,2);
             SheetName = 'Individual Maps';
-            AllEEG(sIdx).msinfo.FitPar = par;
-            [MSClass,gfp,ExpVar] = AssignMStates(AllEEG(sIdx),Maps,par,AllEEG(sIdx).msinfo.ClustPar.IgnorePolarity);
+            ActiveEEG.msinfo.FitPar = par;
+            [MSClass,gfp,ExpVar] = AssignMStates(ActiveEEG,Maps,par,ActiveEEG.msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
- %              MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, '<<own>>')];
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, [],ExpVar,SingleEpochFileTemplate );
+ %              MSStats = [MSStats; QuantifyMSDynamics(MSClass,ActiveEEG.msinfo,ActiveEEG.srate, DataInfo, '<<own>>')];
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,ActiveEEG.msinfo,ActiveEEG.srate, DataInfo, [],ExpVar,SingleEpochFileTemplate );
             end
         else
             if isfield(TheChosenTemplate.msinfo.MSMaps(par.nClasses),'Labels')
@@ -229,15 +238,15 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
 
             Maps = NormDimL2(TheChosenTemplate.msinfo.MSMaps(par.nClasses).Maps,2);
             SheetName = TheChosenTemplate.setname;
-            AllEEG(sIdx).msinfo.FitPar = par;
-            LocalToGlobal = MakeResampleMatrices(AllEEG(sIdx).chanlocs,TheChosenTemplate.chanlocs);
+            ActiveEEG.msinfo.FitPar = par;
+            LocalToGlobal = MakeResampleMatrices(ActiveEEG.chanlocs,TheChosenTemplate.chanlocs);
             if any(isnan(LocalToGlobal(:)))
                 errordlg2(['Set ' ALLEEG(sIdx) ' does not have all channel positions defined'],'Microstate fitting');
             end
-            [MSClass,gfp,ExpVar] = AssignMStates(AllEEG(sIdx),Maps,par, TheChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
+            [MSClass,gfp,ExpVar] = AssignMStates(ActiveEEG,Maps,par, TheChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
             if ~isempty(MSClass)
-%                MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname)]; 
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname, ExpVar,SingleEpochFileTemplate);
+%                MSStats = [MSStats; QuantifyMSDynamics(MSClass,ActiveEEG.msinfo,ActiveEEG.srate, DataInfo, TheChosenTemplate.setname)]; 
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,ActiveEEG.msinfo,ActiveEEG.srate, DataInfo, TheChosenTemplate.setname, ExpVar,SingleEpochFileTemplate);
             end
         end
         EpochData(s) = SSEpochData;
@@ -249,14 +258,14 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
         FileName = fullfile(PName,FName);
     else
         idx = 2;
-        if ~isempty(strfind(FileName,'.mat'))
+        if ~isempty(strfind(lower(FileName),'.mat'))
             idx = 4;
         end
-        if ~isempty(strfind(FileName,'.xls'))
+        if ~isempty(strfind(lower(FileName),'.xls'))
             idx = 5;
         end
 
-        if ~isempty(strfind(FileName,'.4R'))
+        if ~isempty(strfind(lower(FileName),'.4r'))
             idx = 6;
         end
 

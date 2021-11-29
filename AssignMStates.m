@@ -41,7 +41,9 @@
 %
 function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
 
-    
+    if ischar(eegdata.data)
+        eegdata = pop_loadset('eeg',eegdata);
+    end
     if nargin < 5
         TheEEGData = eegdata.data;
     else

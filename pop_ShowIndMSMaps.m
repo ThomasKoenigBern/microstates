@@ -96,7 +96,8 @@ function [AllEEG,TheEEG,com] = pop_ShowIndMSMaps(TheEEG,nclasses, DoEdit, AllEEG
     fig_h = figure();
   
     if DoEdit == true;  eTxt = 'on';
-    else                eTxt = 'off';
+    else
+                        eTxt = 'off';
     end
         
     ud.MinusButton = uicontrol('Style', 'pushbutton', 'String', 'Less'      , 'Units','Normalized','Position'  , [0.05 0.05 0.15 0.05], 'Callback', {@ChangeMSMaps,-1,fig_h});
@@ -130,7 +131,7 @@ function [AllEEG,TheEEG,com] = pop_ShowIndMSMaps(TheEEG,nclasses, DoEdit, AllEEG
     
     set(fig_h,'Name', ['Microstate maps of ' TheEEG.setname],'NumberTitle','off');
     if nargin < 4
-        com = sprintf('[empty,EEG,com] = pop_ShowIndMSMaps(%s, %i, %i);', inputname(1), inputname(1),nclasses,DoEdit);
+        com = sprintf('[empty,EEG,com] = pop_ShowIndMSMaps(%s, %i, %i);', inputname(1), nclasses,DoEdit);
     else
         com = sprintf('[AllEEG,EEG,com] = pop_ShowIndMSMaps(%s, %i, %i, %s);', inputname(1), nclasses,DoEdit, inputname(4));
     end
@@ -213,14 +214,14 @@ end
 
 
 
-function ShowDynamics(obj, event,fh, TheEEG)
+function ShowDynamics(~, ~,fh, TheEEG)
 % ---------------------------------------
     UserData = get(fh,'UserData');
     TheEEG.msinfo.FitPar.nClasses = UserData.nClasses;
     pop_ShowIndMSDyn(0,TheEEG,0);
 end
 
-function MapInfo(obj, event, fh)
+function MapInfo(~, ~, fh)
 % ------------------------------
 
     UserData = get(fh,'UserData');    
@@ -231,7 +232,8 @@ function MapInfo(obj, event, fh)
     NormText     = {'not ', ''};
     if isinf(UserData.msinfo.ClustPar.MaxMaps)
             MaxMapsText = 'all';
-    else    MaxMapsText = num2str(UserData.msinfo.ClustPar.MaxMaps,'%i');
+    else
+            MaxMapsText = num2str(UserData.msinfo.ClustPar.MaxMaps,'%i');
     end
     
     if ~isfield(UserData.msinfo.ClustPar,'Normalize')

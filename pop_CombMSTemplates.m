@@ -175,9 +175,9 @@ function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhe
         end
     % We sort out the stuff
 %        BestMeanMap = PermutedMeanMaps(MapsToSort,~IgnorePolarity);
-        BestMeanMap = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
+        [BestMeanMap,~,ExpVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
         msinfo.MSMaps(n).Maps = BestMeanMap;
-        msinfo.MSMaps(n).ExpVar = NaN;
+        msinfo.MSMaps(n).ExpVar = ExpVar;
         msinfo.MSMaps(n).ColorMap = lines(n);
         msinfo.MSMaps(n).SortedBy = 'none';
         msinfo.MSMaps(n).SortMode = 'none';
