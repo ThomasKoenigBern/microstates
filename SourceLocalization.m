@@ -1,29 +1,36 @@
-function com = SourceLocalization(varargin)
+% adds sourceInvKernel to AllEEG
+function [allEEGStruct, com] = SourceLocalization(varargin)
     if ~brainstorm('status')
-        brainstorm
+        brainstorm nogui
     end
 
-    % sample data
-    % test Time: 1 second with a sampling frequency of 125Hz
-    t = 0:1/125:1;
-    % Generate sinsuoidal signals
-    F = arrayfun(@(c){sin(1000/c*2*pi*t)}, 1:128);
-    F = vertcat(F{:}); % arr of cell to mat
-
-    Defaults = {F,'MS',128,false};
+    Defaults = {[], [],'MS',128,true};
     Defaults(1:nargin) = varargin;
-    F = Defaults{1};
-    pname = Defaults{2}; % protocol name
-    chcnt = Defaults{3};
-    showOptions = Defaults{4};
+    allEEGStruct = Defaults{1};
+    EEGStruct = Defaults{2};
+    pname = Defaults{3}; % protocol name
+    chcnt = Defaults{4};
+    showOptions = Defaults{5};
     gui_brainstorm('DeleteProtocol', pname); 
     gui_brainstorm('CreateProtocol', pname, 1,0); % create protocol
 
-
+    if ~isempty(EEGStruct) 
+        % create time range t for 1 second
+        sampleRate = EEGStruct.srate;
+        t = 0:1/sampleRate:1;
+        data = EEGStruct.data;
+    else % use sample data instead
+        % test Time: 1 second with a sampling frequency of 125Hz
+        t = 0:1/125:1;
+        % Generate sinsuoidal signals
+        data = arrayfun(@(c){sin(1000/c*2*pi*t)}, 1:128);
+        data = vertcat(data{:}); % arr of cell to mat
+    end
+        
     % Initialize an empty "matrix" structure
     sMat = db_template('datamat');
     % Fill the required fields of the structure
-    sMat.F = F;
+    sMat.F = data;
     sMat.Comment     = 'Microstates Data';
     sMat.Time        = t;
     sMat.ChannelFlag = ones(1,chcnt);
@@ -89,6 +96,7 @@ function com = SourceLocalization(varargin)
         if isempty(outputFiles) && ~isempty(errMsg)
             bst_error(errMsg, 'Compute sources', 0);
         end
+        outputFiles = outputFiles{1};
     else
         % process directly Process: Compute sources [2018]
         sFiles = bst_process('CallProcess', 'process_inverse_2018', sFiles, [], ...
@@ -111,6 +119,11 @@ function com = SourceLocalization(varargin)
                  'DataTypes',      {{'EEG'}}));
         outputFiles = sFiles.FileName;
     end
+%     view_surface_data([], outputFiles); % visualize
+    [iDS, iResult] = bst_memory('LoadResultsFile', outputFiles);
+    bst_memory('LoadResultsMatrix', iDS, iResult);
+    global GlobalData;
+    kernel = GlobalData.DataSet(iDS).Results(iResult).ImagingKernel;
+    allEEGStruct.sourceInvKernel = kernel;
     com = 'com = SourceLocalization';
-    view_surface_data([], outputFiles); % visualize
 end

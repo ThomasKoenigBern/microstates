@@ -156,7 +156,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],true  ,ALLEEG);'        catch_strings.store_and_hist];
     comShowIndMSDyn        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,false);'             catch_strings.store_and_hist];
     comShowIndMSDynM       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,true);'              catch_strings.store_and_hist];
-    comSourceLocalization  = [try_strings.no_check '[           LASTCOM] = SourceLocalization(ALLEEG);'                     catch_strings.add_to_hist];
+    comSourceLocalization  = [try_strings.no_check '[ALLEEG     LASTCOM] = SourceLocalization(ALLEEG,EEG);'                 catch_strings.add_to_hist];
 
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
