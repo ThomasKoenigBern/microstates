@@ -1,27 +1,30 @@
-function SourceLocalization(varargin)
+function com = SourceLocalization(varargin)
     if ~brainstorm('status')
         brainstorm
     end
-    Defaults = {'MS',128,true};
+
+    % sample data
+    % test Time: 1 second with a sampling frequency of 125Hz
+    t = 0:1/125:1;
+    % Generate sinsuoidal signals
+    F = arrayfun(@(c){sin(1000/c*2*pi*t)}, 1:128);
+    F = vertcat(F{:}); % arr of cell to mat
+
+    Defaults = {F,'MS',128,false};
     Defaults(1:nargin) = varargin;
-    pname = Defaults{1}; % protocol name
-    chcnt = Defaults{2};
-    showOptions = Defaults{3};
+    F = Defaults{1};
+    pname = Defaults{2}; % protocol name
+    chcnt = Defaults{3};
+    showOptions = Defaults{4};
     gui_brainstorm('DeleteProtocol', pname); 
     gui_brainstorm('CreateProtocol', pname, 1,0); % create protocol
 
-    % test Time: 1 second with a sampling frequency of 1000Hz
-    t = 0:0.001:1;
-    % Generate sinsuoidal signals
-
-    F = arrayfun(@(c){sin(1000/c*2*pi*t)}, 1:chcnt);
-    F = vertcat(F{:}); % arr of cell to mat
 
     % Initialize an empty "matrix" structure
     sMat = db_template('datamat');
     % Fill the required fields of the structure
     sMat.F = F;
-    sMat.Comment     = 'Test sinusoids';
+    sMat.Comment     = 'Microstates Data';
     sMat.Time        = t;
     sMat.ChannelFlag = ones(1,chcnt);
 
@@ -70,7 +73,7 @@ function SourceLocalization(varargin)
     % Process: Compute covariance (noise or data)
     sFiles = bst_process('CallProcess', 'process_noisecov', sFiles, [], ...
         'baseline',       [-0.2, -0.008], ...
-        'datatimewindow', [0, 1.992], ...
+        'datatimewindow', [0, 1], ...
         'sensortypes',    'EEG', ...
         'target',         1, ...  % Noise covariance     (covariance over baseline time window)
         'dcoffset',       1, ...  % Block by block, to avoid effects of slow shifts in data
@@ -108,5 +111,6 @@ function SourceLocalization(varargin)
                  'DataTypes',      {{'EEG'}}));
         outputFiles = sFiles.FileName;
     end
-    view_surface_data(outputFiles); % visualize
+    com = 'com = SourceLocalization';
+    view_surface_data([], outputFiles); % visualize
 end
