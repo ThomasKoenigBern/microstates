@@ -252,11 +252,9 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     close(h);
     
 %     add option for a graphical output in addition to file output
-    disp("MSStats:")
-    disp(MSStats)
-%     for i = 1:size(struct2table(MSStats). 2)
-%         if strfind()  if found "OrgTM_" in the string, make a heatmap out
-%         of the following elements
+    
+    for i = 1:size(struct2table(MSStats). 2)
+        if strfind()
 
 
     idx = 1;
