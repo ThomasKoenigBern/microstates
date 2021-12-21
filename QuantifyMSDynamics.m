@@ -1,7 +1,7 @@
 %QuantifyMSDynamics() Quantify microstate parameters
 %
 % Usage:
-%   >> res = QuantifyMSDynamics(MSClass,info, SamplingRate, DataInfo, isTransitionPrb, TemplateName)
+%   >> res = QuantifyMSDynamics(MSClass,info, SamplingRate, DataInfo, isDataVis, TemplateName)
 %
 % Where: - MSClass is a N timepoints x N Segments matrix of momentary labels
 %        - info is the structure with the microstate information
@@ -37,7 +37,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, isTransitionPrb, SingleEpochFileTemplate)
+function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, isDataVis, SingleEpochFileTemplate)
 
 %    res = table();
     if nargin < 9
@@ -64,7 +64,7 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         res.SortInfo     = 'NA';
     end
     res.ExpVar       = ExpVar;
-    res.isTransitionPrb = isTransitionPrb;
+    res.isDataVis = isDataVis;
     
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
     eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
@@ -154,17 +154,21 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
     disp(res.OrgTM);
     disp("res.OrgTM has type:\n");
     disp(class(res.OrgTM));
-    if res.isTransitionPrb == 1
-        disp("isTransitionPrb is true, displaying heatmap of MS transition probabilities!");
+    if res.isDataVis == 1
+        disp("isDataVis is true, getting transition probabilities!");
 %         heatmap = subplot("Transition Probabilities", )
-        z = zeros(3,3,'double');
-        transitionPrbMtrx = cast(res.OrgTM, 'like', z);
-%         transitionPrbMtrx = transitionPrbMtrx * 100;
-        h = heatmap(res.OrgTM);
+%         z = zeros(3,3,'double');
+%         DataVisMtrx = cast(res.OrgTM, 'like', z);
+%         DataVisMtrx = DataVisMtrx * 100;
+%         h = heatmap(res.OrgTM);
 %         h.Title = "Transition probabilities between microstates";
 %         h.Visible = 'on';
 %         h.show();   
     end
+
+
+    disp("res.OrgTM:");
+    disp(res.OrgTM);
 
     res.ExpTM = mynanmean(eExpTM,3);
     res.DeltaTM = res.OrgTM - res.ExpTM;

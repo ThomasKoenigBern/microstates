@@ -148,7 +148,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comQuantMSTemplatesS   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0);'              catch_strings.new_and_hist];
     comQuantMSTemplatesM   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,1);'              catch_strings.new_and_hist];
     comQuantMSTemplatesT   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,2);'              catch_strings.new_and_hist];
-    comQuantMSTransitionPrb= [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0, [], [], 1);'   catch_strings.new_and_hist];
+    comQuantMSDataVis      = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0, [], [], 1);'   catch_strings.new_and_hist];
 
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'  catch_strings.add_to_hist];
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
@@ -191,7 +191,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (mean template maps)' , 'CallBack', comQuantMSTemplatesM,   'position', 13);
     uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (published template maps)', 'CallBack', comQuantMSTemplatesT,   'position', 14);
 
-    uimenu( toolssubmenu, 'Label', 'Display microstate transition probabilities (own template maps)'  , 'CallBack', comQuantMSTransitionPrb,   'position', 15, 'Separator','on');
+    uimenu( toolssubmenu, 'Label', 'Display microstate transition probabilities (own template maps)'  , 'CallBack', comQuantMSDataVis,   'position', 15, 'Separator','on');
 
     if numel(which('Ragu')) > 0
         uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,   'position', 15,'Separator','on');
