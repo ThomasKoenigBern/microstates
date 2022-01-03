@@ -154,7 +154,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comDaviesBouldinMSNumber = [try_strings.no_check '[         LASTCOM] = pop_MS_DaviesBouldin(ALLEEG,CURRENTSET);'        catch_strings.add_to_hist];
     comCalinskiHarabaszMSNumber = [try_strings.no_check '[        LASTCOM] = pop_MS_CalinskiHarabasz(ALLEEG,CURRENTSET);'     catch_strings.add_to_hist];    
     comDispersionMSNumber = [try_strings.no_check '[        LASTCOM] = pop_MS_Dispersion(ALLEEG,CURRENTSET);'     catch_strings.add_to_hist];    
-
+    comGEVMSNumber = [try_strings.no_check '[        LASTCOM] = pop_MS_GEV(ALLEEG,CURRENTSET);'     catch_strings.add_to_hist];    
+    comIndGEVMSNumber = [try_strings.no_check '[        LASTCOM] = pop_MS_IndGEV(ALLEEG,CURRENTSET);'     catch_strings.add_to_hist];
 
     comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],false ,ALLEEG);'        catch_strings.add_to_hist];
     comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],true  ,ALLEEG);'        catch_strings.store_and_hist];
@@ -181,6 +182,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     uimenu( toolssubmenu, 'Label', 'Use Davies Bouldin plots to choose number of classes'      , 'CallBack', comDaviesBouldinMSNumber , 'position', 16, 'userdata', 'study:on');        
     uimenu( toolssubmenu, 'Label', 'Use Calinski Harabasz plots to choose number of classes'      , 'CallBack', comCalinskiHarabaszMSNumber , 'position', 17, 'userdata', 'study:on');        
     uimenu( toolssubmenu, 'Label', 'Use Dispersion plots to choose number of classes'      , 'CallBack', comDispersionMSNumber , 'position', 18, 'userdata', 'study:on');        
+    uimenu( toolssubmenu, 'Label', 'Use GEV plots to choose number of classes'      , 'CallBack', comGEVMSNumber , 'position', 19, 'userdata', 'study:on');        
+    uimenu( toolssubmenu, 'Label', 'Use GEV plots to choose number of classes for dataset (own template maps)'      , 'CallBack', comIndGEVMSNumber , 'position', 20, 'userdata', 'study:on');        
 
     uimenu( toolssubmenu, 'Label', 'Sort individual microstate maps according to mean'     , 'CallBack', comSortMSTemplates, 'position', 5, 'userdata', 'study:on','Separator','on');
     uimenu(toolssubmenu, 'label',  'Sort individual microstate maps according to published template' , 'CallBack', comSortMSTemplatesT,'position', 6, 'userdata', 'study:on');
