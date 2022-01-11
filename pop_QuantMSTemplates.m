@@ -1,7 +1,7 @@
  %pop_QuantMSTemplates() quantifies the presence of microstates in EEG data
 %
 % Usage:
-%   >> [com,Evol] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, dataVis, FileName)
+%   >> [com,Evol] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
 %
 % EEG lab specific:
 %
@@ -35,10 +35,6 @@
 %   -> Index of the AllEEG dataset containing the mean clusters to be used if UseMeanTmpl
 %   is true, else not relevant
 %
-%   dataVis
-%   -> If true, display heatmap of data
-%   between any two given microstates
-%   
 %   Filename
 %   -> Name of the file to store the output. 
 %
@@ -66,7 +62,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, dataVis, FileName)
+function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
     
     global MSTEMPLATE;
 
@@ -74,7 +70,6 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     if nargin < 3,  UseMeanTmpl   =  0;  end
     if nargin < 4,  FitParameters = [];     end 
     if nargin < 5,  MeanSet       = [];     end 
-    if nargin < 6,  dataVis = 0;     end       
 
     com = '';
     if nargin < 3
@@ -226,7 +221,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             if ~isempty(MSClass)
  %              MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, '<<own>>')];
                 fprintf("Calling QuantifyMSDynamics... (a)\n");
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, [],ExpVar, dataVis, SingleEpochFileTemplate );
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, [],ExpVar, SingleEpochFileTemplate, AllEEG(sIdx), AllEEG, sIdx);
             end
         else
             if isfield(TheChosenTemplate.msinfo.MSMaps(par.nClasses),'Labels')
@@ -244,7 +239,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             if ~isempty(MSClass)
 %                MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname)]; 
                 fprintf("Calling QuantifyMSDynamics... (b)");
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname, ExpVar, dataVis, SingleEpochFileTemplate);
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname, ExpVar, SingleEpochFileTemplate, AllEEG(sIdx), AllEEG);
             end
         end
         EpochData(s) = SSEpochData;
@@ -252,25 +247,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     close(h);
     
 %     add option for a graphical output in addition to file output
-    if dataVis
-        disp("MSStats.OrgTM:");
-        disp(MSStats.OrgTM);
-        
-        dataVisGui.h = heatmap(MSStats.OrgTM);
-        dataVisGui.h.Title = "Microstate Data Visualization";
-    %     dataVisGui.h.Position = [0.05 0.2 0.5 0.5];
-    
-        dataVisGui.closeBtn = uicontrol('Style', 'pushbutton', 'String', 'Close', 'Units','Normalized','Position', [0.80 0.05 0.15 0.05], 'Callback', 'close(gcf)');
-    %     dataVisGui.statAnalysisBtn = uicontrol('Style', 'pushbutton', 'String', 'Statistical Analysis' , 'Units','Normalized','Position'  , [0.50 0.05 0.15 0.05], 'Callback', {@StatAnalysis});
-    
-    
-    %     dataVisGui.saveBtn = uicontrol('Style', 'pushbutton', 'String', 'Save' , 'Units','Normalized','Position'  , [0.65 0.05 0.15 0.05], 'Callback', @SaveMSStats);
-    %     dd = uidropdown(dataVisGui.h, 'Position'  , [0.0 0.05 0.15 0.05]);
-    %     dataVisGui.h.infoDropdown = uidropdown('Position'  , [0.1 0.05 0.15 0.05], ...
-    %         'Items', MSStats, ...
-    %         'Values', 'DataSet');
-    %     dd.Items = MSStats;
-    end
+%     DataVisualization(MSStats);
 
     idx = 1;
     if nargin < 7
@@ -312,12 +289,12 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     txt = sprintf('%i ',SelectedSet);
     txt(end) = [];
 
-    com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %i, %i, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, dataVis, FileName);
+    com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %i, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, FileName);
 end
 
-function StatAnalysis
-    disp("will do statistical analysis here..")
-end
+% function StatAnalysis
+%     disp("will do statistical analysis here..")
+% end
 
 function Answer = DoesItHaveChildren(in)
     Answer = false;
