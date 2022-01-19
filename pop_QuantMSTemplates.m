@@ -1,7 +1,7 @@
  %pop_QuantMSTemplates() quantifies the presence of microstates in EEG data
 %
 % Usage:
-%   >> [com,Evol] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
+%   >> [com, MSStats, Evol] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
 %
 % EEG lab specific:
 %
@@ -40,13 +40,21 @@
 %
 % Output:
 %
-%   "com"
+%   com
 %   -> Command necessary to replicate the computation
-%              %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+%   Evol
+%   -> Experimental: Evolution of the microstate quantifiers over time
+%   
+%   MSStats
+%    -> A structure with all the mean quantifiers. If this output argument
+%    is given and and the filename argument is not given, no file saving
+%    dialog will appear
+%
+% Author: Thomas Koenig, University of Bern, Switzerland, 2022
+%
+% Copyright (C) 2022 Thomas Koenig, University of Bern, Switzerland, 
+% thomas.koenig@upd.unibe.ch
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -62,7 +70,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
+function [com, MSStats, EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
     
     global MSTEMPLATE;
 
@@ -76,12 +84,12 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
         ButtonName = questdlg('What type of templates do  you want to use?', ...
                          'Microstate statistics', ...
                          'Sorted individual maps', 'Averaged maps','Published templates', 'Sorted individual maps');
-        switch ButtonName,
-            case 'Individual maps',
+        switch ButtonName
+            case 'Individual maps'
                 UseMeanTmpl = 0;
-            case 'Averaged maps',
+            case 'Averaged maps'
                 UseMeanTmpl = 1;
-            case 'Published templates',
+            case 'Published templates'
                 UseMeanTmpl = 2;
         end % switch
     end 
@@ -105,7 +113,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     
     AvailableSets  = {AllEEG(nonemptyInd).setname};
 
-    if numel(CURRENTSET) > 1
+    if numel(CURRENTSET) > 0
         SelectedSet = CURRENTSET;
     
         if UseMeanTmpl > 0 && isempty(MeanSet) 
@@ -160,14 +168,14 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     
     
     switch UseMeanTmpl
-        case 0,
+        case 0
             MinClasses = max(cellfun(@(x) GetClusterField(AllEEG(x),'MinClasses'),num2cell(SelectedSet)));
             MaxClasses = min(cellfun(@(x) GetClusterField(AllEEG(x),'MaxClasses'),num2cell(SelectedSet)));
-        case 1,
+        case 1
             TheChosenTemplate = AllEEG(MeanSet);
             MinClasses = TheChosenTemplate.msinfo.ClustPar.MinClasses;
             MaxClasses = TheChosenTemplate.msinfo.ClustPar.MaxClasses;
-        case 2,
+        case 2
             TheChosenTemplate = MSTEMPLATE(MeanSet);
             MinClasses = TheChosenTemplate.msinfo.ClustPar.MinClasses;
             MaxClasses = TheChosenTemplate.msinfo.ClustPar.MaxClasses;
@@ -189,7 +197,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     end
     
     
-    if size(TheChosenTemplate.msinfo.MSMaps(par.nClasses).Maps,1) ~= par.nClasses
+    if (MinClasses > par.nClasses) | (MaxClasses < par.nClasses)
         errordlg2('The chosen template does not contain the chosen number of clusters','Microstate fitting');
     end
         
@@ -218,7 +226,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
         DataInfo.setname   = ActiveEEG.setname;
         Labels = [];
         AllEEG(sIdx).msinfo.FitPar = par;
-
+        ActiveEEG.msinfo
         if UseMeanTmpl == 0
             if isfield(ActiveEEG.msinfo.MSMaps(par.nClasses),'Labels')
                 Labels = ActiveEEG.msinfo.MSMaps(par.nClasses).Labels;
@@ -252,28 +260,28 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
         EpochData(s) = SSEpochData;
     end
     close(h);
-    idx = 1;
-    if nargin < 6
-        [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.csv','Text file for R'},'Save microstate statistics');
+    FileName = [];
+    idx = [];
+    if nargin < 6 && nargout < 2
+        [FName,PName, idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.csv','Text file for R'},'Save microstate statistics');
         FileName = fullfile(PName,FName);
-    else
-        idx = 2;
-        if ~isempty(strfind(lower(FileName),'.mat'))
-            idx = 4;
-        end
-        if ~isempty(strfind(lower(FileName),'.xls'))
-            idx = 5;
-        end
-
-        if ~isempty(strfind(lower(FileName),'.4r'))
-            idx = 6;
-        end
-
-        
     end
 
     if ~isempty(FileName)
-    
+        if isempty(idx) 
+            idx = 2;
+            if contains(lower(FileName),'.mat')
+                idx = 4;
+            end
+            if contains(lower(FileName),'.xls')
+                idx = 5;
+            end
+
+            if contains(lower(FileName),'.4r')
+                idx = 6;
+            end
+        end
+        
         switch idx
             case 1
                 SaveStructToTable(MSStats,FileName,',',Labels);
@@ -291,8 +299,12 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     end
     txt = sprintf('%i ',SelectedSet);
     txt(end) = [];
-
-    com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %i, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, FileName);
+    if isempty(MeanSet)
+        MeanSetText = '[]';
+    else
+        MeanSetText = sprintf('%i',MeanSet);
+    end
+    com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %s, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSetText, FileName);
 end
 
 function Answer = DoesItHaveChildren(in)
