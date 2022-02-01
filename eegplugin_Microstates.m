@@ -154,18 +154,23 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
     comSilhouetteMSNumber  = [try_strings.no_check '[           LASTCOM] = pop_MS_Silhouette(ALLEEG,CURRENTSET);'           catch_strings.add_to_hist];
     
-    comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],false ,ALLEEG);'        catch_strings.add_to_hist];
-    comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],true  ,ALLEEG);'        catch_strings.store_and_hist];
+    comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],true ,ALLEEG);'        catch_strings.add_to_hist];
+%     comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],true  ,ALLEEG);'        catch_strings.store_and_hist];
     comShowIndMSDyn        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,false);'             catch_strings.store_and_hist];
     comShowIndMSDynM       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,true);'              catch_strings.store_and_hist];
+
+    comClustNumSelectionS = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,0);'     catch_strings.add_to_hist];    
+    comClustNumSelectionM = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,1);'     catch_strings.add_to_hist];    
+
+
 
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
 
     plotmenu = findobj(fig, 'tag', 'plot');
     uimenu( plotmenu, 'label', 'Plot microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
-    uimenu( plotmenu, 'label', 'Edit microstate maps'                       ,'CallBack',comEditIndMSMaps,'Separator','off');
-    uimenu( plotmenu, 'label', 'Plot microstate dynamics'                   ,'CallBack',comShowIndMSDyn,'Separator','on');
+%     uimenu( plotmenu, 'label', 'Edit microstate maps'                     ,'CallBack',comEditIndMSMaps,'Separator','off');
+    uimenu( plotmenu, 'label', 'Plot microstate dynamics (Own template)'    ,'CallBack',comShowIndMSDyn,'Separator','on');
     uimenu( plotmenu, 'label', 'Plot microstate dynamics (Mean template)'   ,'CallBack',comShowIndMSDynM);
 
     % create menus if necessary
@@ -192,6 +197,9 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (published template maps)', 'CallBack', comQuantMSTemplatesT,   'position', 14);
 
     uimenu( toolssubmenu, 'Label', 'Display microstate data visualizations (own template maps)'  , 'CallBack', comQuantMSDataVis,   'position', 15, 'Separator','on');
+
+    uimenu( toolssubmenu, 'Label', 'Data driven selection of number of microstates (own template maps)', 'CallBack', comClustNumSelectionS, 'position', 16, 'Separator', 'on');
+    uimenu( toolssubmenu, 'Label', 'Data driven selection of number of microstates (mean template maps)', 'CallBack', comClustNumSelectionM, 'position', 17);
 
     if numel(which('Ragu')) > 0
         uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,   'position', 15,'Separator','on');

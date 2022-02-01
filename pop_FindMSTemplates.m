@@ -186,7 +186,7 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
     
     if ClustPar.UseAAHC == false
         for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
-            [b_model,~,~,exp_var] = eeg_kMeans(MapsToUse',nClusters,ClustPar.Restarts,[],flags,TheEEG.chanlocs);
+            [b_model,~,~,exp_var,cross_val] = eeg_kMeans(MapsToUse',nClusters,ClustPar.Restarts,[],flags,TheEEG.chanlocs);
    
             msinfo.MSMaps(nClusters).Maps = b_model;
             msinfo.MSMaps(nClusters).ExpVar = double(exp_var);
@@ -194,6 +194,7 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
             msinfo.MSMaps(nClusters).SortMode = 'none';
             msinfo.MSMaps(nClusters).SortedBy = '';
             msinfo.MSMaps(nClusters).Communality= [];
+            msinfo.MSMaps(nClusters).CrossValidation = cross_val;
         end
     else
         [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize);

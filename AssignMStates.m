@@ -39,7 +39,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
+function [MSClass,gfp, fit, crossVal] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
 
     
     if nargin < 5
@@ -154,6 +154,23 @@ function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarit
 
     end
     fit = AllMFit / AllMVar;
+    
+    % Cross validation
+    pre_sigma = nan(eegdata.nbchan, size(Winner,2));     % num channels x number of timepoints
+    for t = 1:size(Winner,2)    % size of winner, # of timepoints
+        u = eegdata.data(:,t);
+        if(Winner(1,t) == 0)        % special case where winner MS is 0
+            pre_sigma(:,t) = 0;
+        else
+            a = (u.* eegdata.msinfo.MSMaps(size(Maps,1)).Maps(Winner(1,t)) );          % Winner(t) is the index of template map
+            pre_sigma(:,t) = ((u.^2) - ((a).^2));
+        end
+    end
+    pre_sigma_sum = sum(pre_sigma(:,t));
+%     n_elec = size(eegdata,2);
+    sigma_squared = sum(pre_sigma_sum) / (size(eegdata,1) * (eegdata.nbchan - 1));
+    crossVal = sigma_squared * ((eegdata.nbchan - 1)/(eegdata.nbchan - 1 - size(Maps,1)))^2;      % taken from Murray 2008 formula for Cross Validation Criterion
+
 end
 
 

@@ -131,7 +131,9 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
     
     [curr_EEG,~,~] = pop_SortMSTemplates(AllEEG,idx,true, -1);
     
-    eSpCorrelation = curr_EEG.msinfo.MSMaps(info.FitPar.nClasses).Communality;
+    % possibly issue that this selects (1) dataset out of curr_EEG. other
+    % datasets shouldn't have been creaed
+    eSpCorrelation = curr_EEG(1).msinfo.MSMaps(info.FitPar.nClasses).Communality;
     eSpCorrelation = mynanmean(eSpCorrelation,3);
 
     res.TotalTime = sum(eTotalTime);

@@ -19,16 +19,23 @@ covariance = covar./sqrt(var1*var2');
 
 % Spatial correlation values calculated using equations for diss and
 % spatial correlation from Murray 2008 paper
-pre_diss = nan(1,size(in1,2));
+pre_diss = nan(1,size(in1,1));      % array of length # of electrodes
+diss = nan(1,size(in1,2));
+spCorr = nan(1,size(in1,2));
+
 for j = 1:size(in1,2)       % from 1 to nMaps
-    pre_diss(j) = 0;
-    gfp1 = std(in1(j,:));
-    gfp2 = std(in2(j,:));
+    gfp1 = std(in1(:,j), 1);   %w=1 for weighting scheme
+    gfp2 = std(in2(:,j), 1);
     for i = 1:nO    % from 1 to num of electrodes
-        pre_diss(j) = pre_diss(j) + (((in1(i,j)/gfp1) - (in2(i,j)/gfp2)).^2);
-    end
+        pre_diss(i) = ((in1(i,j)/gfp1) - (in2(i,j)/gfp2))^2;
+    end  
+    diss(j) = sqrt((sum(pre_diss))/nO);
 end
-diss = pre_diss / nO;
+% spCorr = 1-((diss.^2)/2);
+for k = 1:size(in1,2)
+    spCorr(k) = 1-((diss(k)^2)/2);
+end
 
-spCorr = (1-(diss).^2)/2;
 
+    
+    
