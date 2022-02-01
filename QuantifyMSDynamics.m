@@ -37,10 +37,8 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, SingleEpochFileTemplate)
-
-%    res = table();
-    if nargin < 8
+function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, SingleEpochFileTemplate, curr_EEG, AllEEG, idx)
+    if nargin < 9
         SingleEpochFileTemplate = [];
     end
 
@@ -63,8 +61,9 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         res.Template     = TemplateName;
         res.SortInfo     = 'NA';
     end
+
     res.ExpVar       = ExpVar;
-    
+
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
     eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
     eContribution    = zeros(1,info.FitPar.nClasses,nEpochs);
@@ -75,9 +74,9 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
 
     eOrgTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
     eExpTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
+    
+    for e = 1: nEpochs      % e: from 1 to number of maps
 
-    for e = 1: size(MSClass,2)
-        % Find the transitions
         ChangeIndex = find([0 diff(MSClass(:,e)')]);
         StartTimes   = TimeAxis(ChangeIndex(1:(end-1)    ));
         EndTimes     = TimeAxis((ChangeIndex(2:end    )-1));
@@ -97,9 +96,10 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         eMeanDuration(e) = mean(Duration(Class > 0));
         MeanOcc = sum(Class > 0) / TotalTime;
         eMeanOccurrence(e) = MeanOcc;
-
         
-        for c1 = 1: info.FitPar.nClasses
+        
+        for c1 = 1: info.FitPar.nClasses    % c1: from 1 to number of classes
+
             Hits = find(Class == c1);
             eDuration(1,c1,e)     = mean(Duration(Hits));
             eOccurrence(1,c1,e)   = numel(Hits) / TotalTime;
@@ -109,8 +109,8 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
             for c2 = 1: info.FitPar.nClasses
                 eOrgTM(c1,c2,e) = sum(Class(Hits+1) == c2); 
             end
+
         end
-        
         cnt = zeros(info.FitPar.nClasses,1);
         for n = 1:(numel(Class)-1)
             if Class(n) == 0
@@ -129,8 +129,13 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         end
     end
     
-    res.TotalTime = sum(eTotalTime);
+    [curr_EEG,~,~] = pop_SortMSTemplates(AllEEG,idx,true, -1);
+    
+    eSpCorrelation = curr_EEG.msinfo.MSMaps(info.FitPar.nClasses).Communality;
+    eSpCorrelation = mynanmean(eSpCorrelation,3);
 
+    res.TotalTime = sum(eTotalTime);
+    res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
     res.Duration     = mynanmean(eDuration,3);
     res.MeanDuration = mean(eMeanDuration);
  
@@ -151,8 +156,13 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
     EpochData.Occurrence   = squeeze(eOccurrence);
     EpochData.Contribution = squeeze(eContribution);
     
+    disp("printing DataInfo.setname to csv:");
+    disp(DataInfo.setname);
+    disp("printing SingleEpochFileTemplate to csv:");
+    disp(class(SingleEpochFileTemplate));
+
     if ~isempty(SingleEpochFileTemplate)
-        OutputFileName = sprintf(SingleEpochFileTemplate,DataInfo.setname);
+        OutputFileName = sprintf(SingleEpochFileTemplate,DataInfo.setname);        
         save(OutputFileName,'eDuration','eOccurrence','eContribution');
     end
 end

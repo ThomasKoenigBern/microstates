@@ -302,6 +302,7 @@ function PlotMSMaps(~, ~,fh)
     sp_x = ceil(sqrt(UserData.nClasses));
     sp_y = ceil(UserData.nClasses / sp_x);
     
+    % fix structure of for loop to put subplots on one row
     for m = 1:sp_x*sp_y
         h = subplot(sp_y,sp_x,m);
         cla(h);
