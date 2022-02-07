@@ -15,7 +15,17 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     % check if the currently selected EEG structure contains microstate
     % information
     if ~isfield(TheEEG,'msinfo')
-        errordlg2('The data does not contain microstate maps','Data driven selection of number of microstates');
+
+        errordlg2(['The data does not contain microstate maps. Identify microstate maps first' ...
+            ' from Tools -> Microstates -> Identify microstate maps.'],'Data driven selection of number of microstates');
+        return;
+    end
+
+    % if the currently selected EEG structure is a mean but the user
+    % selected the own template maps version, correct them
+    if isfield(TheEEG.msinfo, 'children') && ~UseMean
+        errordlg2(['The currently selected EEG dataset contains mean microstate maps across individuals. ' ...
+            'Use the mean template maps menu item instead.'], 'Data driven selection of number of microstates');
         return;
     end
     
@@ -56,6 +66,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
     if nargin < 4 || paramsComplete == false
         FitPar = SetFittingParameters([],FitPar);
+
     end
     
     TheEEG.msinfo.FitPar = FitPar;
@@ -64,33 +75,47 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses;
     maxClusters = size(ClusterNumbers, 2);
 
+
+    % If doing mean level analysis, find the children EEG sets of the mean
+    % set and initialize the criterion matrices according to how many
+    % datasets are included in the mean set
+    if UseMean
+        ChildIndices = FindTheWholeFamily(TheEEG, AllEEG);
+        nSubjects = numel(ChildIndices);
+    else
+        nSubjects = 1;
+    end
+
     % Criterion for metacriterion (11)
-    CV = nan(maxClusters, 1);           % Cross-Validation
-    CC = nan(maxClusters, 1);           % Cubic-Clustering Criterion
-    DB = nan(maxClusters, 1);           % Davies-Bouldin
-    D = nan(maxClusters, 1);         % Dunn
-    FVG = nan(maxClusters, 1);          % Frey and Van Groenewoud
-    H = nan(maxClusters, 1);            % Hartigan
-    KL = nan(maxClusters, 1);           % Krzanowski-Lai
-    M = nan(maxClusters, 1);            % Mariott
-    PB = nan(maxClusters, 1);           % Point-Biserial
-    T = nan(maxClusters, 1);            % Tau
-    W = nan(maxClusters, 1);            % Trace (Dispersion)
+    CV = nan(nSubjects, maxClusters);           % Cross-Validation
+    CC = nan(nSubjects, maxClusters);           % Cubic-Clustering Criterion
+    DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
+    D = nan(nSubjects, maxClusters);            % Dunn
+    FVG = nan(nSubjects, maxClusters);          % Frey and Van Groenewoud
+    H = nan(nSubjects, maxClusters);            % Hartigan
+    KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai
+    M = nan(nSubjects, maxClusters);            % Mariott
+    PB = nan(nSubjects, maxClusters);           % Point-Biserial
+    T = nan(nSubjects, maxClusters);            % Tau
+    W = nan(nSubjects, maxClusters);            % Trace (Dispersion)
 
     % Other criterion
-    GEV = nan(maxClusters, 1);
-    CH = nan(maxClusters, 1);    
-    Silhouette = nan(maxClusters, 1);
+    GEV = nan(nSubjects, maxClusters);          % Global Explained Variance
+    CH = nan(nSubjects, maxClusters);           % Calinski-Harabasz
+    S = nan(nSubjects, maxClusters);            % Silhouette
 
-    for i=1:maxClusters
-        nc = ClusterNumbers(i);         % number of clusters
+    for subj=1:nSubjects
+        if UseMean
+            ChildIndex = ChildIndices(subj);
+            TheEEG = AllEEG(ChildIndex);
+        end
 
-        % if not using a MeanSet, find the single criterion value for each
-        % clustering solution
-        if UseMean == false
+        for i=1:maxClusters
+            nc = ClusterNumbers(i);         % number of clusters
+
             % Assign microstate labels
             Maps = TheEEG.msinfo.MSMaps(nc).Maps;
-            [ClustLabels, gfp, fit, crossVal] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
+            [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
             
             % Check for segmented data and reshape if necessary
             IndSamples = TheEEG.data;
@@ -122,8 +147,6 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             
             % CRITERION CALCULATIONS
             
-            % Global Explained Variance
-            GEV(i) = fit;
 
             % Calinski-Harabasz - the higher the better
             %CH(i) = eeg_CalinskiHarabasz(IndSamples', ClustLabels);
@@ -133,14 +156,48 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             % DB(i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin');
             %DB(i) = eeg_DaviesBouldin(IndSamples', ClustLabels);
 
-            % Cross Validation (TODO)
+            % Cross Validation
             CV(i) = crossVal;
             
+
+            % Global Explained Variance - the higher the better
+            GEV(subj, i) = fit;
+
+            % Calinski-Harabasz - the higher the better
+            CH(subj, i) = eeg_CalinskiHarabasz(IndSamples', ClustLabels);
+            % CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
+
+            % Davies-Bouldin - the lower the better
+            DB(subj, i) = eeg_DaviesBouldin(IndSamples', ClustLabels);
+            % DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
+
+            % Cross Validation (TODO)
+
             % Dispersion (TODO)
 
             % Silhouette (TODO)
         end
-%         disp(CV)
+
+    end
+
+    if UseMean
+        % Criterion for metacriterion (11)
+        CV = mean(CV, 1);
+        CC = mean(CC, 1);
+        DB = mean(DB, 1);
+        D = mean(D, 1);
+        FVG = mean(FVG, 1);
+        H = mean(H, 1);
+        KL = mean(KL, 1);
+        M = mean(M, 1);
+        PB = mean(PB, 1);
+        T = mean(T, 1);
+        W = mean(W, 1);
+
+        % Other criterion
+        GEV = mean(GEV, 1);
+        CH = mean(CH, 1);
+        S = mean(S, 1);
     end
 
     [res,~,~,structout] = inputgui( 'geometry', { 1 1 1 [8 2] [8 2] [8 2] [8 2] [8 2] ...
@@ -187,4 +244,5 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             {'Style', 'text', 'string', ...
             'The silhouette value for each point is a measure of how similar that point is to points in its own cluster, when compared to points in other clusters. The silhouette value ranges from –1 to 1. A high silhouette value indicates that i is well matched to its own cluster, and poorly matched to other clusters. If most points have a high silhouette value, then the clustering solution is appropriate. If many points have a low or negative silhouette value, then the clustering solution might have too many or too few clusters. You can use silhouette values as a clustering evaluation criterion with any distance metric.'}})
     end
+
 end

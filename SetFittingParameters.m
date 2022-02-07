@@ -90,6 +90,7 @@ function params = SetFittingParameters(PossibleNs, params, AddChannelFlag)
     end
     
     if isempty(res)
+        params = [];
         return
     else
         if (isempty(PossibleNs))
