@@ -1,29 +1,30 @@
-% modified version of getDB function in DaviesBouldinEvaluation.m from
-% Machine Learning and Statistics toolbox - uses absolute spatial
-% correlation as distance function instead of euclidean distance
+% modified version of Davies Bouldin computation in 
+% DaviesBouldinEvaluation.m from Machine Learning and Statistics toolbox - 
+% uses absolute spatial correlation as distance function instead of 
+% euclidean distance
 
-function DB = eeg_DaviesBouldin(templateMaps,clusts)
+function DB = eeg_DaviesBouldin(IndSamples,ClustLabels)
 
       function dist = distfun(XI,XJ)
         dist = (1-abs(MyCorr(XI',XJ')));
       end
 
-      clusters = unique(clusts);
+      clusters = unique(ClustLabels);
       numClusts = length(clusters);
       if numClusts == 1
           DB = nan;
           return;
       end
-      centroids = NaN(numClusts,size(templateMaps,2));
+      centroids = NaN(numClusts,size(IndSamples,2));
       
       aveWithinD= zeros(numClusts,1);
       for i = 1:numClusts
-          members = (clusts == clusters(i));
+          members = (ClustLabels == clusters(i));
           if any(members)
-              centroids(i,:) = mean(templateMaps(members,:),1) ;
+              centroids(i,:) = mean(IndSamples(members,:),1) ;
               %average distance of each observation to the centroids, using
               %1 - absolute spatial correlation as distance function
-              aveWithinD(i)= mean(pdist2(templateMaps(members,:),centroids(i,:), @distfun));
+              aveWithinD(i)= mean(pdist2(IndSamples(members,:),centroids(i,:), @distfun));
           end
       end
              

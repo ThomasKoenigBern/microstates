@@ -39,8 +39,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-% Delara debugging - modified to include 2 versions of MS assignments 
-function [MSClass, MSClass2, gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
+function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
 
     
     if nargin < 5
@@ -78,9 +77,7 @@ function [MSClass, MSClass2, gfp, fit] = AssignMStates(eegdata, Maps, params, Ig
     nClasses = size(Maps,1);
     nSegments = size(TheEEGData,3);
     MSClass = zeros(size(TheEEGData,2),nSegments);
-    MSClass2 = zeros(size(TheEEGData,2),nSegments);
 
-    % GFP at every time point
     gfp = std(TheEEGData,1,1);
 
     AllMFit = 0;
@@ -89,7 +86,6 @@ function [MSClass, MSClass2, gfp, fit] = AssignMStates(eegdata, Maps, params, Ig
     if params.PeakFit == 1
         Fit = nan(nClasses,size(TheEEGData,2));
         for s = 1:nSegments
-            % Find indices of GFP peaks
             IsIn = find([false (gfp(1,1:end-2,s) < gfp(1,2:end-1,s) & gfp(1,2:end-1,s) > gfp(1,3:end,s)) false]);
             if isempty(IsIn)
                 errordlg2('No GFP peaks found','Microstate fitting');
@@ -100,10 +96,8 @@ function [MSClass, MSClass2, gfp, fit] = AssignMStates(eegdata, Maps, params, Ig
             if IgnorePolarity == true
                 Cov = abs(Cov);
             end
-            % classifying each GFP time point to a microstate (mfit =
-            % max value in each column, GFPPClass = index of max value)
             [mfit,GFPPClass] = max(Cov);
-            AllMFit = AllMFit + squeeze(sum(mfit,2)); % why squeeze if sum(mfit,2) returns a single value?
+            AllMFit = AllMFit + squeeze(sum(mfit,2));
             PeakAssignment = zeros(nClasses,numel(IsIn));
             AllMVar = AllMVar +  squeeze(sum(std(TheEEGData(:,IsIn,s),1,1),2));
            
@@ -116,7 +110,6 @@ function [MSClass, MSClass2, gfp, fit] = AssignMStates(eegdata, Maps, params, Ig
             % defined and is removed
             
             [Hit,Winner] = max(Fit);
-            MSClass2(:,2) = Winner;         % debugging
 
             Winner(Hit == 0) = 0;
             if params.BControl == true
@@ -138,7 +131,6 @@ function [MSClass, MSClass2, gfp, fit] = AssignMStates(eegdata, Maps, params, Ig
         MSClass = zeros(size(TheEEGData,2),nSegments);
         for s = 1:nSegments
             [Winner,ExpVar] = SmoothLabels(TheEEGData(:,:,s),Maps,params, eegdata.srate,IgnorePolarity);
-            MSClass2(:,s) = Winner;          % debugging
             % Kill microstates truncated by boundaries
             if params.BControl == true
                 for b = 1:numel(BoundaryPoint)

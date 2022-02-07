@@ -1,4 +1,35 @@
 function GEV = eeg_GEV(IndSamples, TemplateMaps, ClustLabels)
+    % check if IndSamples is 3D (segmented data)
+    % if so, combine the last 2 dimensions of the matrix to get a
+    % channels x samples instead of channels x samples per segment x
+    % segments matrix, and combine the dimensions of ClustLabels to get a
+    % samples long vector instead of a samples per segment x segments
+    % matrix
+    if (numel(size(IndSamples)) == 3)
+        nSegments = size(IndSamples, 3);
+
+        % reshape IndSamples
+        NewIndSamples = IndSamples(:,:,1);
+        for i = 2:nSegments
+            NewIndSamples = cat(2, NewIndSamples, IndSamples(:,:,i));
+        end
+        IndSamples = NewIndSamples;
+
+        % reshape ClustLabels
+        NewClustLabels = ClustLabels(:,1);
+        for i = 2:nSegments
+            NewClustLabels = cat(1, NewClustLabels, ClustLabels(:,i));
+        end
+        ClustLabels = squeeze(NewClustLabels);
+    end
+    % Check for zero elements in ClustLabels (in case of truncating)
+    zeroIndices = find(~ClustLabels);
+    if (size(zeroIndices,1) > 0)
+        % remove samples with no microstate assignmnets
+        IndSamples(:, zeroIndices') = [];
+        % remove clust labels of zero
+        ClustLabels(zeroIndices') = [];
+    end
     GFP = std(IndSamples);
     IndAssignments = TemplateMaps(:, ClustLabels');
     map_corr = columncorr(IndSamples,IndAssignments);
