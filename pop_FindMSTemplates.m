@@ -194,6 +194,7 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
             msinfo.MSMaps(nClusters).SortMode = 'none';
             msinfo.MSMaps(nClusters).SortedBy = '';
             msinfo.MSMaps(nClusters).Communality= [];
+%             msinfo.MSMaps(nClusters).CrossValidation = cross_val;
         end
     else
         [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize);

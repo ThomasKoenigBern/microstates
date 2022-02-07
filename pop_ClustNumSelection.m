@@ -15,6 +15,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     % check if the currently selected EEG structure contains microstate
     % information
     if ~isfield(TheEEG,'msinfo')
+
         errordlg2(['The data does not contain microstate maps. Identify microstate maps first' ...
             ' from Tools -> Microstates -> Identify microstate maps.'],'Data driven selection of number of microstates');
         return;
@@ -31,38 +32,41 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     % if doing mean level analysis and the mean set is not already 
     % passed in, check if the currently selected EEG structure is a mean
     % set and if not, have the user select the mean set
-    if UseMean == true
-        if isempty(MeanSet)
-            if ~isfield(TheEEG.msinfo, 'children')
-                nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
-                HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
-                nonemptyMean = nonempty(HasChildren);
-            
-                AvailableMeans = {AllEEG(nonemptyMean).setname};
-                res = inputgui( 'geometry', {1 1}, 'geomvert', [1 4], 'uilist', { ...
-                    { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
-                    { 'Style', 'listbox', 'string', AvailableMeans, 'tag','SelectSets'}});
-             
-                if isempty(res)
-                    return
-                end
-                MeanSet = nonemptyMean(res{1});
-            else
-                MeanSet = CurrentSet;
+    if UseMean == true && isempty(MeanSet)
+        if ~isfield(TheEEG.msinfo, 'children')
+            nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
+            HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
+            nonemptyMean = nonempty(HasChildren);
+        
+            AvailableMeans = {AllEEG(nonemptyMean).setname};
+            res = inputgui( 'geometry', {1 1}, 'geomvert', [1 4], 'uilist', { ...
+                { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
+                { 'Style', 'listbox', 'string', AvailableMeans, 'tag','SelectSets'}});
+         
+            if isempty(res)
+                return
             end
+            MeanSet = nonemptyMean(res{1});
+        else
+            MeanSet = CurrentSet;
         end
-        TheEEG = AllEEG(MeanSet);
     end
     
     % Select fitting parameters
-    if isfield(TheEEG.msinfo,'FitPar');      params = TheEEG.msinfo.FitPar;
-    else params = [];
+    if UseMean == false
+        if isfield(TheEEG.msinfo,'FitPar');              params = TheEEG.msinfo.FitPar;
+        else params = [];
+        end
+    else
+        if isfield(AllEEG(MeanSet).msinfo,'FitPar');     params = AllEEG(MeanSet).msinfo.FitPar;
+        else params = [];
+        end
     end
     [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b','BControl'});
 
-    if nargin < 5 || paramsComplete == false
+    if nargin < 4 || paramsComplete == false
         FitPar = SetFittingParameters([],FitPar);
-        if isempty(FitPar) return;      end
+
     end
     
     TheEEG.msinfo.FitPar = FitPar;
@@ -70,6 +74,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     %% Compute criterion for each clustering solution
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses;
     maxClusters = size(ClusterNumbers, 2);
+
 
     % If doing mean level analysis, find the children EEG sets of the mean
     % set and initialize the criterion matrices according to how many
@@ -141,6 +146,19 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             end
             
             % CRITERION CALCULATIONS
+            
+
+            % Calinski-Harabasz - the higher the better
+            %CH(i) = eeg_CalinskiHarabasz(IndSamples', ClustLabels);
+            % CH(i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz');
+
+            % Davies-Bouldin
+            % DB(i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin');
+            %DB(i) = eeg_DaviesBouldin(IndSamples', ClustLabels);
+
+            % Cross Validation
+            CV(i) = crossVal;
+            
 
             % Global Explained Variance - the higher the better
             GEV(subj, i) = fit;
@@ -159,6 +177,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
             % Silhouette (TODO)
         end
+
     end
 
     if UseMean
@@ -220,58 +239,10 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         {'Style', 'checkbox', 'string', 'Plot Metacriterion', 'tag', 'plotMetacriterion', 'value', 1} ...
         },'title', 'Data driven selection of number of classes');
     
-    %% Plotting
-    res = cell2mat(res);
-    nGraphs = sum(res(1:14) == 1);
-
-    tiledlayout(nGraphs, 1);
-
-    if (structout.useDB)
-        nexttile
-        plot(ClusterNumbers, DB, "-o");
-        title("Davies-Bouldin Index for Each Cluster Number");
-        xlabel("Cluster Numbers");
-        ylabel("Davies-Bouldin Index");
+    function silhouetteInfo(src,event)
+        inputgui('geometry', [1], 'uilist', {...
+            {'Style', 'text', 'string', ...
+            'The silhouette value for each point is a measure of how similar that point is to points in its own cluster, when compared to points in other clusters. The silhouette value ranges from –1 to 1. A high silhouette value indicates that i is well matched to its own cluster, and poorly matched to other clusters. If most points have a high silhouette value, then the clustering solution is appropriate. If many points have a low or negative silhouette value, then the clustering solution might have too many or too few clusters. You can use silhouette values as a clustering evaluation criterion with any distance metric.'}})
     end
-    if (structout.useCH)
-        nexttile
-        plot(ClusterNumbers, CH, "-o");
-        title("Calinski-Harabasz Index for Each Cluster Number");
-        xlabel("Cluster Numbers");
-        ylabel("Calinski-Harabasz Index");
-    end
-
-    CH
-    DB
-    
-end
-
-function silhouetteInfo(src,event)
-    inputgui('geometry', [1], 'uilist', {...
-        {'Style', 'text', 'string', ...
-        'The silhouette value for each point is a measure of how similar that point is to points in its own cluster, when compared to points in other clusters. The silhouette value ranges from –1 to 1. A high silhouette value indicates that i is well matched to its own cluster, and poorly matched to other clusters. If most points have a high silhouette value, then the clustering solution is appropriate. If many points have a low or negative silhouette value, then the clustering solution might have too many or too few clusters. You can use silhouette values as a clustering evaluation criterion with any distance metric.'}})
-end
-function ChildIndices = FindTheWholeFamily(TheMeanEEG,AllEEGs)
-        
-    AvailableDataNames = {AllEEGs.setname};
-    
-        ChildIndices = [];
-        for i = 1:numel(TheMeanEEG.msinfo.children)
-            idx = find(strcmp(TheMeanEEG.msinfo.children{i},AvailableDataNames));
-        
-            if isempty(idx)
-                errordlg2(sprintf('Dataset %s not found',TheMeanEEG.msinfo.children{i}),'Silhouette explorer');
-            end
-    
-            if numel(idx) > 1
-                errordlg2(sprintf('Dataset %s repeatedly found',TheMeanEEG.msinfo.children{i}),'Silhouette explorer');
-            end
-            if ~isfield(AllEEGs(idx).msinfo,'children')
-                ChildIndices = [ChildIndices idx]; %#ok<AGROW>
-            else
-                ChildIndices = [ChildIndices FindTheWholeFamily(AllEEGs(idx),AllEEGs)]; %#ok<AGROW>
-            end
-        end
-
 
 end

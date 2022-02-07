@@ -14,7 +14,7 @@ function[b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,fl
 % b_ind = cluster assignment for each moment of time
 % b_loading = Amplitude of the assigned cluster at each moment in time
 % exp_var = explained variance of the model
-
+% cross_val = cross validation
 
 if (size(n_mod,1) ~= 1)
 	error('Second argument must be a scalar')
@@ -185,6 +185,28 @@ for run = 1:reruns
         b_loading = loading; %/sqrt(n_chan);
         best_fit  = tot_fit;
         exp_var = sum(b_loading)/TotVar/sqrt(n_chan);
+%         sigma = 0;
+%         pre_sigma = nan(size(eeg,1),size(eeg,2));     % length: number of timepoints
+%         pre_sigma_sum = nan(n_mod,1);       % length: number of clusters
+%         for t = 1:size(eeg,1)    % timepoints
+%             % need to look at map for label corresponding to t. b_model(label,:) 
+%             % where label is which microstate cluster the timepoint belongs
+%             % to.
+%             % find label in assign ms, and take abs values
+%             for i = 1:n_mod     % add up the templates
+%                 u = eeg(t,:);
+%                 a = (u.* b_model(i,:) );
+%                 pre_sigma(t,:) = ((u.^2) - ((a).^2));
+%             end
+%             for j = 1:n_mod
+%                 pre_sigma_sum(j) = sum(pre_sigma(t,:));
+%             end
+%         end
+%         n_elec = size(eeg,2);
+%         sigma_squared = sum(pre_sigma_sum) / (size(eeg,1) * (n_elec - 1));
+% 
+%         cross_val = sigma_squared * ((n_elec-1)/(n_elec-1-n_mod))^2;      % taken from Murray 2008 formula for Cross Validation Criterion
+
     end    
 end % for run = 1:reruns
 
