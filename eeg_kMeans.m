@@ -1,4 +1,4 @@
-function[b_model,b_ind,b_loading,exp_var,cross_val] = eeg_kMeans(eeg,n_mod,reruns,max_n,flags,chanloc)
+function[b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,flags,chanloc)
 % EEG_MOD Create the EEG model I'm working with
 %
 % function[b_model,b_ind,b_loading,exp_var] = eeg_mod_r(eeg,n_mod,reruns,max_n)
