@@ -120,11 +120,12 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
     end
     TheEEG.msinfo.FitPar = FitPar;
     
+    % MSClass2 output added for debugging
     if UseMean == true
         LocalToGlobal = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
-        [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,AllEEG(MeanSet).msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+        [MSClass, MSClass2, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,AllEEG(MeanSet).msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
     else
-        [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
+        [MSClass,MSClass2, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
     end
     
     if isempty(MSClass)

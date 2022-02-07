@@ -149,13 +149,14 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comQuantMSTemplatesM   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,1);'      catch_strings.add_to_hist];
     comQuantMSTemplatesT   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,2);'      catch_strings.add_to_hist];
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'  catch_strings.add_to_hist];
-    %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
-    comSilhouetteMSNumber  = [try_strings.no_check '[           LASTCOM] = pop_MS_Silhouette(ALLEEG,CURRENTSET);'           catch_strings.add_to_hist];
-    
+
     comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],false ,ALLEEG);'        catch_strings.add_to_hist];
     comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG,[],true  ,ALLEEG);'        catch_strings.store_and_hist];
     comShowIndMSDyn        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,false);'             catch_strings.store_and_hist];
     comShowIndMSDynM       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,true);'              catch_strings.store_and_hist];
+    
+    comClustNumSelectionS = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,0);'     catch_strings.add_to_hist];    
+    comClustNumSelectionM = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,1);'     catch_strings.add_to_hist];    
 
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
@@ -172,8 +173,6 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 
     uimenu( toolssubmenu, 'Label', 'Compute mean microstate maps across individuals'       , 'CallBack', comCombineMSTemplates, 'position', 2, 'userdata', 'study:on','Separator','on');
     uimenu( toolssubmenu, 'Label', 'Compute grand mean microstate maps across means'       , 'CallBack', comCombineMSMeans    , 'position', 3, 'userdata', 'study:on');
-%    uimenu( toolssubmenu, 'Label', 'Crossvalidate optimal number of classes'              , 'CallBack', comBootStrapMSNumber , 'position', 4, 'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Use silhouette plots to choose number of classes'      , 'CallBack', comSilhouetteMSNumber , 'position', 4, 'userdata', 'study:on');    
 
     uimenu( toolssubmenu, 'Label', 'Sort individual microstate maps according to mean'     , 'CallBack', comSortMSTemplates, 'position', 5, 'userdata', 'study:on','Separator','on');
     uimenu(toolssubmenu, 'label',  'Sort individual microstate maps according to published template' , 'CallBack', comSortMSTemplatesT,'position', 6, 'userdata', 'study:on');
@@ -191,5 +190,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     if numel(which('Ragu')) > 0
         uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,   'position', 15,'Separator','on');
     end
+
+    uimenu( toolssubmenu, 'Label', 'Data driven selection of number of microstates (own template maps)', 'CallBack', comClustNumSelectionS, 'position', 16, 'Separator', 'on');
+    uimenu( toolssubmenu, 'Label', 'Data driven selection of number of microstates (mean template maps)', 'CallBack', comClustNumSelectionM, 'position', 17);
 end
 
