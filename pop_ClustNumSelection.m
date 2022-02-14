@@ -110,7 +110,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
             % Assign microstate labels
             Maps = TheEEG.msinfo.MSMaps(nc).Maps;
-            [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
+            [ClustLabels, gfp, fit, crossVal, krzanowskiLai] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
             
             % Check for segmented data and reshape if necessary
             IndSamples = TheEEG.data;
@@ -154,9 +154,14 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn_centroids(IndSamples', ClustLabels);
 
-            % Cross Validation (TODO)
+            % Cross Validation
+            CV(i) = crossVal;
+            
+            % Krzanowski-Lai
+            KL(i) = krzanowskiLai;
 
             % Dispersion (TODO)
+            W(i) = eeg_Dispersion(IndSamples',ClustLabels);
 
             % Silhouette (TODO)
         end
@@ -250,6 +255,16 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             nexttile
             plot(ClusterNumbers, D, "-o");
             title("Dunn");
+        end
+        if (structout.useCV)
+            nexttile
+            plot(ClusterNumbers, CV, "-o");
+            title("Cross-Validation");
+        end
+        if (structout.useW)
+            nexttile
+            plot(ClusterNumbers, W, "-o");
+            title("Dispersion");
         end
     end
 

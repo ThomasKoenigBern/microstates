@@ -220,7 +220,8 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             [MSClass,gfp,ExpVar] = AssignMStates(AllEEG(sIdx),Maps,par,AllEEG(sIdx).msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
  %              MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, '<<own>>')];
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, [],ExpVar,SingleEpochFileTemplate );
+                fprintf("Calling QuantifyMSDynamics... (a)\n");
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, [],ExpVar, SingleEpochFileTemplate, AllEEG(sIdx), AllEEG, sIdx);
             end
         else
             if isfield(TheChosenTemplate.msinfo.MSMaps(par.nClasses),'Labels')
@@ -237,14 +238,19 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             [MSClass,gfp,ExpVar] = AssignMStates(AllEEG(sIdx),Maps,par, TheChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
             if ~isempty(MSClass)
 %                MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname)]; 
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname, ExpVar,SingleEpochFileTemplate);
+                fprintf("Calling QuantifyMSDynamics... (b)");
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname, ExpVar, SingleEpochFileTemplate, AllEEG(sIdx), AllEEG);
             end
         end
         EpochData(s) = SSEpochData;
     end
     close(h);
+    
+%     add option for a graphical output in addition to file output
+%     DataVisualization(MSStats);
+
     idx = 1;
-    if nargin < 6
+    if nargin < 7
         [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.csv','Text file for R'},'Save microstate statistics');
         FileName = fullfile(PName,FName);
     else
@@ -285,6 +291,10 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
 
     com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %i, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, FileName);
 end
+
+% function StatAnalysis
+%     disp("will do statistical analysis here..")
+% end
 
 function Answer = DoesItHaveChildren(in)
     Answer = false;
