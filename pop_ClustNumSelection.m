@@ -98,7 +98,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     GEV = nan(nSubjects, maxClusters);          % Global Explained Variance
     CH = nan(nSubjects, maxClusters);           % Calinski-Harabasz
     S = nan(nSubjects, maxClusters);            % Silhouette
-
+    
     for subj=1:nSubjects
         if UseMean
             ChildIndex = ChildIndices(subj);
@@ -131,7 +131,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
                 end
                 ClustLabels = squeeze(NewClustLabels);
             end
-            % Check for zero elements in ClustLabels (in case of truncating)
+            % Check for zero elements in ClustLabels and remove them
             zeroIndices = find(~ClustLabels);
             if (size(zeroIndices,1) > 0)
                 % remove samples with no microstate assignmnets
@@ -146,12 +146,13 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             GEV(subj, i) = fit;
 
             % Calinski-Harabasz - the higher the better
-            CH(subj, i) = eeg_CalinskiHarabasz(IndSamples', ClustLabels);
-            % CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
+            CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
 
             % Davies-Bouldin - the lower the better
-            DB(subj, i) = eeg_DaviesBouldin(IndSamples', ClustLabels);
-            % DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
+            DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
+
+            % Dunn - the higher the better
+            D(subj, i) = eeg_Dunn_centroids(IndSamples', ClustLabels);
 
             % Cross Validation (TODO)
 
@@ -219,30 +220,54 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         {'Style', 'text', 'string', ''} ...
         {'Style', 'checkbox', 'string', 'Plot Metacriterion', 'tag', 'plotMetacriterion', 'value', 1} ...
         },'title', 'Data driven selection of number of classes');
+
+    if (isempty(res)) return;   end
     
     %% Plotting
     res = cell2mat(res);
-    nGraphs = sum(res(1:14) == 1);
 
-    tiledlayout(nGraphs, 1);
+    % number of graphs that are part of the metacriterion
+    nMetacriterionGraphs = sum(res(1:11) == 1);
+    nExtraGraphs = sum(res(12:14) == 1);
+    
+    if (nMetacriterionGraphs > 0)
+        figure('Name', 'Measures for Metacriterion');
+        if (nMetacriterionGraphs > 5 && nMetacriterionGraphs < 11)
+            tiledlayout(6, 2);
+        end
+        if (nMetacriterionGraphs > 5)
+            tiledlayout(5, 2);
+        else
+            tiledlayout(nMetacriterionGraphs, 1);
+        end
 
-    if (structout.useDB)
-        nexttile
-        plot(ClusterNumbers, DB, "-o");
-        title("Davies-Bouldin Index for Each Cluster Number");
-        xlabel("Cluster Numbers");
-        ylabel("Davies-Bouldin Index");
+        if (structout.useDB)
+            nexttile
+            plot(ClusterNumbers, DB, "-o");
+            title("Davies-Bouldin");
+        end
+        if (structout.useD)
+            nexttile
+            plot(ClusterNumbers, D, "-o");
+            title("Dunn");
+        end
     end
-    if (structout.useCH)
-        nexttile
-        plot(ClusterNumbers, CH, "-o");
-        title("Calinski-Harabasz Index for Each Cluster Number");
-        xlabel("Cluster Numbers");
-        ylabel("Calinski-Harabasz Index");
-    end
 
-    CH
-    DB
+    if (nExtraGraphs > 0)
+        figure('Name', 'Extra Measures');
+        tiledlayout(nExtraGraphs, 1);
+        
+        if (structout.useGEV)
+            nexttile
+            plot(ClusterNumbers, GEV, "-o");
+            title("GEV");
+        end
+        if (structout.useCH)
+            nexttile
+            plot(ClusterNumbers, CH, "-o");
+            title("Calinski-Harabasz");
+        end
+    end
     
 end
 
