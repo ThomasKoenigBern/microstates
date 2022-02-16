@@ -105,6 +105,10 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             TheEEG = AllEEG(ChildIndex);
         end
 
+        % Frey and Van Groenewoud - easier to compute across all clustering
+        % solutions at once
+        FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
+
         for i=1:maxClusters
             nc = ClusterNumbers(i);         % number of clusters
 
@@ -142,6 +146,9 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             
             % CRITERION CALCULATIONS
 
+            % Cross Validation
+            CV(i) = crossVal;
+
             % Global Explained Variance - the higher the better
             GEV(subj, i) = fit;
 
@@ -153,18 +160,16 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
-
-            % Cross Validation
-            CV(i) = crossVal;
             
             % Krzanowski-Lai
             KL(i) = krzanowskiLai;
 
-            % Dispersion (TODO)
+            % Dispersion
             W(i) = eeg_Dispersion(IndSamples',ClustLabels);
 
             % Silhouette (TODO)
         end
+
     end
 
     if UseMean
@@ -236,7 +241,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     nExtraGraphs = sum(res(12:14) == 1);
     
     if (nMetacriterionGraphs > 0)
-        figure('Name', 'Measures for Metacriterion');
+        figure('Name', 'Measures for Metacriterion', 'Position', [100 100 700 600]);
         if (nMetacriterionGraphs > 5 && nMetacriterionGraphs < 11)
             tiledlayout(6, 2);
         end
@@ -245,7 +250,12 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         else
             tiledlayout(nMetacriterionGraphs, 1);
         end
-
+        
+        if (structout.useCV)
+            nexttile
+            plot(ClusterNumbers, CV, "-o");
+            title("Cross-Validation");
+        end
         if (structout.useDB)
             nexttile
             plot(ClusterNumbers, DB, "-o");
@@ -256,10 +266,15 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             plot(ClusterNumbers, D, "-o");
             title("Dunn");
         end
-        if (structout.useCV)
+        if (structout.useFVG)
             nexttile
-            plot(ClusterNumbers, CV, "-o");
-            title("Cross-Validation");
+            plot(ClusterNumbers, FVG, "-o");
+            title("Frey and Van Groenewoud")
+        end
+        if (structout.useKL)
+            nexttile
+            plot(ClusterNumbers, KL, "-o");
+            title("Krzanowski-Lai");
         end
         if (structout.useW)
             nexttile
@@ -269,7 +284,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     end
 
     if (nExtraGraphs > 0)
-        figure('Name', 'Extra Measures');
+        figure('Name', 'Extra Measures', 'Position', [900 200 600 500]);
         tiledlayout(nExtraGraphs, 1);
         
         if (structout.useGEV)
