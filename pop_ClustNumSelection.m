@@ -152,7 +152,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
 
             % Dunn - the higher the better
-            D(subj, i) = eeg_Dunn_centroids(IndSamples', ClustLabels);
+            D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
 
             % Cross Validation (TODO)
 
