@@ -39,7 +39,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
+function [MSClass,gfp, fit, crossVal, krzanowskiLai] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
 
     
     if nargin < 5
@@ -154,6 +154,12 @@ function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarit
 
     end
     fit = AllMFit / AllMVar;
+
+    % Cross validation
+    crossVal = eeg_crossVal(eegdata, Winner, Maps);
+%     krzanowskiLai = eeg_krzanowskiLai(eegdata, Winner, Maps);
+    krzanowskiLai = 0;
+
 end
 
 

@@ -110,12 +110,15 @@ function [AllEEG,TheEEG,com] = pop_ShowIndMSMaps(TheEEG,nclasses, DoEdit, AllEEG
     ud.Labels = cell(ud.msinfo.ClustPar.MaxClasses,ud.msinfo.ClustPar.MaxClasses);
     ud.TitleHandles = cell(ud.msinfo.ClustPar.MaxClasses,1);
     for i = ud.msinfo.ClustPar.MinClasses:ud.msinfo.ClustPar.MaxClasses
-        if isfield(ud.AllMaps(i),'Labels')
-            ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
-        else
+        % using letter labels instead of numerical if user has sorted
+        % individual template map by normative map
+        if strcmp(ud.msinfo.MSMaps(i).SortedBy, 'none->Norms NI2002') == 0
             for j = 1:i
-                ud.Labels{i,j} = sprintf('MS_%i',j);
+                label_letter = char(64+j);
+                ud.Labels{i,j} = sprintf('MS_%s',label_letter);
             end
+        else    % use numerical labels in most cases
+            ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
         end
     end
         
@@ -176,9 +179,12 @@ function ManSort(obj, event,fh)
 
     UserData = get(fh,'UserData');
 
-    res = inputgui( 'geometry', {[3 1]}, 'geomvert', 1,  'uilist', { ...
-                 { 'Style', 'text', 'string', 'Index of original position (negative to flip polarity)', 'fontweight', 'bold'  } ...
-                 { 'style', 'edit', 'string', sprintf('%i ',1:UserData.nClasses) } },'title','Reorder microstates');
+    [res,~,~,structout] = inputgui( 'geometry', {[3 1 1]}, 'geomvert', 1,  'uilist', { ...
+                 { 'Style', 'text', 'string', 'Index of original position', 'fontweight', 'bold'  } ...
+                 { 'style', 'edit', 'string', sprintf('%i ',1:UserData.nClasses) }  ...
+                 { 'Style', 'checkbox', 'string', 'Flip polarity', 'tag', 'flipPolarity', 'value', 0} ...
+                 },'title','Reorder microstates');
+
 
     if isempty(res)
         return
@@ -186,6 +192,10 @@ function ManSort(obj, event,fh)
 
     NewOrder = sscanf(res{1},'%i');
     NewOrderSign = sign(NewOrder);
+    if structout.flipPolarity == 1     % if flip polarity is checked
+        NewOrderSign = -1*sign(NewOrder);
+    end
+    
     NewOrder = abs(NewOrder);
     
     if numel(NewOrder) ~= UserData.nClasses
@@ -302,6 +312,7 @@ function PlotMSMaps(~, ~,fh)
     sp_x = ceil(sqrt(UserData.nClasses));
     sp_y = ceil(UserData.nClasses / sp_x);
     
+    % fix structure of for loop to put subplots on one row
     for m = 1:sp_x*sp_y
         h = subplot(sp_y,sp_x,m);
         cla(h);
@@ -337,4 +348,3 @@ function PlotMSMaps(~, ~,fh)
     set(fh,'UserData',UserData);  
 
 end
-
