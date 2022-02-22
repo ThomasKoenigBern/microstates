@@ -55,21 +55,28 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     end
     
     % Select fitting parameters
-    if isfield(TheEEG.msinfo,'FitPar');      params = TheEEG.msinfo.FitPar;
+    if isfield(TheEEG.msinfo,'ClustPar');      params = TheEEG.msinfo.ClustPar;
     else params = [];
     end
-    [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b','BControl'});
+%     [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b','BControl'});
 
     if nargin < 5 || paramsComplete == false
-        FitPar = SetFittingParameters([],FitPar);
+        % adding min and max classes so that numClasses is returned into
+        % params
+        FitPar = SetFittingParameters([],params);
         if isempty(FitPar) return;      end
     end
     
     TheEEG.msinfo.FitPar = FitPar;
+    
 
     %% Compute criterion for each clustering solution
+    % if ms maps doesn't exist, clustPar will not be recognized, so throw
+    % error
+
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses;
-    maxClusters = size(ClusterNumbers, 2);
+    maxClusters = size(ClusterNumbers, 2);        
+    
 
     % If doing mean level analysis, find the children EEG sets of the mean
     % set and initialize the criterion matrices according to how many
@@ -107,13 +114,16 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
         for i=1:maxClusters
             nc = ClusterNumbers(i);         % number of clusters
+            
 
             % Assign microstate labels
             Maps = TheEEG.msinfo.MSMaps(nc).Maps;
-            [ClustLabels, gfp, fit, crossVal, krzanowskiLai] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
-            
+
             % Check for segmented data and reshape if necessary
+            
+            [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
             IndSamples = TheEEG.data;
+
             if (numel(size(IndSamples)) == 3)
                 nSegments = size(IndSamples, 3);
         
@@ -155,13 +165,15 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             D(subj, i) = eeg_Dunn_centroids(IndSamples', ClustLabels);
 
             % Cross Validation
-            CV(i) = crossVal;
+            % need to pass in subj
+            CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+            
+            % Dispersion (TODO)
+            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
             
             % Krzanowski-Lai
-            KL(i) = krzanowskiLai;
-
-            % Dispersion (TODO)
-            W(i) = eeg_Dispersion(IndSamples',ClustLabels);
+            % params: ClustLabels, clustNum, W_i, nClusters, nChannels
+%             KL(subj, i) = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W(i), TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
 
             % Silhouette (TODO)
         end
