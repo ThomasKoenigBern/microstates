@@ -11,12 +11,13 @@ function FVG = eeg_FreyVanGroenewoud(TheEEG, FitPar)
     end
 
     % need one greater than the highest number of clusters found in order
-    % to compute Frey index for the largest clustering solution
+    % to compute Frey index for the largest cluster solution
 
     % cannot call pop_FindMSTemplates directly because we do not want to
-    % update the msinfo struct to contain more clustering solutions than
+    % update the msinfo struct to contain more cluster solutions than
     % chosen by the user
     
+    %% Find MS maps for oen greater than largest cluster solution
     ClustPar = TheEEG.msinfo.ClustPar;
     % Distribute the random sampling across segments
     nSegments = TheEEG.trials;
@@ -66,7 +67,7 @@ function FVG = eeg_FreyVanGroenewoud(TheEEG, FitPar)
         Maps{numClustSolutions+1} = b_model{1};
     end
     
-    % now that we have the maps for all needed clustering solutions,
+    % now that we have the maps for all needed cluster solutions,
     % get the individual samples and cluster labels for each solution
     AllIndSamples = cell(numClustSolutions + 1, 1);
     AllClustLabels = cell(numClustSolutions + 1, 1);
@@ -116,7 +117,7 @@ function FVG = eeg_FreyVanGroenewoud(TheEEG, FitPar)
         nc = ClusterNumbers(c);     % number of clusters
         
         % find mean inter-cluster distance and mean intra-cluster distance
-        % for the CURRENT clustering solution
+        % for the CURRENT cluster solution
         centroids = NaN(nc,size(IndSamples,2));
         intraClustDists = zeros(nc,1);
         
@@ -134,7 +135,7 @@ function FVG = eeg_FreyVanGroenewoud(TheEEG, FitPar)
         currIntraClustDist = mean(intraClustDists);
 
         % find the mean inter-cluster distance and mean intra-cluster
-        % distance for the NEXT clustering solution
+        % distance for the NEXT cluster solution
         IndSamples = AllIndSamples{c+1};
         ClustLabels = AllClustLabels{c+1};
         if (nc == ClusterNumbers(end))

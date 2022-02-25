@@ -54,7 +54,8 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         TheEEG = AllEEG(MeanSet);
     end
     
-    % Select fitting parameters
+    % Select fitting parameters - do not allow user to deselect fitting only
+    % on GFP peaks if this option was chosen for clustering
     if isfield(TheEEG.msinfo,'FitPar');      params = TheEEG.msinfo.FitPar;
     else params = [];
     end
@@ -105,8 +106,11 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             TheEEG = AllEEG(ChildIndex);
         end
 
+        % ADD CLUSTERING FOR ONE GREATER THAN MAX SOLUTION %
+        % ADD CALCULATION OF W MATRIX TO PASS INTO OTHER FUNCTIONS %
+
         % Frey and Van Groenewoud - easier to compute across all clustering
-        % solutions at once
+        % solutions at once, closer to 1 is better
         FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
 
         for i=1:maxClusters
@@ -144,31 +148,37 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
                 ClustLabels(zeroIndices') = [];
             end
             
-            % CRITERION CALCULATIONS
+            % CRITERION CALCULATIONS %
 
             % Cross Validation
-            CV(i) = crossVal;
-
-            % Global Explained Variance - the higher the better
-            GEV(subj, i) = fit;
-
-            % Calinski-Harabasz - the higher the better
-            CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
+            CV(subj, i) = crossVal;
 
             % Davies-Bouldin - the lower the better
             DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
-            
-            % Krzanowski-Lai
-            KL(i) = krzanowskiLai;
 
-            % Dispersion
-            W(i) = eeg_Dispersion(IndSamples',ClustLabels);
+            % Dispersion (Trace)
+            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
+
+            % Krzanowski-Lai
+            KL(subj, i) = krzanowskiLai;
+            
+            % EXTRA CALCULATIONS %
+            % Global Explained Variance - the higher the better
+            GEV(subj, i) = fit;
+
+            % Calinski-Harabasz - the higher the better
+            CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
 
             % Silhouette (TODO)
         end
+
+        % Hartigan - easier to compute across all clustering solutions at
+        % once after dispersion has been calculated for all, higher is
+        % better
+        H(subj, :) = eeg_Hartigan(TheEEG, FitPar, W(subj, :));
 
     end
 
@@ -270,6 +280,11 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             nexttile
             plot(ClusterNumbers, FVG, "-o");
             title("Frey and Van Groenewoud")
+        end
+        if (structout.useH)
+            nexttile
+            plot(ClusterNumbers, H, "-o");
+            title("Hartigan")
         end
         if (structout.useKL)
             nexttile
