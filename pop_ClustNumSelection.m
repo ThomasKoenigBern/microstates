@@ -54,8 +54,9 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         TheEEG = AllEEG(MeanSet);
     end
     
-    % Select fitting parameters
-    if isfield(TheEEG.msinfo,'ClustPar');      params = TheEEG.msinfo.ClustPar;
+    % Select fitting parameters - do not allow user to deselect fitting only
+    % on GFP peaks if this option was chosen for clustering
+    if isfield(TheEEG.msinfo,'FitPar');      params = TheEEG.msinfo.FitPar;     % possibly need to use ClustPar instead of FitPar? issue
     else params = [];
     end
 %     [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b','BControl'});
@@ -112,6 +113,13 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             TheEEG = AllEEG(ChildIndex);
         end
 
+        % ADD CLUSTERING FOR ONE GREATER THAN MAX SOLUTION %
+        % ADD CALCULATION OF W MATRIX TO PASS INTO OTHER FUNCTIONS %
+
+        % Frey and Van Groenewoud - easier to compute across all clustering
+        % solutions at once, closer to 1 is better
+        FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
+
         for i=1:maxClusters
             nc = ClusterNumbers(i);         % number of clusters
             
@@ -150,19 +158,19 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
                 ClustLabels(zeroIndices') = [];
             end
             
-            % CRITERION CALCULATIONS
+            % CRITERION CALCULATIONS %
 
-            % Global Explained Variance - the higher the better
-            GEV(subj, i) = fit;
-
-            % Calinski-Harabasz - the higher the better
-            CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
+            % Cross Validation
+            CV(subj, i) = crossVal;
 
             % Davies-Bouldin - the lower the better
             DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
 
             % Dunn - the higher the better
-            D(subj, i) = eeg_Dunn_centroids(IndSamples', ClustLabels);
+            D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
+
+            % Dispersion (Trace)
+            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
 
             % Cross Validation
             % need to pass in subj
@@ -173,10 +181,25 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             
             % Krzanowski-Lai
             % params: ClustLabels, clustNum, W_i, nClusters, nChannels
-%             KL(subj, i) = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W(i), TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
+            % KL(subj, i) = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W(i), TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
+            % Krzanowski-Lai
+            KL(subj, i) = krzanowskiLai;
+            
+            % EXTRA CALCULATIONS %
+            % Global Explained Variance - the higher the better
+            GEV(subj, i) = fit;
+
+            % Calinski-Harabasz - the higher the better
+            CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
 
             % Silhouette (TODO)
         end
+
+        % Hartigan - easier to compute across all clustering solutions at
+        % once after dispersion has been calculated for all, higher is
+        % better
+        H(subj, :) = eeg_Hartigan(TheEEG, FitPar, W(subj, :));
+
     end
 
     if UseMean
@@ -248,7 +271,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     nExtraGraphs = sum(res(12:14) == 1);
     
     if (nMetacriterionGraphs > 0)
-        figure('Name', 'Measures for Metacriterion');
+        figure('Name', 'Measures for Metacriterion', 'Position', [100 100 700 600]);
         if (nMetacriterionGraphs > 5 && nMetacriterionGraphs < 11)
             tiledlayout(6, 2);
         end
@@ -257,7 +280,12 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         else
             tiledlayout(nMetacriterionGraphs, 1);
         end
-
+        
+        if (structout.useCV)
+            nexttile
+            plot(ClusterNumbers, CV, "-o");
+            title("Cross-Validation");
+        end
         if (structout.useDB)
             nexttile
             plot(ClusterNumbers, DB, "-o");
@@ -268,10 +296,20 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             plot(ClusterNumbers, D, "-o");
             title("Dunn");
         end
-        if (structout.useCV)
+        if (structout.useFVG)
             nexttile
-            plot(ClusterNumbers, CV, "-o");
-            title("Cross-Validation");
+            plot(ClusterNumbers, FVG, "-o");
+            title("Frey and Van Groenewoud")
+        end
+        if (structout.useH)
+            nexttile
+            plot(ClusterNumbers, H, "-o");
+            title("Hartigan")
+        end
+        if (structout.useKL)
+            nexttile
+            plot(ClusterNumbers, KL, "-o");
+            title("Krzanowski-Lai");
         end
         if (structout.useW)
             nexttile
@@ -286,7 +324,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     end
 
     if (nExtraGraphs > 0)
-        figure('Name', 'Extra Measures');
+        figure('Name', 'Extra Measures', 'Position', [900 200 600 500]);
         tiledlayout(nExtraGraphs, 1);
         
         if (structout.useGEV)
