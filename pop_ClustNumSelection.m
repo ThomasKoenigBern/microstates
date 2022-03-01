@@ -118,8 +118,8 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
         % Frey and Van Groenewoud - easier to compute across all clustering
         % solutions at once, closer to 1 is better
-        FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
-
+%         FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
+        FVG(subj, :) = zeros(1, maxClusters);      % issue, temporary
         for i=1:maxClusters
             nc = ClusterNumbers(i);         % number of clusters
             
@@ -160,9 +160,6 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             
             % CRITERION CALCULATIONS %
 
-            % Cross Validation
-            CV(subj, i) = crossVal;
-
             % Davies-Bouldin - the lower the better
             DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
 
@@ -170,7 +167,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
 
             % Dispersion (Trace)
-            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
+            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels, maxClusters);
 
             % Cross Validation
             % need to pass in subj
@@ -183,7 +180,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             % params: ClustLabels, clustNum, W_i, nClusters, nChannels
             % KL(subj, i) = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W(i), TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
             % Krzanowski-Lai
-            KL(subj, i) = krzanowskiLai;
+            KL(subj, i) = zeros(1,1);        % issue, temp
             
             % EXTRA CALCULATIONS %
             % Global Explained Variance - the higher the better
@@ -198,7 +195,8 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         % Hartigan - easier to compute across all clustering solutions at
         % once after dispersion has been calculated for all, higher is
         % better
-        H(subj, :) = eeg_Hartigan(TheEEG, FitPar, W(subj, :));
+%         H(subj, :) = eeg_Hartigan(TheEEG, FitPar, W(subj, :));
+        H(subj, :) = zeros(1, maxClusters);     % issue, tmp
 
     end
 
@@ -284,11 +282,13 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         if (structout.useCV)
             nexttile
             plot(ClusterNumbers, CV, "-o");
+            set(gca,'Ydir','reverse');
             title("Cross-Validation");
         end
         if (structout.useDB)
             nexttile
             plot(ClusterNumbers, DB, "-o");
+            set(gca,'Ydir','reverse');
             title("Davies-Bouldin");
         end
         if (structout.useD)
@@ -299,11 +299,13 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         if (structout.useFVG)
             nexttile
             plot(ClusterNumbers, FVG, "-o");
+            set(gca,'Ydir','reverse');
             title("Frey and Van Groenewoud")
         end
         if (structout.useH)
             nexttile
             plot(ClusterNumbers, H, "-o");
+            set(gca,'Ydir','reverse');
             title("Hartigan")
         end
         if (structout.useKL)
@@ -314,12 +316,8 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         if (structout.useW)
             nexttile
             plot(ClusterNumbers, W, "-o");
+            set(gca,'Ydir','reverse');
             title("Dispersion");
-        end
-        if (structout.useKL)
-            nexttile
-            plot(ClusterNumbers, KL, "-o");
-            title("Krzanowski-Lai");
         end
     end
 
