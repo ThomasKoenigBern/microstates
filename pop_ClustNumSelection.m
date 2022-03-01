@@ -278,6 +278,11 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             plot(ClusterNumbers, W, "-o");
             title("Dispersion");
         end
+        if (structout.useKL)
+            nexttile
+            plot(ClusterNumbers, KL, "-o");
+            title("Krzanowski-Lai");
+        end
     end
 
     if (nExtraGraphs > 0)

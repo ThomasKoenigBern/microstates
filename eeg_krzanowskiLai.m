@@ -1,44 +1,26 @@
-function kl = eeg_krzanowskiLai(eegdata, Winner, Maps)
+% INCOMPLETE. Issues have to do with looping through
+% maps then timepoints. Need to follow Murray equation more closely
+% Winner is a list of length Timepoints, each element representing the
+% winning microstate number
+function KL_nrm = eeg_krzanowskiLai(ClustLabels, clustNum, W_i, nClusters, nChannels) % make parameters: 
+   
+%     distance = 0;
+%     nMaps = size(Maps,1);
+%     nTimepoints = size(Winner,2);
 
-    distance = 0;
-    nMaps = size(Maps,1);
-    nTimepoints = size(Winner,2);
+    % Poulsen toolbox key
+    % K: number of classes
+    % C: number of channels
+%     M_q = nan(nClusters,1);
+    
+    M_q = W_i*nClusters^(2/nChannels); %for KL
 
-    
-    % get indices of all 0s, 1s, 2s, ... nMaps into diff arrays
-    % using the reindexed arrays, get voltages of each timepoint.
-    winner_r = nan(nMaps, nTimepoints);     % first row represents zeros
+%     d_q = nan(nClusters,1);
+    % look into Fray Van Groenewoud comparison
+    d_q = M_q(1:nClusters-1) - M_q(2:nClusters);
 
-    for j = 0:nMaps
-        i = 1;
-        for t = 1:nTimepoints  
-            if (Winner(1, t) == j)
-                winner_r(j+1, i) = t;
-                i = i+1;
-            end
-        end
-    end
+    KL_nrm = (d_q(1:nClusters-1) - d_q(2:nClusters))./ M_q(1:nClusters-1); 
     
-    % calculate pairwise distances between each of the voltages 
-    % https://www.mathworks.com/matlabcentral/answers/124839-calculate-differences-between-all-values-in-vector
-    % calculate magnitude of distance vectors using norm() then square it
-    % sum up all of these magnitudes. this is distance, or Dr.
-    for j = 0:nMaps
-        for t1 = 1:nTimepoints
-            for t2 = 1:nTimepoints
-                % make 
-            end
-        end
-    end
 
-    dispersion = sum(w(q, nMaps, distance));
-    
-    kl = m_q - m_q1;
-end
-function dispersions = w(q, nMaps, distance)
-    dispersions = nan(1,q);
-    for r = 1:q
-        dispersions(1,r) = (distance / (2*nMaps));
-    end
-    
+   
 end
