@@ -61,8 +61,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 
     global MSTEMPLATE;
 
-    VersionNumber = '1.2';
-    vers = ['Microstates ' VersionNumber];
+    VersionNumber = '1.3';
+    vers = ['Microstates' VersionNumber];
     
     if isempty(MSTEMPLATE)
         try
@@ -169,7 +169,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 
 
     toolsmenu = findobj(fig, 'tag', 'tools');
-    toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
+    toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates 1.3 Beta','userdata','study:on','Separator','on');
 
     plotmenu = findobj(fig, 'tag', 'plot');
     uimenu( plotmenu, 'label', 'Plot microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
