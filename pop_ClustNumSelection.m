@@ -81,6 +81,9 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     else
         nSubjects = 1;
     end
+    
+    % W - within-group dispersion matrix (used for several criterion)
+    W = cell(nSubjects, maxClusters, 1);            
 
     % Criterion for metacriterion (11)
     CV = nan(nSubjects, maxClusters);           % Cross-Validation
@@ -93,7 +96,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     M = nan(nSubjects, maxClusters);            % Mariott
     PB = nan(nSubjects, maxClusters);           % Point-Biserial
     T = nan(nSubjects, maxClusters);            % Tau
-    W = nan(nSubjects, maxClusters);            % Trace (Dispersion)
+    
 
     % Other criterion
     GEV = nan(nSubjects, maxClusters);          % Global Explained Variance
@@ -108,10 +111,6 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
         % ADD CLUSTERING FOR ONE GREATER THAN MAX SOLUTION %
         % ADD CALCULATION OF W MATRIX TO PASS INTO OTHER FUNCTIONS %
-
-        % Frey and Van Groenewoud - easier to compute across all clustering
-        % solutions at once, closer to 1 is better
-        FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
 
         for i=1:maxClusters
             nc = ClusterNumbers(i);         % number of clusters
@@ -150,6 +149,9 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             
             % CRITERION CALCULATIONS %
 
+            % W matrix
+            W{subj, i} = eeg_W(IndSamples,ClustLabels);
+
             % Cross Validation
             CV(subj, i) = crossVal;
 
@@ -158,9 +160,6 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
-
-            % Dispersion (Trace)
-            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
 
             % Krzanowski-Lai
             KL(subj, i) = krzanowskiLai;
@@ -174,6 +173,10 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
             % Silhouette (TODO)
         end
+
+        % Frey and Van Groenewoud - easier to compute across all clustering
+        % solutions at once, closer to 1 is better
+        FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
 
         % Hartigan - easier to compute across all clustering solutions at
         % once after dispersion has been calculated for all, higher is
