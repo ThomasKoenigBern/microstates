@@ -32,8 +32,9 @@ function params = SetFittingParameters(PossibleNs, params, AddChannelFlag)
 
     if nargin < 3;  AddChannelFlag = false;        end
     if nargin < 2;  params = [];        end
-    if nargin < 1;  PossibleNs = 2:10;  end    
-  
+    if nargin < 1;  PossibleNs = params.MinClasses: params.MaxClasses;  end    
+ 
+%     PossibleNs = params.MinClasses: params.MaxClasses;
     choice = '';
     if(~isempty(PossibleNs))
         for i = 1:numel(PossibleNs)
