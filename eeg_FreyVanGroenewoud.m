@@ -73,7 +73,7 @@ function FVG = eeg_FreyVanGroenewoud(TheEEG, FitPar)
     AllClustLabels = cell(numClustSolutions + 1, 1);
     for i=1:numClustSolutions+1
         % Assign microstate labels
-        [ClustLabels, ~, ~, ~, ~] = AssignMStates(TheEEG,Maps{i},FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
+        [ClustLabels, ~, ~] = AssignMStates(TheEEG,Maps{i},FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
         
         % Check for segmented data and reshape if necessary
         IndSamples = TheEEG.data;
