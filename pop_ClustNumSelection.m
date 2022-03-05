@@ -99,7 +99,8 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     D = nan(nSubjects, maxClusters);            % Dunn
     FVG = nan(nSubjects, maxClusters);          % Frey and Van Groenewoud
     H = nan(nSubjects, maxClusters);            % Hartigan
-    KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai
+    KL_nrm = nan(nSubjects, maxClusters);       % Normalized Krzanowski-Lai (according to Murray 2008)
+    KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai (according to Krzanowski-Lai 1988)
     M = nan(nSubjects, maxClusters);            % Mariott
     PB = nan(nSubjects, maxClusters);           % Point-Biserial
     T = nan(nSubjects, maxClusters);            % Tau
@@ -165,9 +166,14 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
             % W matrix
             W{subj, i} = eeg_W(IndSamples,ClustLabels);
+            trace_w = zeros(1, maxClusters);
+            for j = 1:maxClusters
+                trace_w(1,j) = trace(W{j});
+            end
+
 
             % Cross Validation
-            CV(subj, i) = crossVal;
+%             CV(subj, i) = crossVal;
 
             % Davies-Bouldin - the lower the better
             DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
@@ -175,22 +181,14 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
 
-            % Dispersion (Trace)
-            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels, maxClusters);
-
             % Cross Validation
             % need to pass in subj
             CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
             
             % Dispersion (TODO)
-            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
+%             W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
             
-            % Krzanowski-Lai
-            % params: ClustLabels, clustNum, W_i, nClusters, nChannels
-            % KL(subj, i) = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W(i), TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
-            % Krzanowski-Lai
-            KL(subj, i) = zeros(1,1);        % issue, temp
-            
+
             % EXTRA CALCULATIONS %
             % Global Explained Variance - the higher the better
             GEV(subj, i) = fit;
@@ -203,7 +201,15 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
         % Frey and Van Groenewoud - easier to compute across all clustering
         % solutions at once, closer to 1 is better
-        FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
+%         FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
+        FVG(subj, :) = zeros(1, maxClusters);
+
+        % Krzanowski-Lai
+        % params: ClustLabels, clustNum, W_i, nClusters, nChannels
+        [KL_nrm(subj, :), KL(subj, :)] = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W{i}, TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
+        % Krzanowski-Lai
+        % KL(subj, i) = zeros(1,1);        % issue, temp
+        
 
         % Hartigan - easier to compute across all clustering solutions at
         % once after dispersion has been calculated for all, higher is
@@ -250,6 +256,8 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Hartigan', 'tag', 'useH', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...
+        {'Style', 'checkbox', 'string', 'Normalized Krzanowski-Lai', 'tag', 'useKLnrm', 'value', 1} ...
+        {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Krzanowski-Lai', 'tag', 'useKL', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Mariott', 'tag', 'useM', 'value', 1} ...
@@ -258,7 +266,7 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Tau', 'tag', 'useT', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...
-        {'Style', 'checkbox', 'string', 'Trace (Dispersion)', 'tag', 'useW', 'value', 1} ...
+        {'Style', 'checkbox', 'string', 'Trace(W)', 'tag', 'useTrace', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'text', 'string', ''} ...
         {'Style', 'text', 'string', 'Other Measures', 'fontweight', 'bold'} ...
@@ -321,16 +329,20 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             set(gca,'Ydir','reverse');
             title("Hartigan")
         end
+        if (structout.useKLnrm)
+            nexttile
+            plot(ClusterNumbers, KL_nrm, "-o");
+            title("Normalized Krzanowski-Lai");
+        end
         if (structout.useKL)
             nexttile
             plot(ClusterNumbers, KL, "-o");
             title("Krzanowski-Lai");
         end
-        if (structout.useW)
+        if (structout.useTrace)
             nexttile
-            plot(ClusterNumbers, W, "-o");
-            set(gca,'Ydir','reverse');
-            title("Dispersion");
+            plot(ClusterNumbers, trace_w, "-o");
+            title("Trace(W)");
         end
     end
 

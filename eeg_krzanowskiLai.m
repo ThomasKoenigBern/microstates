@@ -2,7 +2,7 @@
 % maps then timepoints. Need to follow Murray equation more closely
 % Winner is a list of length Timepoints, each element representing the
 % winning microstate number
-function KL_nrm = eeg_krzanowskiLai(ClustLabels, clustNum, W_i, nClusters, nChannels) % make parameters: 
+function [KL_nrm, KL] = eeg_krzanowskiLai(ClustLabels, clustNum, W_i, nClusters, nChannels) % make parameters: 
    
 %     distance = 0;
 %     nMaps = size(Maps,1);
@@ -19,8 +19,8 @@ function KL_nrm = eeg_krzanowskiLai(ClustLabels, clustNum, W_i, nClusters, nChan
     % look into Fray Van Groenewoud comparison
     d_q = M_q(1:nClusters-1) - M_q(2:nClusters);
 
-    KL_nrm = (d_q(1:nClusters-1) - d_q(2:nClusters))./ M_q(1:nClusters-1); 
-    
+    KL_nrm = (d_q(1:nClusters-2) - d_q(2:nClusters-1))./ M_q(1:nClusters-2); 
+    KL = zeros(1, nClusters-2);
 
    
 end

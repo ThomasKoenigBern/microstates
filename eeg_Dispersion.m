@@ -1,4 +1,4 @@
-% calculates dispersion (W): measure of average distance between members 
+    % calculates dispersion (W): measure of average distance between members 
 % of the same cluster, using 1 - absolute spatial correlation as distance
 % function
 
