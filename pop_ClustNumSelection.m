@@ -1,4 +1,4 @@
-function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,MeanSet)
+function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,MeanSet)
     com = '';
     
     %% Error handling, data and parameters selection
@@ -56,29 +56,23 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     
     % Select fitting parameters - do not allow user to deselect fitting only
     % on GFP peaks if this option was chosen for clustering
-    if isfield(TheEEG.msinfo,'FitPar');      params = TheEEG.msinfo.FitPar;     % possibly need to use ClustPar instead of FitPar? issue
+    % set BControl = false for all cases
+    if isfield(TheEEG.msinfo,'FitPar');      params = TheEEG.msinfo.FitPar;
     else params = [];
     end
-%     [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b','BControl'});
+    [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b','BControl'});
 
     if nargin < 5 || paramsComplete == false
-        % adding min and max classes so that numClasses is returned into
-        % params
-        FitPar = SetFittingParameters([],params);
+        FitPar = SetFittingParameters([],params, ~TheEEG.msinfo.ClustPar.GFPPeaks);
         if isempty(FitPar) return;      end
     end
     
     TheEEG.msinfo.FitPar = FitPar;
-    
 
     %% Compute criterion for each clustering solution
-    % if ms maps doesn't exist, clustPar will not be recognized, so throw
-    % error
-
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses;
     maxClusters = size(ClusterNumbers, 2);        
     
-
     % If doing mean level analysis, find the children EEG sets of the mean
     % set and initialize the criterion matrices according to how many
     % datasets are included in the mean set
@@ -104,7 +98,6 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
     PB = nan(nSubjects, maxClusters);           % Point-Biserial
     T = nan(nSubjects, maxClusters);            % Tau
     
-
     % Other criterion
     GEV = nan(nSubjects, maxClusters);          % Global Explained Variance
     CH = nan(nSubjects, maxClusters);           % Calinski-Harabasz
@@ -115,26 +108,27 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             ChildIndex = ChildIndices(subj);
             TheEEG = AllEEG(ChildIndex);
         end
+        
+        % store time samples and cluster labels for each solution - used as
+        % input for Frey index function
+        numClustSolutions = length(ClusterNumbers);
+        AllIndSamples = cell(numClustSolutions + 1, 1);
+        AllClustLabels = cell(numClustSolutions + 1, 1);
 
-        % ADD CLUSTERING FOR ONE GREATER THAN MAX SOLUTION %
-        % ADD CALCULATION OF W MATRIX TO PASS INTO OTHER FUNCTIONS %
-
-        % Frey and Van Groenewoud - easier to compute across all clustering
-        % solutions at once, closer to 1 is better
-%         FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
+        % number of samples with valid microstate assignments for each
+        % cluster solution - used as input for Hartigan index function
+        nsamples = zeros(maxClusters);
 
         for i=1:maxClusters
+            warning('off', 'stats:pdist2:DataConversion');
             nc = ClusterNumbers(i);         % number of clusters
             
-
             % Assign microstate labels
-            Maps = TheEEG.msinfo.MSMaps(nc).Maps;
-
-            % Check for segmented data and reshape if necessary
-            
+            Maps = TheEEG.msinfo.MSMaps(nc).Maps;            
             [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
             IndSamples = TheEEG.data;
 
+            % Check for segmented data and reshape if necessary
             if (numel(size(IndSamples)) == 3)
                 nSegments = size(IndSamples, 3);
         
@@ -160,36 +154,42 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
                 % remove clust labels of zero
                 ClustLabels(zeroIndices') = [];
             end
+            nsamples(i) = size(IndSamples, 2);
+
+            AllIndSamples{i} = IndSamples';
+            AllClustLabels{i} = ClustLabels;
             
             % CRITERION CALCULATIONS %
 
             % W matrix
             W{subj, i} = eeg_W(IndSamples,ClustLabels);
 
-            % Cross Validation
-            CV(subj, i) = crossVal;
-
             % Davies-Bouldin - the lower the better
-            DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
+            %DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
+%             tic
+%             DB(subj, i) = eeg_DaviesBouldin(IndSamples', ClustLabels);
+%             toc
+            
+            tic
+            DB(subj, i) = eeg_DaviesBouldin2(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            toc
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
 
-            % Dispersion (Trace)
-            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels, maxClusters);
-
             % Cross Validation
             % need to pass in subj
-            CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
-            
-            % Dispersion (TODO)
-            W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
+%             CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
             
             % Krzanowski-Lai
             % params: ClustLabels, clustNum, W_i, nClusters, nChannels
             % KL(subj, i) = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W(i), TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
             % Krzanowski-Lai
             KL(subj, i) = zeros(1,1);        % issue, temp
+
+            % Marriot
+            detW = det(W{subj, i});
+            M(subj, i) = nc*nc*detW;
             
             % EXTRA CALCULATIONS %
             % Global Explained Variance - the higher the better
@@ -197,19 +197,30 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
 
             % Calinski-Harabasz - the higher the better
             CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
+            CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Silhouette (TODO)
         end
 
-        % Frey and Van Groenewoud - easier to compute across all clustering
-        % solutions at once, closer to 1 is better
-        FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
+        % Find MS maps for one greater than largest cluster solution
+        % used for Hartigan, KL, and Frey index
+        maxClustNumber = ClusterNumbers(end);
+        ClustPar = TheEEG.msinfo.ClustPar;
+        IndSamples, ClustLabels = FindMSMaps(maxClustNumber+1, ClustPar);
 
-        % Hartigan - easier to compute across all clustering solutions at
-        % once after dispersion has been calculated for all, higher is
-        % better
-%         H(subj, :) = eeg_Hartigan(TheEEG, FitPar, W(subj, :));
-        H(subj, :) = zeros(1, maxClusters);     % issue, tmp
+        AllIndSamples{end} = IndSamples';
+        AllClustLabels{end} = ClustLabels;
+
+        % Frey and Van Groenewoud - closer to 1 is better
+        FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
+
+        % compute W matrix of one greater than max cluster solution - used
+        % for Hartigan index
+        Wmax = eeg_W(IndSamples, ClustLabels);
+        Wsubj = W(subj, :);
+
+        % Hartigan - higher is better
+        H(subj, :) = eeg_Hartigan([Wsubj Wmax], ClusterNumbers, nsamples);
 
     end
 
@@ -232,6 +243,8 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         CH = mean(CH, 1);
         S = mean(S, 1);
     end
+
+    DB
 
     [res,~,~,structout] = inputgui( 'geometry', { 1 1 1 [8 2] [8 2] [8 2] [8 2] [8 2] ...
         [8 2] [8 2] [8 2] [8 2] [8 2] [8 2] 1 1 [8 2] [8 2] [8 2] 1 1}, 'uilist', {...
@@ -326,9 +339,14 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             plot(ClusterNumbers, KL, "-o");
             title("Krzanowski-Lai");
         end
+        if (structout.useM)
+            nexttile
+            plot(ClusterNumbers, M, "-o");
+            title("Marriot");
+        end
         if (structout.useW)
             nexttile
-            plot(ClusterNumbers, W, "-o");
+            %plot(ClusterNumbers, W, "-o");
             set(gca,'Ydir','reverse');
             title("Dispersion");
         end
@@ -357,6 +375,7 @@ function silhouetteInfo(src,event)
         {'Style', 'text', 'string', ...
         'The silhouette value for each point is a measure of how similar that point is to points in its own cluster, when compared to points in other clusters. The silhouette value ranges from –1 to 1. A high silhouette value indicates that i is well matched to its own cluster, and poorly matched to other clusters. If most points have a high silhouette value, then the clustering solution is appropriate. If many points have a low or negative silhouette value, then the clustering solution might have too many or too few clusters. You can use silhouette values as a clustering evaluation criterion with any distance metric.'}})
 end
+
 function ChildIndices = FindTheWholeFamily(TheMeanEEG,AllEEGs)
         
     AvailableDataNames = {AllEEGs.setname};
@@ -380,4 +399,87 @@ function ChildIndices = FindTheWholeFamily(TheMeanEEG,AllEEGs)
         end
 
 
+end
+
+function [IndSamples, ClustLabels] = FindMSMaps(numClusts, ClustPar)
+    % Distribute the random sampling across segments
+    nSegments = TheEEG.trials;
+    if ~isinf(ClustPar.MaxMaps)
+        MapsPerSegment = hist(ceil(double(nSegments) * rand(ClustPar.MaxMaps,1)),nSegments);
+    else
+        MapsPerSegment = inf(nSegments,1);
+    end
+    
+    MapsToUse = [];
+    for s = 1:nSegments
+        if ClustPar.GFPPeaks == 1
+            gfp = std(TheEEG.data(:,:,s),1,1);
+            IsGFPPeak = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
+            if numel(IsGFPPeak) > MapsPerSegment(s) && MapsPerSegment(s) > 0
+                idx = randperm(numel(IsGFPPeak));
+                IsGFPPeak = IsGFPPeak(idx(1:MapsPerSegment(s)));
+            end
+            MapsToUse = [MapsToUse TheEEG.data(:,IsGFPPeak,s)];
+        else
+            if (size(TheEEG.data,2) > ClustPar.MaxMaps) && MapsPerSegment(s) > 0
+                idx = randperm(size(TheEEG.data,2));
+                MapsToUse = [MapsToUse TheEEG.data(:,idx(1:MapsPerSegment(s)),s)];
+            else
+                MapsToUse = [MapsToUse TheEEG.data(:,:,s)];
+            end
+        end
+    end
+    
+    flags = '';
+    if ClustPar.IgnorePolarity == false
+        flags = [flags 'p'];
+    end
+    if ClustPar.Normalize == true
+        flags = [flags 'n'];
+    end
+    
+    if ClustPar.UseEMD == true
+        flags = [flags 'e'];
+    end
+    
+    if ClustPar.UseAAHC == false
+        [b_model,~,~,~] = eeg_kMeans(MapsToUse', numClusts ,ClustPar.Restarts,[],flags,TheEEG.chanlocs);
+        Maps = b_model;
+    else
+        [b_model,~] = eeg_computeAAHC(double(MapsToUse'), numClusts, false, ClustPar.IgnorePolarity,ClustPar.Normalize);
+        Maps = b_model{1};
+    end
+    
+    % Assign microstate labels for one greater than max cluster
+    % solution, add time samples and labels to cell arrays
+    [ClustLabels, ~, ~] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
+    
+    % Check for segmented data and reshape if necessary
+    IndSamples = TheEEG.data;
+    if (numel(size(IndSamples)) == 3)
+        nSegments = size(IndSamples, 3);
+    
+        % reshape IndSamples
+        NewIndSamples = IndSamples(:,:,1);
+        for j = 2:nSegments
+            NewIndSamples = cat(2, NewIndSamples, IndSamples(:,:,j));
+        end
+        IndSamples = NewIndSamples;
+    
+        % reshape ClustLabels
+        NewClustLabels = ClustLabels(:,1);
+        for k = 2:nSegments
+            NewClustLabels = cat(1, NewClustLabels, ClustLabels(:,k));
+        end
+        ClustLabels = squeeze(NewClustLabels);
+    end
+    
+    % Check for zero elements in ClustLabels and remove them
+    zeroIndices = find(~ClustLabels);
+    if (size(zeroIndices,1) > 0)
+        % remove samples with no microstate assignmnets
+        IndSamples(:, zeroIndices') = [];
+        % remove clust labels of zero
+        ClustLabels(zeroIndices') = [];
+    end
 end
