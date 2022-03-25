@@ -123,9 +123,9 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         % Frey and Van Groenewoud - easier to compute across all clustering
         % solutions at once, closer to 1 is better
 %         FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
-        nSegments = size(TheEEG.data,3);
+        nSegments = size(TheEEGData,3);
 
-        AllClustLabels = zeros(maxClusters, size(TheEEG.data,2),nSegments);
+        AllClustLabels = zeros(size(TheEEG.data,2),nSegments)
         for i=1:maxClusters
             nc = ClusterNumbers(i);         % number of clusters
             
@@ -136,7 +136,6 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             % Check for segmented data and reshape if necessary
             
             [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
-            AllClustLabels(i,:,:) = ClustLabels(:,:);
             IndSamples = TheEEG.data;
 
             if (numel(size(IndSamples)) == 3)
@@ -198,6 +197,9 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
             % Dispersion (TODO)
 %             W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
             
+            % Tau index (TODO)
+            T(subj, i) = eeg_tau(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i), i);
+
             % EXTRA CALCULATIONS %
             % Global Explained Variance - the higher the better
             GEV(subj, i) = fit;
@@ -219,10 +221,6 @@ function com = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,Mea
         % Krzanowski-Lai
         % KL(subj, i) = zeros(1,1);        % issue, temp
 %         KL(subj, :) = abs(diff_q / diff_qplus1);
-
-        % Tau index (TODO)
-        T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
-
 
         % Hartigan - easier to compute across all clustering solutions at
         % once after dispersion has been calculated for all, higher is

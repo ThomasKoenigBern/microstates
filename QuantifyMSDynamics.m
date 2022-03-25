@@ -37,7 +37,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, SingleEpochFileTemplate, curr_EEG, AllEEG, idx)
+function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, SingleEpochFileTemplate, curr_EEG, AllEEG, idx, GEVs)
     if nargin < 9
         SingleEpochFileTemplate = [];
     end
@@ -62,7 +62,6 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         res.SortInfo     = 'NA';
     end
 
-    res.ExpVar       = ExpVar;
 
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
     eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
@@ -131,11 +130,17 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
     
     [curr_EEG,~,~] = pop_SortMSTemplates(AllEEG,idx,true, -1);
     
+
+
+%     eExpVar          = mynanmean(GEVs,3);
+
+
     % possibly issue that this selects (1) dataset out of curr_EEG. other
     % datasets shouldn't have been creaed
     eSpCorrelation = curr_EEG(1).msinfo.MSMaps(info.FitPar.nClasses).Communality;
     eSpCorrelation = mynanmean(eSpCorrelation,3);
-
+    res.ExpVar = mynanmean(GEVs, 3);
+    res.ExpVarTotal = ExpVar;  % 1002.
     res.TotalTime = sum(eTotalTime);
     res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
     res.Duration     = mynanmean(eDuration,3);
