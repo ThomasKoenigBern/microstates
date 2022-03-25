@@ -149,15 +149,14 @@ function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarit
             AllMFit = AllMFit + sum(ExpVar(1,Winner > 0),2);
             AllMVar = AllMVar + sum(Winner > 0);
             MSClass(:,s) = Winner;
+            % want to extract GEV for csv output 
+            % make array of pre_gev with length nClusters. want to print
+            % this to csv eventually.
+            % for each clust label, base off of above code.
         end
 
     end
     fit = AllMFit / AllMVar;
-
-    % Cross validation
-%     crossVal = eeg_crossVal(eegdata, Winner, MapsToUse);
-%     krzanowskiLai = eeg_krzanowskiLai(eegdata, Winner, MapsToUse);
-
 
 end
 
