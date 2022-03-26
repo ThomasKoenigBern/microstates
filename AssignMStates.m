@@ -39,7 +39,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
+function [MSClass,gfp, fit, GEV_classes] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
 
     if nargin < 5
         TheEEGData = eegdata.data;
@@ -79,6 +79,13 @@ function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarit
 
     gfp = std(TheEEGData,1,1);
 
+    GEV_classes = zeros(nClasses, 1);
+    GEV_classes_numerator = zeros(nClasses, 1);
+    GEV_classes_denominator = zeros(nClasses, 1);
+    clustLabelRatios = zeros(nClasses, 1);
+
+%     Fit_GEV = zeros(nClasses, 1);
+%     Var_GEV = zeros(nClasses, 1);
     AllMFit = 0;
     AllMVar = 0;
    
@@ -96,6 +103,7 @@ function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarit
                 Cov = abs(Cov);
             end
             [mfit,GFPPClass] = max(Cov);
+            
             AllMFit = AllMFit + squeeze(sum(mfit,2));
             PeakAssignment = zeros(nClasses,numel(IsIn));
             AllMVar = AllMVar +  squeeze(sum(std(TheEEGData(:,IsIn,s),1,1),2));
@@ -109,7 +117,23 @@ function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarit
             % defined and is removed
             
             [Hit,Winner] = max(Fit);
-
+            
+            for c = 1:nClasses
+                for t = 1:size(Winner, 2)
+                    gfp_c_t = std(TheEEGData(:,t,s));
+                    % this is giving the same 
+%                     if Winner(t) ~= 0      % gamma = 1
+                    if Winner(t) == c       % implied: Winner != 0
+                        clustLabelRatios(c) = clustLabelRatios(c) + 1;
+                        GEV_classes_numerator(c) = GEV_classes_numerator(c) + (gfp_c_t * Hit(t))^2;
+                        GEV_classes_denominator(c) = GEV_classes_denominator(c) +(gfp_c_t^2);
+                    end
+                end
+            end
+            GEV_classes = GEV_classes_numerator ./ GEV_classes_denominator;
+            clustLabelRatios = clustLabelRatios ./ size(Winner, 2);
+            GEV_classes = GEV_classes .* clustLabelRatios;
+    
             Winner(Hit == 0) = 0;
             if params.BControl == true
                 % Kill microstates truncated by boundaries
@@ -145,14 +169,20 @@ function [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarit
                 Winner = fill1D(Winner,1           ,0);
                 Winner = fill1D(Winner,numel(Winner),0);
             end
-        
+%             GEVs(1,s) = sum(ExpVar(1,Winner > 0),2) / sum(Winner > 0);    % (Anjali) added this to extract individual GEVs
+            for c = 1:nClasses
+                for t = 1:size(Winner, 2)
+                    gfp_c_t = std(TheEEGData(:,t,s));
+                    if Winner ~= 0      % gamma = 1
+                        GEV_classes(c) = GEV_classes(c) + ((gfp_c_t * Hit(t))^2 / (gfp_c_t^2));
+                    end
+                end
+            end
+
             AllMFit = AllMFit + sum(ExpVar(1,Winner > 0),2);
             AllMVar = AllMVar + sum(Winner > 0);
             MSClass(:,s) = Winner;
-            % want to extract GEV for csv output 
-            % make array of pre_gev with length nClusters. want to print
-            % this to csv eventually.
-            % for each clust label, base off of above code.
+
         end
 
     end
