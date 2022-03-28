@@ -199,6 +199,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 %             tic
 %             DB(subj, i) = eeg_DaviesBouldin2(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 %             toc
+            DB(subj, i) = eeg_DaviesBouldin2(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
@@ -216,11 +217,13 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             % Marriot
             detW = det(W{subj, i});
             M(subj, i) = nc*nc*detW;
-            CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+            %CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
             
-            % Dispersion (TODO)
-%             W(subj, i) = eeg_Dispersion(IndSamples',ClustLabels);
-            
+            % Point-Biserial
+            tic
+            PB(subj, i) = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            toc
+
             % EXTRA CALCULATIONS %
             % Global Explained Variance - the higher the better
             GEV(subj, i) = fit;
@@ -236,7 +239,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % used for Hartigan, KL, and Frey index
         maxClustNumber = ClusterNumbers(end);
         ClustPar = TheEEG.msinfo.ClustPar;
-%         IndSamples, ClustLabels = FindMSMaps(maxClustNumber+1, ClustPar);
+        [IndSamples, ClustLabels] = FindMSMaps(maxClustNumber+1, ClustPar);
 
         AllIndSamples{end} = IndSamples';
         AllClustLabels{end} = ClustLabels;
@@ -288,10 +291,8 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         S = mean(S, 1);
     end
 
-    DB
-
     [res,~,~,structout] = inputgui( 'geometry', { 1 1 1 [8 2] [8 2] [8 2] [8 2] [8 2] ...
-        [8 2] [8 2] [8 2] [8 2] [8 2] [8 2] 1 1 [8 2] [8 2] [8 2] 1 1}, 'uilist', {...
+        [8 2] [8 2] [8 2] [8 2] [8 2] [8 2] [8 2] 1 1 [8 2] [8 2] [8 2] 1 1}, 'uilist', {...
         {'Style', 'text', 'string', 'Select measures to be plotted:'} ...
         {'Style', 'text', 'string', ''} ...
         {'Style', 'text', 'string', 'Measures for Metacriterion', 'fontweight', 'bold'} ...
@@ -394,6 +395,11 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             nexttile
             plot(ClusterNumbers, M, "-o");
             title("Marriot");
+        end
+        if (structout.usePB)
+            nexttile
+            plot(ClusterNumbers, PB, "-o");
+            title("Point-Biserial");
         end
         if (structout.useTrace)
             nexttile
