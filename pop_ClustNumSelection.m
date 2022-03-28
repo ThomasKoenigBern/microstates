@@ -127,7 +127,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % cluster solution - used as input for Hartigan index function
         nsamples = zeros(maxClusters);
 
-        AllClustLabels = zeros(maxClusters, size(TheEEG.data,2),nSegments);
+%         AllClustLabels = zeros(maxClusters, size(TheEEG.data,2),nSegments);
         for i=1:maxClusters
             warning('off', 'stats:pdist2:DataConversion');
             nc = ClusterNumbers(i);         % number of clusters
@@ -135,7 +135,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             % Assign microstate labels
             Maps = TheEEG.msinfo.MSMaps(nc).Maps;            
             [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
-            AllClustLabels(i,:,:) = ClustLabels(:,:);
+%             AllClustLabels(i,:,:) = ClustLabels(:,:);
             IndSamples = TheEEG.data;
 
             % Check for segmented data and reshape if necessary
@@ -196,9 +196,9 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 %             DB(subj, i) = eeg_DaviesBouldin(IndSamples', ClustLabels);
 %             toc
             
-            tic
-            DB(subj, i) = eeg_DaviesBouldin2(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
-            toc
+%             tic
+%             DB(subj, i) = eeg_DaviesBouldin2(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+%             toc
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
@@ -227,7 +227,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
             % Calinski-Harabasz - the higher the better
             CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
-            CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+%             CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Silhouette (TODO)
         end
@@ -236,13 +236,13 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % used for Hartigan, KL, and Frey index
         maxClustNumber = ClusterNumbers(end);
         ClustPar = TheEEG.msinfo.ClustPar;
-        IndSamples, ClustLabels = FindMSMaps(maxClustNumber+1, ClustPar);
+%         IndSamples, ClustLabels = FindMSMaps(maxClustNumber+1, ClustPar);
 
         AllIndSamples{end} = IndSamples';
         AllClustLabels{end} = ClustLabels;
 
         % Frey and Van Groenewoud - closer to 1 is better
-        FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
+%         FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
 
         % compute W matrix of one greater than max cluster solution - used
         % for Hartigan index
