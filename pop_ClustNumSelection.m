@@ -226,7 +226,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         AllClustLabels{end} = ClustLabels;
 
         % Frey and Van Groenewoud - closer to 1 is better
-        FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
+%         FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
 
         % compute W matrix of one greater than max cluster solution - used
         % for Hartigan index
