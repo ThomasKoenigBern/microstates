@@ -116,18 +116,12 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         AllIndSamples = cell(numClustSolutions + 1, 1);
         AllClustLabels = cell(numClustSolutions + 1, 1);
 
-        % ADD CLUSTERING FOR ONE GREATER THAN MAX SOLUTION %
-        % ADD CALCULATION OF W MATRIX TO PASS INTO OTHER FUNCTIONS %
-
-        % Frey and Van Groenewoud - easier to compute across all clustering
-        % solutions at once, closer to 1 is better
-%         FVG(subj, :) = eeg_FreyVanGroenewoud(TheEEG, FitPar);
         nSegments = size(TheEEG.data,3);
         % number of samples with valid microstate assignments for each
         % cluster solution - used as input for Hartigan index function
         nsamples = zeros(maxClusters);
 
-        AllClustLabels = zeros(maxClusters, size(TheEEG.data,2),nSegments);
+        %AllClustLabels = zeros(maxClusters, size(TheEEG.data,2),nSegments);
         for i=1:maxClusters
             warning('off', 'stats:pdist2:DataConversion');
             nc = ClusterNumbers(i);         % number of clusters
@@ -135,7 +129,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             % Assign microstate labels
             Maps = TheEEG.msinfo.MSMaps(nc).Maps;            
             [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
-            AllClustLabels(i,:,:) = ClustLabels(:,:);
+            %AllClustLabels(i,:,:) = ClustLabels(:,:);
             IndSamples = TheEEG.data;
 
             % Check for segmented data and reshape if necessary
@@ -186,17 +180,9 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
                 KL(subj, i) = abs(diff_q/diff_qplus1);
             end
             KL(subj, maxClusters) = nan;
-            % Cross Validation
-%             CV(subj, i) = crossVal;
-
 
             % Davies-Bouldin - the lower the better
-            %DB(subj, i) = evalclusters(IndSamples', ClustLabels, 'DaviesBouldin').CriterionValues;
-%             tic
-%             DB(subj, i) = eeg_DaviesBouldin(IndSamples', ClustLabels);
-%             toc
-            
-            DB(subj, i) = eeg_DaviesBouldin2(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            DB(subj, i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
@@ -214,22 +200,17 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             % Marriot
             detW = det(W{subj, i});
             M(subj, i) = nc*nc*detW;
-            %CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
             
-<<<<<<< HEAD
             % Point-Biserial
             tic
             PB(subj, i) = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
             toc
 
-=======
->>>>>>> 4ba8e73daf22aa08153488a5b4f9b1c85ab7110f
             % EXTRA CALCULATIONS %
             % Global Explained Variance - the higher the better
             GEV(subj, i) = fit;
 
             % Calinski-Harabasz - the higher the better
-            %CH(subj, i) = evalclusters(IndSamples', ClustLabels, 'CalinskiHarabasz').CriterionValues;
             %CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Silhouette (TODO)
@@ -239,7 +220,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % used for Hartigan, KL, and Frey index
         maxClustNumber = ClusterNumbers(end);
         ClustPar = TheEEG.msinfo.ClustPar;
-        [IndSamples, ClustLabels] = FindMSMaps(maxClustNumber+1, ClustPar);
+        [IndSamples, ClustLabels] = FindMSMaps(TheEEG, maxClustNumber+1, FitPar, ClustPar);
 
         AllIndSamples{end} = IndSamples';
         AllClustLabels{end} = ClustLabels;
@@ -260,8 +241,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 %         KL(subj, :) = abs(diff_q / diff_qplus1);
 
         % Tau index (TODO)
-        T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
-
+%         T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
 
         % Hartigan - easier to compute across all clustering solutions at
         % once after dispersion has been calculated for all, higher is
@@ -457,7 +437,7 @@ function ChildIndices = FindTheWholeFamily(TheMeanEEG,AllEEGs)
 
 end
 
-function [IndSamples, ClustLabels] = FindMSMaps(numClusts, ClustPar)
+function [IndSamples, ClustLabels] = FindMSMaps(TheEEG, numClusts, FitPar, ClustPar)
     % Distribute the random sampling across segments
     nSegments = TheEEG.trials;
     if ~isinf(ClustPar.MaxMaps)
