@@ -21,11 +21,14 @@ function PB = eeg_PointBiserial(IndSamples, ClustLabels, IgnorePolarity)
         PB = nan;
         return;
     end
+
+    n = size(IndSamples, 2);
+    NT = n*(n-1)/2;
+    allCorrDists = zeros(NT, 1);
+    idx = 1;
     
     % sum of between-cluster correlation distances
     SB = 0;
-    allCorrDists = zeros(size(IndSamples, 2)*size(IndSamples, 2), 1);
-    idx = 1;
     for i = 1:numClusts-1
       for j=i+1:numClusts
           membersi = (ClustLabels == clusters(i));
@@ -45,7 +48,6 @@ function PB = eeg_PointBiserial(IndSamples, ClustLabels, IgnorePolarity)
         members = (ClustLabels == clusters(i));
         pairCorrs = pairCorrDist(IndSamples(:, members));
         SW(i) = sum(sum(triu(pairCorrs, 1)));
-        %SW(i) = (sum(sum(pairCorrs)) - trace(pairCorrs))/2;
         ni = sum(members);
         NW(i) = ni*(ni-1)/2;
 
@@ -56,7 +58,7 @@ function PB = eeg_PointBiserial(IndSamples, ClustLabels, IgnorePolarity)
         allCorrDists(idx:idx+numel(pairCorrs)-1,:) = pairCorrs;
         idx = idx + numel(pairCorrs);
     end
-    sd1 = std(allCorrDists);
+%     sd1 = std(allCorrDists);
     SW = sum(SW);
     NW = sum(NW);
     
@@ -67,10 +69,10 @@ function PB = eeg_PointBiserial(IndSamples, ClustLabels, IgnorePolarity)
     SW = SW/NW;
     SB = SB/NB;
     
-    allCorrDists = triu(pairCorrDist(IndSamples),1);
-    allCorrDists = reshape(allCorrDists, [numel(allCorrDists), 1]);
-    zeroIndices = ~allCorrDists;
-    allCorrDists(zeroIndices) = [];
+%     allCorrDists = triu(pairCorrDist(IndSamples),1);
+%     allCorrDists = reshape(allCorrDists, [numel(allCorrDists), 1]);
+%     zeroIndices = ~allCorrDists;
+%     allCorrDists(zeroIndices) = [];
     sd = std(allCorrDists);
     
     PB = (SB - SW)*sqrt((NW*NB)/(NT*NT))/sd;
