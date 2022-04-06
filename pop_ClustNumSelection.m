@@ -172,13 +172,13 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             for j = 1:maxClusters
                 trace_w(1,j) = trace(W{j});
             end
-%             if i < maxClusters && i > 1 
-            diff_q =  (((nc-1)^(2/size(IndSamples,2))) * trace_w(1, i-1))...
-                    - (((nc)^(2/size(IndSamples,2))) * trace_w(1, i));
-            diff_qplus1 = (((nc)^(2/size(IndSamples,2))) * trace_w(1, i))...
-                        - (((nc+1)^(2/size(IndSamples,2))) * trace_w(1, i+1));
-            KL(subj, i) = abs(diff_q/diff_qplus1);
-%             end
+            if i < maxClusters && i > 1 
+                diff_q =  (((nc-1)^(2/size(IndSamples,2))) * trace_w(1, i-1))...
+                        - (((nc)^(2/size(IndSamples,2))) * trace_w(1, i));
+                diff_qplus1 = (((nc)^(2/size(IndSamples,2))) * trace_w(1, i))...
+                            - (((nc+1)^(2/size(IndSamples,2))) * trace_w(1, i+1));
+                KL(subj, i) = abs(diff_q/diff_qplus1);
+            end
 %             KL(subj, maxClusters) = nan;
 
             % Davies-Bouldin - the lower the better
@@ -240,7 +240,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % KL(subj, i) = zeros(1,1);        % issue, temp
 %         KL(subj, :) = abs(diff_q / diff_qplus1);
 
-        Tau index (TODO)
+%         Tau index (TODO)
         T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
 
         % Hartigan - easier to compute across all clustering solutions at
