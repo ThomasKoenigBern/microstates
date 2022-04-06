@@ -98,6 +98,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     M = nan(nSubjects, maxClusters);            % Mariott
     PB = nan(nSubjects, maxClusters);           % Point-Biserial
     T = nan(nSubjects, maxClusters);            % Tau
+    TW = nan(nSubjects, maxClusters);           % Trace(W)
     
     % Other criterion
     GEV = nan(nSubjects, maxClusters);          % Global Explained Variance
@@ -167,8 +168,10 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
             % W matrix
             W{subj, i} = eeg_W(IndSamples,ClustLabels);
+            TW(subj, i) = trace(W{subj,i});
+            
+            % Krzanowski-Lai
             trace_w = zeros(1, maxClusters);
-
             for j = 1:maxClusters
                 trace_w(1,j) = trace(W{j});
             end
@@ -188,23 +191,14 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
 
             % Cross Validation
-            % need to pass in subj
 %             CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
-            
-            % Krzanowski-Lai
-            % params: ClustLabels, clustNum, W_i, nClusters, nChannels
-            % KL(subj, i) = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W(i), TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
-            % Krzanowski-Lai
-            KL(subj, i) = zeros(1,1);        % issue, temp
 
             % Marriot
             detW = det(W{subj, i});
             M(subj, i) = nc*nc*detW;
             
             % Point-Biserial
-            tic
             PB(subj, i) = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
-            toc
 
             % EXTRA CALCULATIONS %
             % Global Explained Variance - the higher the better
@@ -226,7 +220,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         AllClustLabels{end} = ClustLabels;
 
         % Frey and Van Groenewoud - closer to 1 is better
-%         FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
+        FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
 
         % compute W matrix of one greater than max cluster solution - used
         % for Hartigan index
@@ -235,10 +229,10 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
         % Krzanowski-Lai
         % params: ClustLabels, clustNum, W_i, nClusters, nChannels
-%         KL = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W{i}, TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
+        KL = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W{i}, TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
         % Krzanowski-Lai
         % KL(subj, i) = zeros(1,1);        % issue, temp
-%         KL(subj, :) = abs(diff_q / diff_qplus1);
+        KL(subj, :) = abs(diff_q / diff_qplus1);
 
 %         Tau index (TODO)
         T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
