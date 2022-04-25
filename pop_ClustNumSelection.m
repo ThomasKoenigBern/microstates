@@ -235,7 +235,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         KL(subj, :) = abs(diff_q / diff_qplus1);
 
 %         Tau index (TODO)
-        G(subj, i) = eeg_gamma(TheEEG, IndSamples, AllClustLabels);
+        G(subj, :) = eeg_gamma(TheEEG, IndSamples, AllClustLabels, ClusterNumbers);
 
         % Hartigan - easier to compute across all clustering solutions at
         % once after dispersion has been calculated for all, higher is
