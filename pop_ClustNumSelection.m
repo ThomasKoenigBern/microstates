@@ -220,7 +220,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         AllClustLabels{end} = ClustLabels;
 
         % Frey and Van Groenewoud - closer to 1 is better
-        FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
+%         FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
 
         % compute W matrix of one greater than max cluster solution - used
         % for Hartigan index
@@ -229,7 +229,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
         % Krzanowski-Lai
         % params: ClustLabels, clustNum, W_i, nClusters, nChannels
-        KL = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W{i}, TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
+%         KL = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W{i}, TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
         % Krzanowski-Lai
         % KL(subj, i) = zeros(1,1);        % issue, temp
         KL(subj, :) = abs(diff_q / diff_qplus1);
