@@ -23,7 +23,11 @@ function gamma_indices = eeg_gamma (TheEEG, IndSamples, AllClustLabels)
             uNumSamples = size(uClustMembers, 2);            
             if u == v
                 % special case, want to grab max dist
-                max_dist = 1;
+                max_dist = 0;
+                for s = 1:uNumSamples-1
+                    spCorr = corr(TheEEG.msinfo.MSMaps(u, i), TheEEG.msinfo.MSMaps(v_clustNum, j));
+                    this_dist_matrix(i, j) = 1 - abs(spCorr);
+                end
             else
 
                 vMembers = (AllClustLabels == v);
@@ -31,7 +35,7 @@ function gamma_indices = eeg_gamma (TheEEG, IndSamples, AllClustLabels)
                 vNumSamples = size(vClustMembers, 2);
                 
         %         dist_matrices(u,v) = zeros(IndSamples(u), IndSamples(v));
-                this_dist_matrix = zeros(u_nSamples, v_nSamples);
+                this_dist_matrix = nan(uNumSamples, vNumSamples);
                 for i = 1:uNumSamples
                     for j = 1:vNumSamples
         %                 dist_matrices(u,v) = pdist(TheEEG.msinfo.MSMaps(u_clustNum).Maps(AllClustLabels(u,:,1)), TheEEG.msinfo.MSMaps(v_clustNum).Maps(AllClustLabels(v,:,1)));
