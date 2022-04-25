@@ -97,7 +97,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai (according to Krzanowski-Lai 1988)
     M = nan(nSubjects, maxClusters);            % Mariott
     PB = nan(nSubjects, maxClusters);           % Point-Biserial
-    T = nan(nSubjects, maxClusters);            % Tau
+    G  = nan(nSubjects, maxClusters);            % Gamma
     TW = nan(nSubjects, maxClusters);           % Trace(W)
     
     % Other criterion
@@ -235,7 +235,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         KL(subj, :) = abs(diff_q / diff_qplus1);
 
 %         Tau index (TODO)
-        T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
+        G(subj, i) = eeg_gamma(TheEEG, IndSamples, AllClustLabels);
 
         % Hartigan - easier to compute across all clustering solutions at
         % once after dispersion has been calculated for all, higher is
@@ -290,7 +290,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Point-Biserial', 'tag', 'usePB', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...
-        {'Style', 'checkbox', 'string', 'Tau', 'tag', 'useT', 'value', 1} ...
+        {'Style', 'checkbox', 'string', 'Gamma', 'tag', 'useG', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Trace(W)', 'tag', 'useTrace', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...

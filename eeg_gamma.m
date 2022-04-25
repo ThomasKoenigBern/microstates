@@ -13,28 +13,35 @@ function gamma_indices = eeg_gamma (TheEEG, IndSamples, AllClustLabels)
     s_plus = 0;
     s_minus = 0;
     max_dist = 0;
-    % will only fill in top right section
+    gamma_indices = nan(numClusters);
+    % will only fill in top right section of matrix
     dist_matrices = zeros(numClusters, numClusters);
     for u = 1:numClusters   % for u representing each cluster
-      for v = 1:u     % for each cluster not equal
-        if u == v
-            % special case, want to grab max dist
-            max_dist = max_dist + 1;
-        else
-            u_nSamples = IndSamples(u);
-            v_nSamples = IndSamples(v);
-            u_clustNum = ClusterNumbers(u_nSamples);
-            v_clustNum = ClusterNumbers(v_nSamples);
-    %         dist_matrices(u,v) = zeros(IndSamples(u), IndSamples(v));
-            this_dist_matrix = zeros(u_nSamples, v_nSamples);
-            for i = 1:u_nSamples
-                for j = 1:v_nSamples
-    %                 dist_matrices(u,v) = pdist(TheEEG.msinfo.MSMaps(u_clustNum).Maps(AllClustLabels(u,:,1)), TheEEG.msinfo.MSMaps(v_clustNum).Maps(AllClustLabels(v,:,1)));
-                    spCorr = corr(TheEEG.msinfo.MSMaps(u_clustNum, i), TheEEG.msinfo.MSMaps(v_clustNum, j));
-                    this_dist_matrix(i, j) = 1 - abs(spCorr);
+        for v = 1:u     % for each cluster not equal
+            uMembers = (AllClustLabels == u);
+            uClustMembers = IndSamples(:,uMembers);
+            uNumSamples = size(uClustMembers, 2);            
+            if u == v
+                % special case, want to grab max dist
+                max_dist = 1;
+            else
+
+                vMembers = (AllClustLabels == v);
+                vClustMembers = IndSamples(:,vMembers);
+                vNumSamples = size(vClustMembers, 2);
+                
+        %         dist_matrices(u,v) = zeros(IndSamples(u), IndSamples(v));
+                this_dist_matrix = zeros(u_nSamples, v_nSamples);
+                for i = 1:uNumSamples
+                    for j = 1:vNumSamples
+        %                 dist_matrices(u,v) = pdist(TheEEG.msinfo.MSMaps(u_clustNum).Maps(AllClustLabels(u,:,1)), TheEEG.msinfo.MSMaps(v_clustNum).Maps(AllClustLabels(v,:,1)));
+                        spCorr = corr(TheEEG.msinfo.MSMaps(u_clustNum, i), TheEEG.msinfo.MSMaps(v_clustNum, j));
+                        this_dist_matrix(i, j) = 1 - abs(spCorr);
+                    end
                 end
             end
         end
+        gamma = (s_plus-s_minus)/(s_plus+s_minus);
     end
 
 
