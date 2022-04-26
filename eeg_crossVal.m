@@ -2,7 +2,6 @@ function crossVal = eeg_crossVal(eegdata, IndSamples, ClustLabels, clustNum)    
 % old parameters: (eegdata, Winner, Maps)
 %     Maps = ClustLabels';
 %     Winner = IndSamples;
-    % issue likely in pre_sigma dimensions and size(Winner, 2).
     nTimepoints = size(IndSamples, 1);
     nChannels = size(IndSamples, 2);
     pre_sigma = nan(nChannels, nTimepoints);     % num channels x number of timepoints

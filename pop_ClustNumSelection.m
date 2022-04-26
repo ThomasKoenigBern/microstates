@@ -94,7 +94,28 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         nSubjects = numel(ChildIndices);
     else
         nSubjects = 1;
+<<<<<<< HEAD
     end         
+=======
+    end
+    
+    % W - within-group dispersion matrix (used for several criterion)
+    W = cell(nSubjects, maxClusters, 1);            
+
+    % Criterion for metacriterion (11)
+    CV = nan(nSubjects, maxClusters);           % Cross-Validation
+    CC = nan(nSubjects, maxClusters);           % Cubic-Clustering Criterion
+    DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
+    D = nan(nSubjects, maxClusters);            % Dunn
+    FVG = nan(nSubjects, maxClusters);          % Frey and Van Groenewoud
+    H = nan(nSubjects, maxClusters);            % Hartigan
+    KL_nrm = nan(nSubjects, maxClusters);       % Normalized Krzanowski-Lai (according to Murray 2008)
+    KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai (according to Krzanowski-Lai 1988)
+    M = nan(nSubjects, maxClusters);            % Mariott
+    PB = nan(nSubjects, maxClusters);           % Point-Biserial
+    G  = nan(nSubjects, maxClusters);            % Gamma
+    TW = nan(nSubjects, maxClusters);           % Trace(W)
+>>>>>>> 7d5f30d029b969eaaf655a7f4e9d445d072a163c
     
     % Criterion for metacriterion (6)
     criteria.G = nan(nSubjects, maxClusters);            % Gamma
@@ -197,14 +218,38 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             
             % CRITERION CALCULATIONS %
 
+<<<<<<< HEAD
             % Cross Validation
             criteria.CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+=======
+            % W matrix
+            W{subj, i} = eeg_W(IndSamples,ClustLabels);
+            TW(subj, i) = trace(W{subj,i});
+            
+            % Krzanowski-Lai
+            trace_w = zeros(1, maxClusters);
+            for j = 1:maxClusters
+                trace_w(1,j) = trace(W{j});
+            end
+            if i < maxClusters && i > 1 
+                diff_q =  (((nc-1)^(2/size(IndSamples,2))) * trace_w(1, i-1))...
+                        - (((nc)^(2/size(IndSamples,2))) * trace_w(1, i));
+                diff_qplus1 = (((nc)^(2/size(IndSamples,2))) * trace_w(1, i))...
+                            - (((nc+1)^(2/size(IndSamples,2))) * trace_w(1, i+1));
+                KL(subj, i) = abs(diff_q/diff_qplus1);
+            end
+%             KL(subj, maxClusters) = nan;
+>>>>>>> 7d5f30d029b969eaaf655a7f4e9d445d072a163c
 
             % Trace(W)
             criteria.TW(subj, i) = eeg_TW(IndSamples,ClustLabels);
             
             % Davies-Bouldin - the lower the better
+<<<<<<< HEAD
             criteria.DB(subj, i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+=======
+%             DB(subj, i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+>>>>>>> 7d5f30d029b969eaaf655a7f4e9d445d072a163c
 
             % Dunn - the higher the better
             criteria.D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
@@ -232,15 +277,31 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         AllClustLabels{end} = ClustLabels;
 
         % Frey and Van Groenewoud - closer to 1 is better
+<<<<<<< HEAD
         criteria.FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples(2:end), AllClustLabels(2:end), ClusterNumbers);
+=======
+%         FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbers);
+>>>>>>> 7d5f30d029b969eaaf655a7f4e9d445d072a163c
 
         % compute Trace(W) of one greater than max cluster solution - used
         % for Hartigan index
+<<<<<<< HEAD
         TWmax = eeg_TW(IndSamples, ClustLabels);
         TWsubj = criteria.TW(subj, :);
+=======
+        Wmax = eeg_W(IndSamples, ClustLabels);
+        Wsubj = W(subj, :);
 
-        % Tau index (TODO)
-%         T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
+        % Krzanowski-Lai
+        % params: ClustLabels, clustNum, W_i, nClusters, nChannels
+%         KL = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W{i}, TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
+        % Krzanowski-Lai
+        % KL(subj, i) = zeros(1,1);        % issue, temp
+        KL(subj, :) = abs(diff_q / diff_qplus1);
+>>>>>>> 7d5f30d029b969eaaf655a7f4e9d445d072a163c
+
+%         Tau index (TODO)
+        G(subj, :) = eeg_gamma(TheEEG, IndSamples, AllClustLabels, ClusterNumbers);
 
         % Hartigan - higher is better
         criteria.H(subj, :) = eeg_Hartigan([TWsubj TWmax], ClusterNumbers, nsamples);
@@ -306,7 +367,11 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Frey and Van Groenewoud', 'tag', 'useFVG', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...
+<<<<<<< HEAD
         {'Style', 'checkbox', 'string', 'Hartigan', 'tag', 'useH', 'value', 1} ...
+=======
+        {'Style', 'checkbox', 'string', 'Gamma', 'tag', 'useG', 'value', 1} ...
+>>>>>>> 7d5f30d029b969eaaf655a7f4e9d445d072a163c
         {'Style', 'pushbutton', 'string', 'Info'} ...
         {'Style', 'checkbox', 'string', 'Trace(W)', 'tag', 'useTrace', 'value', 1} ...
         {'Style', 'pushbutton', 'string', 'Info'} ...       
