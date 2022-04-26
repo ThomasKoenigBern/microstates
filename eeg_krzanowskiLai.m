@@ -1,51 +1,70 @@
-% INCOMPLETE. Issues have to do with looping through
-% maps then timepoints. Need to follow Murray equation more closely
-% Winner is a list of length Timepoints, each element representing the
-% winning microstate number
-function KL = eeg_krzanowskiLai(nClusters, nVars, trace_w) % make parameters: 
-   
-%     distance = 0;
-%     nMaps = size(Maps,1);
-%     nTimepoints = size(Winner,2);
+function KL = eeg_krzanowskiLai(AllIndSamples, AllClustLabels, ClusterNumbers, IgnorePolarity)
 
-    % Poulsen toolbox key
-    % K: number of classes
-    % C: number of channels
-%     M_q = nan(nClusters,1);
-    
-%     M_q = W_i*nClusters^(2/nChannels); %for KL_nrm and KL
+% old KL code
+% diff_q =  (((nc-1)^(2/size(IndSamples,2))) * trace_w(1, i-1))...
+%                         - (((nc)^(2/size(IndSamples,2))) * trace_w(1, i));
+%                 diff_qplus1 = (((nc)^(2/size(IndSamples,2))) * trace_w(1, i))...
+%                             - (((nc+1)^(2/size(IndSamples,2))) * trace_w(1, i+1));
+%                 KL(subj, i) = abs(diff_q/diff_qplus1);
 
-%     d_q = nan(nClusters,1);
-    % look into Fray Van Groenewoud comparison
-    % Looks incorrect. M_q is size 104x104, so taking the first nClusters-1
-    % columns doesn't seem right?
-%     d_q = M_q(1:nClusters-1) - M_q(2:nClusters);    
-% 
-%     KL_nrm = (d_q(1:nClusters-2) - d_q(2:nClusters-1))./ M_q(1:nClusters-2); 
-%     
+    % Performs pair-wise computation of 1 - abs(spatial correlation) or 
+    % 1 - (spatial correlation) for every pair of columns in matrix A
+    function corrDist = pairCorrDist(A)
+        c = corr(A);
+        if (IgnorePolarity) 
+            corrDist = 1 - abs(c);
+        else 
+            corrDist = 1 - c; 
+        end
+    end
 
-%     KL = zeros(nClusters,1);
-%     M = nan(nClusters,1); 
-% 
-%     diff = nan(nClusters,1);
-    
-%     M(:) = W_i*nClusters^(2/nChannels); %for KL
-    
-    % diff(K)=M(K-1)-M(K), excludes first segmentation. note: different from KL_nrm.
-%     diff(2:end) = M_q(1:end-1) - M(2:end);
-    
-    % KL=abs(diff(K)/diff(K+1)), excludes last segmentation
-%     KL(1:end-1) = abs(diff(1:end-1) ./ diff(2:end));
-    
-    % Added rule that W(K) - W(K-1) cannot be positive, i.e. W increases from K-1
-    % to K.    
-%     i = [false; W(2:end) - W(1:end-1)];
-%     KL(i>0) = 0;
-%     KL([1 end]) = nan;
-  
-end
+    numClustSolutions = length(ClusterNumbers);
+    nChannels = size(AllIndSamples{1}, 1);
 
-function diff_q = diff(q_clusters)
-    diff_q = (((q_clusters-1)^(2/size(IndSamples,2))) * trace_w(1, optimalNumClusters-1))...
-                    - (((optimalNumClusters)^(2/size(IndSamples,2))) * trace_w(1, optimalNumClusters))
+    % using the individual samples and cluster labels for each solution,
+    % first find W (dispersion) for each cluster solution + 1 greater, 1 less
+    W = zeros(numClustSolutions+2, 1);
+    for i = 1:numClustSolutions+2
+        IndSamples = AllIndSamples{i};
+        ClustLabels = AllClustLabels{i};
+        clusters = unique(ClustLabels);
+        numClusts = length(clusters);
+        
+        % compute W
+        W(i) = 0;
+        for j = 1:numClusts
+            members = (ClustLabels == clusters(j));
+            clustMembers = IndSamples(:, members);
+            nk = size(clustMembers, 2);
+            D = sum(sum(pairCorrDist(clustMembers)));
+            W(i) = W(i) + D/(2*nk);
+        end    
+
+    end
+
+    % use the W values to find the diff values for each cluster solution
+    % + 1 greater
+    diff = NaN(numClustSolutions+1, 1);
+    for i = 1:numClustSolutions+1
+        prevW = W(i);
+        currW = W(i+1);
+        if (i > numClustSolutions)
+            k = ClusterNumbers(end) + 1;
+        else
+            k = ClusterNumbers(i);
+        end
+        diff(i) = prevW*(k-1)^(2/nChannels) - currW*k^(2/nChannels);
+    end
+
+    % now use the diff values to find KL for each cluster solution
+    KL = zeros(numClustSolutions, 1);
+    for i = 1:numClustSolutions
+        prevW = W(i);
+        currW = W(i+1);
+        if ((currW - prevW) > 0)
+            KL(i) = 0;
+        end
+        KL(i) = abs(diff(i)/diff(i+1));
+    end
+
 end
