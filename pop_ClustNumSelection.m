@@ -60,14 +60,28 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     if isfield(TheEEG.msinfo,'FitPar');      params = TheEEG.msinfo.FitPar;
     else params = [];
     end
-    [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b','BControl'});
+    params.BControl = false;                % do not allow truncating
+    [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'lambda','PeakFit','b', 'BControl'});
 
     if nargin < 5 || paramsComplete == false
-        FitPar = SetFittingParameters([],params, ~TheEEG.msinfo.ClustPar.GFPPeaks);
+        FitPar = SetFittingParameters([], FitPar, ~TheEEG.msinfo.ClustPar.GFPPeaks);
         if isempty(FitPar) return;      end
     end
     
     TheEEG.msinfo.FitPar = FitPar;
+
+    % Specify how much data to use in criterion computations
+    downsamplingString = ['Enter max number of samples to use in criterion computations.\n' ...
+        'Use inf to use all samples.'];
+    [res, ~, ~, structout] = inputgui( 'geometry', {1 [1 1]}, 'uilist', { ...
+        { 'Style', 'text', 'string', downsamplingString, 'fontweight', 'normal' } ...
+        { 'Style', 'text', 'string', 'Max number of samples to use', 'fontweight', 'normal' } ...
+        { 'Style', 'edit', 'string', '', 'tag' 'MaxSamples'} ...
+        },'title','Specify downsampling');
+    if isempty(res)
+        return
+    end
+    MaxSamples = str2double(structout.MaxSamples);
 
     %% Compute criterion for each clustering solution
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses;
@@ -87,18 +101,18 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     W = cell(nSubjects, maxClusters, 1);            
 
     % Criterion for metacriterion (11)
-    CV = nan(nSubjects, maxClusters);           % Cross-Validation
-    CC = nan(nSubjects, maxClusters);           % Cubic-Clustering Criterion
+    CV = nan(nSubjects, maxClusters);           % Cross-Validation (second derivative)
+    CC = nan(nSubjects, maxClusters);           % Cubic-Clustering Criterion (second derivative)
     DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
     D = nan(nSubjects, maxClusters);            % Dunn
     FVG = nan(nSubjects, maxClusters);          % Frey and Van Groenewoud
-    H = nan(nSubjects, maxClusters);            % Hartigan
+    H = nan(nSubjects, maxClusters);            % Hartigan (first derivative)
     KL_nrm = nan(nSubjects, maxClusters);       % Normalized Krzanowski-Lai (according to Murray 2008)
     KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai (according to Krzanowski-Lai 1988)
     M = nan(nSubjects, maxClusters);            % Mariott
     PB = nan(nSubjects, maxClusters);           % Point-Biserial
     T = nan(nSubjects, maxClusters);            % Tau
-    TW = nan(nSubjects, maxClusters);           % Trace(W)
+    TW = nan(nSubjects, maxClusters);           % Trace(W) (second derivative)
     
     % Other criterion
     GEV = nan(nSubjects, maxClusters);          % Global Explained Variance
@@ -117,7 +131,12 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         AllIndSamples = cell(numClustSolutions + 1, 1);
         AllClustLabels = cell(numClustSolutions + 1, 1);
 
-        nSegments = size(TheEEG.data,3);
+        % Find maps for 2 cluster solutions before minimum solution
+        % selected
+        ClustPar = TheEEG.msinfo.ClustPar;
+%         [AllIndSamples{1}, AllClustLabels{1}] = FindMSMaps(TheEEG, ClusterNumbers(1), FitPar, ClustPar);
+%         [AllIndSamples{2}, AllClustLabels{2}] = FindMSMaps(TheEEG, ClusterNumbers(2), FitPar, ClustPar);        
+
         % number of samples with valid microstate assignments for each
         % cluster solution - used as input for Hartigan index function
         nsamples = zeros(maxClusters);
@@ -132,25 +151,48 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             [ClustLabels, gfp, fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
             %AllClustLabels(i,:,:) = ClustLabels(:,:);
             IndSamples = TheEEG.data;
+            
+            % Distribute random sampling across segments
+            nSegments = TheEEG.trials;
+            if ~isinf(MaxSamples)
+                SamplesPerSegment = hist(ceil(double(nSegments) * rand(MaxSamples,1)), nSegments);
+            else 
+                SamplesPerSegment = inf(nSegments,1);
+            end
+
+            SamplesToUse = [];
+            ClustLabelsToUse = [];
+            for s = 1:nSegments
+                if (size(IndSamples, 2) > SamplesPerSegment(s)) && SamplesPerSegment(s) > 0
+                    idx = randperm(size(IndSamples,2));
+                    SamplesToUse = [SamplesToUse IndSamples(:,idx(1:SamplesPerSegment(s)),s)];
+                    ClustLabelsToUse = [ClustLabelsToUse; ClustLabels(idx(1:SamplesPerSegment(s)),s)];
+                else
+                    SamplesToUse = [SamplesToUse IndSamples(:,:,s)];
+                    ClustLabelsToUse = [ClustLabelsToUse; ClustLabels(:, s)];
+                end
+            end
+            IndSamples = SamplesToUse;
+            ClustLabels = squeeze(ClustLabelsToUse);
 
             % Check for segmented data and reshape if necessary
-            if (numel(size(IndSamples)) == 3)
-                nSegments = size(IndSamples, 3);
-        
-                % reshape IndSamples
-                NewIndSamples = IndSamples(:,:,1);
-                for j = 2:nSegments
-                    NewIndSamples = cat(2, NewIndSamples, IndSamples(:,:,j));
-                end
-                IndSamples = NewIndSamples;
-        
-                % reshape ClustLabels
-                NewClustLabels = ClustLabels(:,1);
-                for k = 2:nSegments
-                    NewClustLabels = cat(1, NewClustLabels, ClustLabels(:,k));
-                end
-                ClustLabels = squeeze(NewClustLabels);
-            end
+%             if (numel(size(IndSamples)) == 3)
+%                 nSegments = size(IndSamples, 3);
+%         
+%                 % reshape IndSamples
+%                 NewIndSamples = IndSamples(:,:,1);
+%                 for j = 2:nSegments
+%                     NewIndSamples = cat(2, NewIndSamples, IndSamples(:,:,j));
+%                 end
+%                 IndSamples = NewIndSamples;
+%         
+%                 % reshape ClustLabels
+%                 NewClustLabels = ClustLabels(:,1);
+%                 for k = 2:nSegments
+%                     NewClustLabels = cat(1, NewClustLabels, ClustLabels(:,k));
+%                 end
+%                 ClustLabels = squeeze(NewClustLabels);
+%             end
             % Check for zero elements in ClustLabels and remove them
             zeroIndices = find(~ClustLabels);
             if (size(zeroIndices,1) > 0)
@@ -165,6 +207,9 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             AllClustLabels{i} = ClustLabels;
             
             % CRITERION CALCULATIONS %
+
+            % Cross Validation
+            CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
 
             % W matrix
             W{subj, i} = eeg_W(IndSamples,ClustLabels);
@@ -182,15 +227,12 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
                             - (((nc+1)^(2/size(IndSamples,2))) * trace_w(1, i+1));
                 KL(subj, i) = abs(diff_q/diff_qplus1);
             end
-
+            
             % Davies-Bouldin - the lower the better
             DB(subj, i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Dunn - the higher the better
             D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
-
-            % Cross Validation
-%             CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
 
             % Marriot
             detW = det(W{subj, i});
@@ -212,7 +254,6 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % Find MS maps for one greater than largest cluster solution
         % used for Hartigan, KL, and Frey index
         maxClustNumber = ClusterNumbers(end);
-        ClustPar = TheEEG.msinfo.ClustPar;
         [IndSamples, ClustLabels] = FindMSMaps(TheEEG, maxClustNumber+1, FitPar, ClustPar);
 
         AllIndSamples{end} = IndSamples';
@@ -226,12 +267,8 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         Wmax = eeg_W(IndSamples, ClustLabels);
         Wsubj = W(subj, :);
 
-        % Krzanowski-Lai
-        % params: ClustLabels, clustNum, W_i, nClusters, nChannels
-        KL = eeg_krzanowskiLai(ClustLabels, ClusterNumbers(i), W{i}, TheEEG.msinfo.ClustPar.MaxClasses, size(IndSamples, 1));
-        % Krzanowski-Lai
-        % KL(subj, i) = zeros(1,1);        % issue, temp
-        KL(subj, :) = abs(diff_q / diff_qplus1);
+        % Normalized Krzanowski-Lai
+        % KL_nrm(subj, :) = abs(diff_q / diff_qplus1);
 
         % Tau index (TODO)
 %         T(subj, i) = eeg_tau(TheEEG, IndSamples, AllClustLabels);
@@ -240,7 +277,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % once after dispersion has been calculated for all, higher is
         % better
         % Hartigan - higher is better
-        H(subj, :) = eeg_Hartigan([Wsubj Wmax], ClusterNumbers, nsamples);
+        %H(subj, :) = eeg_Hartigan([Wsubj Wmax], ClusterNumbers, nsamples);
 
     end
 
@@ -327,7 +364,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         
         if (structout.useCV)
             nexttile
-            plot(ClusterNumbers, CV, "-o");
+            plot(ClusterNumbers(2:numClustSolutions-1), diff(diff(CV)), "-o");
             set(gca,'Ydir','reverse');
             title("Cross-Validation");
         end
@@ -345,13 +382,11 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         if (structout.useFVG)
             nexttile
             plot(ClusterNumbers, FVG, "-o");
-            set(gca,'Ydir','reverse');
             title("Frey and Van Groenewoud")
         end
         if (structout.useH)
             nexttile
-            plot(ClusterNumbers, H, "-o");
-            set(gca,'Ydir','reverse');
+            plot(ClusterNumbers(2:end), diff(H), "-o");
             title("Hartigan")
         end
         if (structout.useKLnrm)
@@ -376,25 +411,156 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         end
         if (structout.useTrace)
             nexttile
-            plot(ClusterNumbers, trace_w, "-o");
+            plot(ClusterNumbers(2:numClustSolutions-1), diff(diff(TW)), "-o");
             title("Trace(W)");
         end
     end
 
-    if (nExtraGraphs > 0)
-        figure('Name', 'Extra Measures', 'Position', [900 200 600 500]);
-        tiledlayout(nExtraGraphs, 1);
-        
-        if (structout.useGEV)
-            nexttile
-            plot(ClusterNumbers, GEV, "-o");
-            title("GEV");
+%     if (nExtraGraphs > 0)
+%         figure('Name', 'Extra Measures', 'Position', [900 200 600 500]);
+%         tiledlayout(nExtraGraphs, 1);
+%         
+%         if (structout.useGEV)
+%             nexttile
+%             plot(ClusterNumbers, GEV, "-o");
+%             title("GEV");
+%         end
+%         if (structout.useCH)
+%             nexttile
+%             plot(ClusterNumbers, CH, "-o");
+%             title("Calinski-Harabasz");
+%         end
+%     end
+
+    if (structout.plotMetacriterion)
+        % array to hold all criterion values
+        criterion = zeros(nMetacriterionGraphs, maxClusters-2);
+
+        figure('Name', 'Metacriterion', 'Position', [900 200 600 500]);
+        tiledlayout(2,1);
+        nexttile
+        count = 1;
+        % Normalize all criterion values
+        if (structout.useCV)
+           CV = diff(diff(CV));
+           CV = (CV - min(CV))/(max(CV) - min(CV));
+           CV = 1 - CV;
+           criterion(count, :) = CV;
+           count = count + 1;
+
+           plot(ClusterNumbers(2:numClustSolutions-1), CV, 'DisplayName', 'Cross-Validation');
+           hold on
         end
-        if (structout.useCH)
-            nexttile
-            plot(ClusterNumbers, CH, "-o");
-            title("Calinski-Harabasz");
+        if (structout.useDB)
+            DB = (DB - min(DB))/(max(DB) - min(DB));
+            DB = 1 - DB;
+            criterion(count, :) = DB(2: numClustSolutions-1);
+            count = count + 1;
+
+            plot(ClusterNumbers, DB, 'DisplayName', 'Davies-Bouldin');
+            hold on
         end
+        if (structout.useD)
+            D = (D - min(D))/(max(D) - min(D));
+            criterion(count, :) = D(2: numClustSolutions-1);
+            count = count + 1;
+
+            plot(ClusterNumbers, D, 'DisplayName', 'Dunn');
+            hold on
+        end
+        if (structout.useFVG)
+            FVG = abs(1 - FVG);
+            FVG = (FVG - min(FVG))/(max(FVG) - min(FVG)); 
+            FVG = 1 - FVG;
+            criterion(count, :) = FVG(2: numClustSolutions-1);
+            count = count + 1;
+
+            plot(ClusterNumbers, FVG, 'DisplayName', 'Frey and Van Groenewoud');
+            hold on
+        end
+        if (structout.useH)
+            H = diff(H);
+            H = (H - min(H))/(max(H) - min(H)); 
+            criterion(count, :) = H(1: numClustSolutions-2);
+            count = count + 1;
+
+            plot(ClusterNumbers(2:end), H, 'DisplayName', 'Hartigan');
+            hold on
+        end
+        if (structout.useKLnrm)
+           KLnrm = (KLnrm - min(KLnrm))/(max(KLnrm) - min(KLnrm));
+           criterion(count, :) = KLnrm;
+           count = count + 1;
+
+           plot(ClusterNumbers, KLnrm, 'DisplayName', 'Normalized Krzanowski-Lai');
+           hold on
+        end
+        if (structout.useKL)
+            KL = (KL - min(KL))/(max(KL) - min(KL));
+            criterion(count, :) = KL(2: numClustSolutions-1);
+            count = count + 1;
+
+            plot(ClusterNumbers, KL, 'DisplayName', 'Krzanowski-Lai');
+            hold on
+        end
+        if (structout.useM)
+            M = (M - min(M))/(max(M) - min(M));
+            criterion(count, :) = M(2: numClustSolutions-1);
+            count = count + 1;
+
+            plot(ClusterNumbers, M, 'DisplayName', 'Marriot');            
+            hold on
+        end
+        if (structout.usePB)
+            PB = (PB - min(PB))/(max(PB) - min(PB));
+            criterion(count, :) = PB(2: numClustSolutions-1);
+            count = count + 1;
+
+            plot(ClusterNumbers, PB, 'DisplayName', 'Point-Biserial');
+            hold on
+        end
+        if (structout.useTrace)
+            TW = diff(diff(TW));
+            TW = (TW - min(TW))/(max(TW) - min(TW));
+            criterion(count, :) = TW;
+
+            plot(ClusterNumbers(2:numClustSolutions-1), TW, 'DisplayName', 'Trace(W)');       
+            hold on
+        end
+        title('Criteria');
+        legend
+
+        % calculate metacriterion
+        % compute IQM
+        nCriterion = size(criterion, 1);
+        criterionIQM = sort(criterion);             % first sort the columns and make copy of array
+        quartileSize = nCriterion/4;                % calculate quartile size
+
+        % if number of criterion chosen is divisible by 4, can take IQM
+        % without weighting partial values
+        if (mod(nCriterion, 4) == 0)
+            criterionIQM = criterionIQM(1+quartileSize:nCriterion-quartileSize,:);
+            IQM = mean(criterionIQM);
+        else
+            removeSize = floor(quartileSize);           % number of values to remove from 1st and 4th quartiles
+            criterionIQM = criterionIQM(1+removeSize:nCriterion-removeSize,:);
+            nIQR = size(criterionIQM, 1);               % number of values in IQR
+            weight = (nIQR-2*quartileSize)/2;           % weight to multiply partial values of IQR by
+            IQM = zeros(1, maxClusters - 2);
+            for i=1:maxClusters-2
+                IQM(i) = weight*(criterionIQM(1, i) + criterionIQM(end, i)) + sum(criterionIQM(2:nIQR-1, i));
+            end
+        end
+
+        % compute IQR
+        IQR = iqr(criterion);
+
+        metacriterion = (IQM.^2)./IQR;
+
+        % plot metacriterion
+        nexttile
+        plot(ClusterNumbers(2:numClustSolutions-1), metacriterion);
+        title('Meta-Criterion');
     end
     
 end
