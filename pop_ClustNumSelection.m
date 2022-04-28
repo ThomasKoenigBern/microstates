@@ -84,6 +84,10 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
     %% Compute criterion for each clustering solution
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses;
+    startIndex = find(ClusterNumbers == 4);
+    if (~isempty(startIndex))
+        ClusterNumbers = ClusterNumbers(startIndex:end);
+    end
     maxClusters = size(ClusterNumbers, 2);        
     
     % If doing mean level analysis, find the children EEG sets of the mean
@@ -97,12 +101,12 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end         
     
     % Criterion for metacriterion (6)
-    criteria.G = nan(nSubjects, maxClusters);            % Gamma
-    criteria.S = nan(nSubjects, maxClusters);            % Silhouette
-    criteria.DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
-    criteria.PB = nan(nSubjects, maxClusters);           % Point-Biserial
-    criteria.D = nan(nSubjects, maxClusters);            % Dunn
-    criteria.KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai
+    %metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
+    metacriteria.S = nan(nSubjects, maxClusters);            % Silhouette
+    metacriteria.DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
+    metacriteria.PB = nan(nSubjects, maxClusters);           % Point-Biserial
+    metacriteria.D = nan(nSubjects, maxClusters);            % Dunn
+    metacriteria.KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai
 
     % Extra criterion
     criteria.CV = nan(nSubjects, maxClusters);           % Cross-Validation (second derivative)
@@ -163,25 +167,6 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             IndSamples = SamplesToUse;
             ClustLabels = squeeze(ClustLabelsToUse);
 
-            % Check for segmented data and reshape if necessary
-%             if (numel(size(IndSamples)) == 3)
-%                 nSegments = size(IndSamples, 3);
-%         
-%                 % reshape IndSamples
-%                 NewIndSamples = IndSamples(:,:,1);
-%                 for j = 2:nSegments
-%                     NewIndSamples = cat(2, NewIndSamples, IndSamples(:,:,j));
-%                 end
-%                 IndSamples = NewIndSamples;
-%         
-%                 % reshape ClustLabels
-%                 NewClustLabels = ClustLabels(:,1);
-%                 for k = 2:nSegments
-%                     NewClustLabels = cat(1, NewClustLabels, ClustLabels(:,k));
-%                 end
-%                 ClustLabels = squeeze(NewClustLabels);
-%             end
-
             % Check for zero elements in ClustLabels and remove them
             zeroIndices = find(~ClustLabels);
             if (size(zeroIndices,1) > 0)
@@ -204,13 +189,13 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             criteria.TW(subj, i) = eeg_TW(IndSamples,ClustLabels);
             
             % Davies-Bouldin - the lower the better
-            criteria.DB(subj, i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            metacriteria.DB(subj, i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Dunn - the higher the better
-            criteria.D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
+            metacriteria.D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
             
             % Point-Biserial
-            criteria.PB(subj, i) = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            metacriteria.PB(subj, i) = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Global Explained Variance - the higher the better
             criteria.GEV(subj, i) = fit;
@@ -220,13 +205,20 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
             % Silhouette
             distfun = @(XI,XJ)(1-abs(MyCorr(XI',XJ')));
-            criteria.S(subj, i) = sum(silhouette(IndSamples', ClustLabels, distfun))/nsamples(i);
+            metacriteria.S(subj, i) = sum(silhouette(IndSamples', ClustLabels, distfun))/nsamples(i);
         end
 
         % Find MS maps for one greater than largest cluster solution
-        % used for Hartigan, KL, and Frey index
         maxClustNumber = ClusterNumbers(end);
         [IndSamples, ClustLabels] = FindMSMaps(TheEEG, maxClustNumber+1, FitPar, ClustPar, MaxSamples);
+
+        % Find Cross-Validation for one greater than largest cluster
+        % solution
+        CVmax = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+
+        % compute Trace(W) of one greater than max cluster solution
+        TWmax = eeg_TW(IndSamples, ClustLabels);
+        TWsubj = criteria.TW(subj, :);
 
         AllIndSamples{end} = IndSamples;
         AllClustLabels{end} = ClustLabels;
@@ -234,34 +226,35 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % Frey and Van Groenewoud - closer to 1 is better
         criteria.FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples(2:end), AllClustLabels(2:end), ClusterNumbers);
 
-        % compute Trace(W) of one greater than max cluster solution - used
-        % for Hartigan index
-        TWmax = eeg_TW(IndSamples, ClustLabels);
-        TWsubj = criteria.TW(subj, :);
-
-%         Tau index (TODO)
-        G(subj, :) = eeg_gamma(TheEEG, IndSamples, AllClustLabels, ClusterNumbers);
-
-        % Hartigan - higher is better
-        criteria.H(subj, :) = eeg_Hartigan([TWsubj TWmax], ClusterNumbers, nsamples);
-
         % Find MS maps for one less than smallest cluster solution
         % used for KL index
         minClustNumber = ClusterNumbers(1);
         [IndSamples, ClustLabels] = FindMSMaps(TheEEG, minClustNumber-1, FitPar, ClustPar, MaxSamples);
 
+        % Find Cross-Validation for one less than smallest cluster solution
+        CVmin = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+
+        % Find Trace(W) for one less than smallest cluster solution
+        TWmin = eeg_TW(IndSamples, ClustLabels);
+
+        % Take second difference of Cross-Validation values
+        criteria.CV(subj, :) = diff(diff([CVmin criteria.CV(subj,:) CVmax]));
+
+        % Take second difference of Trace(W) values
+        criteria.TW(subj, :) = diff(diff([TWmin criteria.TW(subj,:) TWmax]));
+
+        % Hartigan - higher is better
+        H = eeg_Hartigan([TWmin TWsubj TWmax], [(ClusterNumbers(1) - 1) ClusterNumbers], nsamples);
+
+        % Take first difference of Hartigan values
+        criteria.H(subj, :) = diff(H);
+
         AllIndSamples{1} = IndSamples;
         AllClustLabels{1} = ClustLabels;
+        
+        % Krzanowski-Lai - higher is better
+        metacriteria.KL(subj, :) = eeg_krzanowskiLai(AllIndSamples, AllClustLabels, ClusterNumbers, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
-        criteria.KL(subj, :) = eeg_krzanowskiLai(AllIndSamples, AllClustLabels, ClusterNumbers, TheEEG.msinfo.ClustPar.IgnorePolarity);
-
-    end
-
-    % Normalize all criteria
-    names = fieldnames(criteria);
-    for i=1:numel(names)
-        c = criteria.(names{i});
-        criteria.(names{i}) = (c - min(c))/(max(c)-min(c));
     end
 
     if UseMean
@@ -325,53 +318,81 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     nMetacriterionGraphs = sum(res(1:6) == 1);
     % number of extra graphs
     nExtraGraphs = sum(res(7:12) == 1);
-    
-    if (nMetacriterionGraphs > 0)
-        figure('Name', 'Measures for Metacriterion', 'Position', [100 100 700 600]);
-        
-        if (nMetacriterionGraphs == 2)
-            tiledlayout(1, 2)
-        end
-        if (nMetacriterionGraphs >= 3)
-            tiledlayout(2, 2);
-        end
-        if (nMetacriterionGraphs >= 5)
-            tiledlayout(3, 2);
-        end  
 
-        if (structout.useS)
-            nexttile
-            plot(ClusterNumbers, criteria.S, "-o");
-            title("Silhouette");
+    % normalize and adjust metacriteria and compute metacriterion
+    names = fieldnames(metacriteria);
+    votes = zeros(5, 1);         % change to 6 once gamma is done
+    for i=1:numel(names)
+        % Normalize
+        c = metacriteria.(names{i});
+        metacriteria.(names{i}) = (c - min(c))/(max(c)-min(c));
+        if (strcmp(names{i},'DB'))     % smaller is beter for DB                                         
+            metacriteria.DB = 1 - metacriteria.DB;
         end
-        if (structout.useDB)
-            nexttile
-            plot(ClusterNumbers, criteria.DB, "-o");
-            set(gca,'Ydir','reverse');
-            title("Davies-Bouldin");
-        end
-        if (structout.usePB)
-            nexttile
-            plot(ClusterNumbers, criteria.PB, "-o");
-            title("Point-Biserial");
-        end
-        if (structout.useD)
-            nexttile
-            plot(ClusterNumbers, criteria.D, "-o");
-            title("Dunn");
-        end
-        if (structout.useKL)
-            nexttile
-            plot(ClusterNumbers, criteria.KL, "-o");
-            title("Krzanowski-Lai");
-        end
-
-        names = fieldnames(criteria);
-        for i=1:numel(names)
-            c = criteria.(names{i});
-            criteria.(names{i}) = (c - min(c))/(max(c)-min(c));
-        end
+        [m, ind] = max(metacriteria.(names{i}));
+        votes(i) = ClusterNumbers(ind);
     end
+    criteria.metacriterion = median(votes);   
+
+    % Normalize and adjust all extra criteria
+    names = fieldnames(criteria);
+    for i=1:numel(names)
+        c = criteria.(names{i});
+        if (strcmp(names{i}, 'FVG'))
+            FVG = abs(1 - c);
+            FVG = (FVG - min(FVG))/(max(FVG) - min(FVG)); 
+            criteria.FVG = 1 - FVG;
+        else
+            criteria.(names{i}) = (c - min(c))/(max(c)-min(c));
+            if (strcmp(names{i}, 'CV'))
+                criteria.CV = 1 - criteria.CV
+            end
+        end        
+    end
+    
+    figure('Name', 'Measures for Metacriterion', 'Position', [100 100 700 600]);
+    
+    if (nMetacriterionGraphs == 2)
+        tiledlayout(2, 2)
+    end
+    if (nMetacriterionGraphs >= 3)
+        tiledlayout(3, 2);
+    end
+    if (nMetacriterionGraphs >= 5)
+        tiledlayout(4, 2);
+    end  
+
+    if (structout.useS)
+        nexttile
+        plot(ClusterNumbers, metacriteria.S, "-o");
+        title("Silhouette");
+    end
+    if (structout.useDB)
+        nexttile
+        plot(ClusterNumbers, metacriteria.DB, "-o");
+        title("Davies-Bouldin");
+    end
+    if (structout.usePB)
+        nexttile
+        plot(ClusterNumbers, metacriteria.PB, "-o");
+        title("Point-Biserial");
+    end
+    if (structout.useD)
+        nexttile
+        plot(ClusterNumbers, metacriteria.D, "-o");
+        title("Dunn");
+    end
+    if (structout.useKL)
+        nexttile
+        plot(ClusterNumbers, metacriteria.KL, "-o");
+        title("Krzanowski-Lai");
+    end
+
+    % add histogram with votes
+    edges = [(ClusterNumbers - 0.5) ClusterNumbers(end) + 0.5];
+    nexttile([1 2])
+    histogram(votes, edges);
+    title('Optimal Number of Microstates Votes Distribution');
 
     if (nExtraGraphs > 0)
         figure('Name', 'Extra Measures', 'Position', [900 200 600 500]);
@@ -390,7 +411,6 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         if (structout.useCV)
             nexttile
             plot(ClusterNumbers, criteria.CV, "-o");
-            set(gca,'Ydir','reverse');
             title("Cross-Validation");
         end
         if (structout.useFVG)
