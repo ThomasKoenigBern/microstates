@@ -185,7 +185,11 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     [par,paramsComplete] = UpdateFitParameters(FitParameters,par,{'nClasses','lambda','PeakFit','b', 'BControl'});
  
     if ~paramsComplete
-        par = SetFittingParameters(MinClasses:MaxClasses,par);
+        if useMeanTmpl == 0
+            par = SetFittingParameters(MinClasses:MaxClasses,par,~AllEEG(SelectedSet(1)).msinfo.ClustPar.GFPPeaks);
+        else
+            par = SetFittingParameters(MinClasses:MaxClasses,par,TheChosenTemplate.msinfo.ClustPar.GFPPeaks);
+        end
     end
     
 %    MSStats = table();

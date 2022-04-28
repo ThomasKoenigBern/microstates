@@ -125,7 +125,7 @@ function [AllEEG, TheEEG, com] = pop_GetMSDynamics(AllEEG,TheEEG,UseMean,FitPar,
     [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'nClasses','lambda','PeakFit','b','BControl','Normalize','Rectify'});
 
     if nargin < 4 || paramsComplete == false
-        FitPar = SetFittingParameters(msinfo.ClustPar.MinClasses:msinfo.ClustPar.MaxClasses,FitPar, true);
+        FitPar = SetFittingParameters(msinfo.ClustPar.MinClasses:msinfo.ClustPar.MaxClasses,FitPar, ~msinfo.ClustPar.GFPPeaks);
     end
     
     if isempty(FitPar.nClasses);   return; end

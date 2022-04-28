@@ -103,9 +103,9 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
 
     if nargin < 4 || paramsComplete == false
         if UseMean == false     
-            FitPar = SetFittingParameters(TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses,FitPar);
+            FitPar = SetFittingParameters(TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses,FitPar, ~TheEEG.msinfo.ClustPar.GFPPeaks);
         else
-            FitPar = SetFittingParameters(AllEEG(MeanSet).msinfo.ClustPar.MinClasses:AllEEG(MeanSet).msinfo.ClustPar.MaxClasses,FitPar);
+            FitPar = SetFittingParameters(AllEEG(MeanSet).msinfo.ClustPar.MinClasses:AllEEG(MeanSet).msinfo.ClustPar.MaxClasses,FitPar, ~AllEEG(MeanSet).msinfo.ClustPar.GFPPeaks);
         end
     end
     if isempty(FitPar.nClasses);   return; end
@@ -120,12 +120,11 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
     end
     TheEEG.msinfo.FitPar = FitPar;
     
-    % MSClass2 output added for debugging
     if UseMean == true
         LocalToGlobal = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
-        [MSClass, MSClass2, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,AllEEG(MeanSet).msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+        [MSClass, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,AllEEG(MeanSet).msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
     else
-        [MSClass,MSClass2, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
+        [MSClass, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
     end
     
     if isempty(MSClass)
