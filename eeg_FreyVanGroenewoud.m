@@ -5,8 +5,8 @@ function FVG = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbe
     % compute Frey index for each solution
     FVG = zeros(numClustSolutions, 1);
     for c = 1:numClustSolutions
-        IndSamples = AllIndSamples{c};
-        ClustLabels = AllClustLabels{c};
+        IndSamples = AllIndSamples{c}';
+        ClustLabels = AllClustLabels{c}';
         nc = ClusterNumbers(c);     % number of clusters
         
         % find mean inter-cluster distance and mean intra-cluster distance
@@ -29,8 +29,8 @@ function FVG = eeg_FreyVanGroenewoud(AllIndSamples, AllClustLabels, ClusterNumbe
 
         % find the mean inter-cluster distance and mean intra-cluster
         % distance for the NEXT cluster solution
-        IndSamples = AllIndSamples{c+1};
-        ClustLabels = AllClustLabels{c+1};
+        IndSamples = AllIndSamples{c+1}';
+        ClustLabels = AllClustLabels{c+1}';
         if (nc == ClusterNumbers(end))
             nc = ClusterNumbers(end) + 1;
         end
