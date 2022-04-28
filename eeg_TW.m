@@ -1,12 +1,12 @@
 % function compute within-group dispersion matrix for a specific cluster
 % solution
-function W = eeg_W(IndSamples, ClustLabels)
+function TW = eeg_TW(IndSamples, ClustLabels)
 
     % get number of clusters
     clusters = unique(ClustLabels);
     numClusts = length(clusters);
     if numClusts == 1
-        W = nan;
+        TW = nan;
         return;
     end
 
@@ -24,5 +24,7 @@ function W = eeg_W(IndSamples, ClustLabels)
           end
       end
     end
+
+    TW = trace(W);
 
 end
