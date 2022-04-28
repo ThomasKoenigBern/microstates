@@ -160,12 +160,9 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comShowIndMSDyn        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,false);'             catch_strings.store_and_hist];
     comShowIndMSDynM       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,true);'              catch_strings.store_and_hist];
     
-    comClustNumSelectionS = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,0);'     catch_strings.add_to_hist];    
-    comClustNumSelectionM = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,1);'     catch_strings.add_to_hist];    
-
-    comClustNumSelectionS = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,0);'     catch_strings.add_to_hist];    
-    comClustNumSelectionM = [try_strings.no_check '[        LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,1);'     catch_strings.add_to_hist];    
-
+    comClustNumSelectionS = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,0);'     catch_strings.add_to_hist];    
+    comClustNumSelectionS2 = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ClustNumSelection2(ALLEEG,EEG,CURRENTSET,0);'     catch_strings.add_to_hist];    
+    comClustNumSelectionM = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ClustNumSelection(ALLEEG,EEG,CURRENTSET,1);'     catch_strings.add_to_hist];    
 
 
     toolsmenu = findobj(fig, 'tag', 'tools');
@@ -206,7 +203,4 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     if numel(which('Ragu')) > 0
         uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,   'position', 15,'Separator','on');
     end
-
-    uimenu( toolssubmenu, 'Label', 'Data driven selection of number of microstates (own template maps)', 'CallBack', comClustNumSelectionS, 'position', 16, 'Separator', 'on');
-    uimenu( toolssubmenu, 'Label', 'Data driven selection of number of microstates (mean template maps)', 'CallBack', comClustNumSelectionM, 'position', 17);
 end
