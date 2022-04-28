@@ -101,7 +101,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end         
     
     % Criterion for metacriterion (6)
-    %metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
+    metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
     metacriteria.S = nan(nSubjects, maxClusters);            % Silhouette
     metacriteria.DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
     metacriteria.PB = nan(nSubjects, maxClusters);           % Point-Biserial
@@ -195,7 +195,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             metacriteria.D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
             
             % Point-Biserial
-            metacriteria.PB(subj, i) = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            [metacriteria.PB(subj, i), metacriteria.G(subj, i)] = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Global Explained Variance - the higher the better
             criteria.GEV(subj, i) = fit;
