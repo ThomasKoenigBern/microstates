@@ -28,13 +28,13 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function params = SetFittingParameters(PossibleNs, params, AddChannelFlag)
-
-    if nargin < 3;  AddChannelFlag = false;        end
-    if nargin < 2;  params = [];        end
+function params = SetFittingParameters(PossibleNs, params, GFPPeaksFlag, AddChannelFlag)
+    
+    if nargin < 4; AddChannelFlag = false;          end
+    if nargin < 3;  GFPPeaksFlag = true;            end
+    if nargin < 2;  params = [];                    end
     if nargin < 1;  PossibleNs = params.MinClasses: params.MaxClasses;  end    
  
-%     PossibleNs = params.MinClasses: params.MaxClasses;
     choice = '';
     if(~isempty(PossibleNs))
         for i = 1:numel(PossibleNs)
@@ -47,14 +47,24 @@ function params = SetFittingParameters(PossibleNs, params, AddChannelFlag)
     if ~isfield(params,'b');        params.b          = 0;    end
     if ~isfield(params,'lambda');    params.lambda    = 0.3;  end
     if ~isfield(params, 'PeakFit');  params.PeakFit   = true; end
-    if ~isfield(params, 'nClasses'); params.nClasses  = min(PossibleNs); end
+    if ~isfield(params, 'nClasses') && ~isempty(PossibleNs)
+        params.nClasses  = min(PossibleNs); 
+    end
     if ~isfield(params, 'BControl'); params.BControl  = true; end
     if ~isfield(params, 'Rectify');  params.Rectify   = false; end
     if ~isfield(params, 'Normalize');params.Normalize = false; end
     
-    idx = find(params.nClasses == PossibleNs);
-    if(isempty(idx));   idx = 1;    end
+    if ~isempty(PossibleNs)
+        idx = find(params.nClasses == PossibleNs);
+        if(isempty(idx));   idx = 1;    end
+    end
     
+    if GFPPeaksFlag == true
+        EnableGFPPeaks = 'on';
+    else
+        EnableGFPPeaks = 'off';
+    end
+
     if AddChannelFlag == true
         EnableFitPars = 'on';
     else
@@ -62,9 +72,11 @@ function params = SetFittingParameters(PossibleNs, params, AddChannelFlag)
     end
 
     if (isempty(PossibleNs))
-        res = inputgui( 'geometry', {1 1 1 [1 1] [1 1] 1 1}, 'uilist', { ...
-            { 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit'    ,'Value', params.PeakFit }  ...
-            { 'Style', 'checkbox', 'string' 'Remove potentially truncated microstates' 'tag' 'PeakFit'    ,'Value', params.BControl }  ...
+        % If no min and max classes are passed in, the fitting parameters
+        % window is for criterion backfitting, so do not include the
+        % classes selection window or BControl option
+        [res, ~, ~, structout] = inputgui( 'geometry', {1 1 [1 1] [1 1] 1 1}, 'uilist', { ...
+            { 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit'    ,'Value', params.PeakFit, 'Enable', EnableGFPPeaks }  ...
             { 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'fontweight', 'bold', 'HorizontalAlignment', 'center'} ...
             { 'Style', 'text', 'string', 'Label smoothing window (ms)', 'fontweight', 'bold'  } ...
             { 'Style', 'edit', 'string', num2str(params.b) 'tag' 'SmoothWindow'} ...
@@ -74,12 +86,12 @@ function params = SetFittingParameters(PossibleNs, params, AddChannelFlag)
             { 'Style', 'checkbox', 'string','Normalize microstate fit' 'tag' 'Normalize','Value',params.Normalize,'Enable',EnableFitPars } ... 
             },'title','Choose microstate fitting parameters');
     else
-        res = inputgui( 'geometry', {[1 1] 1 1 1 1 [1 1] [1 1] 1 1}, 'geomvert', [3 1 1 1 1 1 1 1 1],  'uilist', { ...
+        [res, ~, ~, structout] = inputgui( 'geometry', {[1 1] 1 1 1 1 [1 1] [1 1] 1 1}, 'geomvert', [3 1 1 1 1 1 1 1 1],  'uilist', { ...
             { 'Style', 'text', 'string', 'Number of classes', 'fontweight', 'bold'  } ...
             { 'style', 'listbox', 'string', choice, 'Value', idx}...
             { 'Style', 'text', 'string', ''} ...
-            { 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit'    ,'Value', params.PeakFit }  ...
-            { 'Style', 'checkbox', 'string' 'Remove potentially truncated microstates' 'tag' 'PeakFit'    ,'Value', params.BControl }  ...
+            { 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit'    ,'Value', params.PeakFit, 'Enable', EnableGFPPeaks }  ...
+            { 'Style', 'checkbox', 'string' 'Remove potentially truncated microstates' 'tag' 'BControl'    ,'Value', params.BControl }  ...
             { 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'fontweight', 'bold', 'HorizontalAlignment', 'center'} ...
             { 'Style', 'text', 'string', 'Label smoothing window (ms)', 'fontweight', 'bold'  } ...
             { 'Style', 'edit', 'string', num2str(params.b) 'tag' 'SmoothWindow'} ...
@@ -94,21 +106,14 @@ function params = SetFittingParameters(PossibleNs, params, AddChannelFlag)
         params = [];
         return
     else
-        if (isempty(PossibleNs))
-            params.PeakFit = res{1};
-            params.BControl = res{2};
-            params.b       = str2double(res{3});
-            params.lambda  = str2double(res{4});
-            params.Rectify = res{5};
-            params.Normalize = res{6};
-        else
+        if ~isempty(PossibleNs)
             params.nClasses = PossibleNs(res{1});
-            params.PeakFit = res{2};
-            params.BControl = res{3};
-            params.b       = str2double(res{4});
-            params.lambda  = str2double(res{5});
-            params.Rectify = res{6};
-            params.Normalize = res{7};
+            params.BControl = structout.BControl;
         end
+        params.PeakFit = structout.PeakFit;
+        params.b = structout.SmoothWindow;
+        params.lambda = structout.lambda;
+        params.Rectify = structout.Rectify;
+        params.Normalize = structout.Normalize;
     end
 end
