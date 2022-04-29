@@ -387,6 +387,11 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         plot(ClusterNumbers, metacriteria.KL, "-o");
         title("Krzanowski-Lai");
     end
+    if (structout.useG)
+        nexttile
+        plot(ClusterNumbers, metacriteria.G, "-o");
+        title("Gamma");
+    end
 
     % add histogram with votes
     edges = [(ClusterNumbers - 0.5) ClusterNumbers(end) + 0.5];
