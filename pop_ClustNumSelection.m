@@ -101,7 +101,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end         
     
     % Criterion for metacriterion (6)
-    %metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
+%     metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
     metacriteria.S = nan(nSubjects, maxClusters);            % Silhouette
     metacriteria.DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
     metacriteria.PB = nan(nSubjects, maxClusters);           % Point-Biserial
@@ -439,137 +439,6 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             title("Calinski-Harabasz");
         end
     end
-
-%     if (structout.plotMetacriterion)
-%         % array to hold all criterion values
-%         criterion = zeros(nMetacriterionGraphs, maxClusters-2);
-% 
-%         figure('Name', 'Metacriterion', 'Position', [900 200 600 500]);
-%         tiledlayout(2,1);
-%         nexttile
-%         count = 1;
-%         % Normalize all criterion values
-%         if (structout.useCV)
-%            CV = diff(diff(CV));
-%            CV = (CV - min(CV))/(max(CV) - min(CV));
-%            CV = 1 - CV;
-%            criterion(count, :) = CV;
-%            count = count + 1;
-% 
-%            plot(ClusterNumbers(2:numClustSolutions-1), CV, 'DisplayName', 'Cross-Validation');
-%            hold on
-%         end
-%         if (structout.useDB)
-%             DB = (DB - min(DB))/(max(DB) - min(DB));
-%             DB = 1 - DB;
-%             criterion(count, :) = DB(2: numClustSolutions-1);
-%             count = count + 1;
-% 
-%             plot(ClusterNumbers, DB, 'DisplayName', 'Davies-Bouldin');
-%             hold on
-%         end
-%         if (structout.useD)
-%             D = (D - min(D))/(max(D) - min(D));
-%             criterion(count, :) = D(2: numClustSolutions-1);
-%             count = count + 1;
-% 
-%             plot(ClusterNumbers, D, 'DisplayName', 'Dunn');
-%             hold on
-%         end
-%         if (structout.useFVG)
-%             FVG = abs(1 - FVG);
-%             FVG = (FVG - min(FVG))/(max(FVG) - min(FVG)); 
-%             FVG = 1 - FVG;
-%             criterion(count, :) = FVG(2: numClustSolutions-1);
-%             count = count + 1;
-% 
-%             plot(ClusterNumbers, FVG, 'DisplayName', 'Frey and Van Groenewoud');
-%             hold on
-%         end
-%         if (structout.useH)
-%             H = diff(H);
-%             H = (H - min(H))/(max(H) - min(H)); 
-%             criterion(count, :) = H(1: numClustSolutions-2);
-%             count = count + 1;
-% 
-%             plot(ClusterNumbers(2:end), H, 'DisplayName', 'Hartigan');
-%             hold on
-%         end
-%         if (structout.useKLnrm)
-%            KLnrm = (KLnrm - min(KLnrm))/(max(KLnrm) - min(KLnrm));
-%            criterion(count, :) = KLnrm;
-%            count = count + 1;
-% 
-%            plot(ClusterNumbers, KLnrm, 'DisplayName', 'Normalized Krzanowski-Lai');
-%            hold on
-%         end
-%         if (structout.useKL)
-%             KL = (KL - min(KL))/(max(KL) - min(KL));
-%             criterion(count, :) = KL(2: numClustSolutions-1);
-%             count = count + 1;
-% 
-%             plot(ClusterNumbers, KL, 'DisplayName', 'Krzanowski-Lai');
-%             hold on
-%         end
-%         if (structout.useM)
-%             M = (M - min(M))/(max(M) - min(M));
-%             criterion(count, :) = M(2: numClustSolutions-1);
-%             count = count + 1;
-% 
-%             plot(ClusterNumbers, M, 'DisplayName', 'Marriot');            
-%             hold on
-%         end
-%         if (structout.usePB)
-%             PB = (PB - min(PB))/(max(PB) - min(PB));
-%             criterion(count, :) = PB(2: numClustSolutions-1);
-%             count = count + 1;
-% 
-%             plot(ClusterNumbers, PB, 'DisplayName', 'Point-Biserial');
-%             hold on
-%         end
-%         if (structout.useTrace)
-%             TW = diff(diff(TW));
-%             TW = (TW - min(TW))/(max(TW) - min(TW));
-%             criterion(count, :) = TW;
-% 
-%             plot(ClusterNumbers(2:numClustSolutions-1), TW, 'DisplayName', 'Trace(W)');       
-%             hold on
-%         end
-%         title('Criteria');
-%         legend
-% 
-%         % calculate metacriterion
-%         % compute IQM
-%         nCriterion = size(criterion, 1);
-%         criterionIQM = sort(criterion);             % first sort the columns and make copy of array
-%         quartileSize = nCriterion/4;                % calculate quartile size
-% 
-%         % if number of criterion chosen is divisible by 4, can take IQM
-%         % without weighting partial values
-%         if (mod(nCriterion, 4) == 0)
-%             criterionIQM = criterionIQM(1+quartileSize:nCriterion-quartileSize,:);
-%             IQM = mean(criterionIQM);
-%         else
-%             removeSize = floor(quartileSize);           % number of values to remove from 1st and 4th quartiles
-%             criterionIQM = criterionIQM(1+removeSize:nCriterion-removeSize,:);
-%             nIQR = size(criterionIQM, 1);               % number of values in IQR
-%             weight = (nIQR-2*quartileSize)/2;           % weight to multiply partial values of IQR by
-%             IQM = zeros(1, maxClusters - 2);
-%             for i=1:maxClusters-2
-%                 IQM(i) = weight*(criterionIQM(1, i) + criterionIQM(end, i)) + sum(criterionIQM(2:nIQR-1, i));
-%             end
-%         end
-% 
-%         % compute IQR
-%         IQR = iqr(criterion);
-% 
-%         metacriterion = (IQM.^2)./IQR;
-% 
-%         % plot metacriterion
-%         nexttile
-%         plot(ClusterNumbers(2:numClustSolutions-1), metacriterion);
-%         title('Meta-Criterion');
-%     end
     
 end
 
