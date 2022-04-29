@@ -101,7 +101,11 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end         
     
     % Criterion for metacriterion (6)
+<<<<<<< HEAD
 %     metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
+=======
+    metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
+>>>>>>> ec35ebb6cc57d6fb142c32417eeba07de1bf22fb
     metacriteria.S = nan(nSubjects, maxClusters);            % Silhouette
     metacriteria.DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
     metacriteria.PB = nan(nSubjects, maxClusters);           % Point-Biserial
@@ -195,7 +199,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             metacriteria.D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
             
             % Point-Biserial
-            metacriteria.PB(subj, i) = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            [metacriteria.PB(subj, i), metacriteria.G(subj, i)] = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Global Explained Variance - the higher the better
             criteria.GEV(subj, i) = fit;
@@ -386,6 +390,11 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         nexttile
         plot(ClusterNumbers, metacriteria.KL, "-o");
         title("Krzanowski-Lai");
+    end
+    if (structout.useG)
+        nexttile
+        plot(ClusterNumbers, metacriteria.G, "-o");
+        title("Gamma");
     end
 
     % add histogram with votes

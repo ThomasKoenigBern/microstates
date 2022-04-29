@@ -12,15 +12,15 @@ function gamma_indices = eeg_gamma (TheEEG, IndSamples, AllClustLabels, ClusterN
         u_clustNum = ClusterNumbers(u);
         
         uMembers = (AllClustLabels{u} == u);
-        uClustMembers = IndSamples(:,uMembers);
+        uClustMembers = IndSamples(:,uMembers==1);
         uNumSamples = size(uClustMembers, 2); 
         tic
         max_dist = max_dist_within_cluster(u, uNumSamples, AllClustLabels, IndSamples);
         toc
         for v = u+1:numClusters     % for each cluster not equal to u           
             v_clustNum = ClusterNumbers(v);
-            vMembers = (AllClustLabels{v} == v);
-            vClustMembers = IndSamples(:,vMembers);
+            vMembers = (AllClustLabels{v} == v);    % not sure why this vMembers list is too long
+            vClustMembers = IndSamples(:,(vMembers == 1));  
             vNumSamples = size(vClustMembers, 2);
             
     %         dist_matrices(u,v) = zeros(IndSamples(u), IndSamples(v));
