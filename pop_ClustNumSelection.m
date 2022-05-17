@@ -101,16 +101,14 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end         
     
     % Criterion for metacriterion (6)
-<<<<<<< HEAD
-%     metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
-=======
     metacriteria.G = nan(nSubjects, maxClusters);            % Gamma
->>>>>>> ec35ebb6cc57d6fb142c32417eeba07de1bf22fb
     metacriteria.S = nan(nSubjects, maxClusters);            % Silhouette
     metacriteria.DB = nan(nSubjects, maxClusters);           % Davies-Bouldin
     metacriteria.PB = nan(nSubjects, maxClusters);           % Point-Biserial
     metacriteria.D = nan(nSubjects, maxClusters);            % Dunn
     metacriteria.KL = nan(nSubjects, maxClusters);           % Krzanowski-Lai
+
+    allMetacriteria = nan(6, maxClusters);                   % all criterion that contribute to final metacriterion
 
     % Extra criterion
     criteria.CV = nan(nSubjects, maxClusters);           % Cross-Validation (second derivative)
@@ -198,14 +196,14 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             % Dunn - the higher the better
             metacriteria.D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
             
-            % Point-Biserial
-            [metacriteria.PB(subj, i), metacriteria.G(subj, i)] = eeg_PointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            % Point-Biserial and Gamma
+            [metacriteria.PB(subj, i), metacriteria.G(subj, i)] = eeg_GammaPointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Global Explained Variance - the higher the better
             criteria.GEV(subj, i) = fit;
-
+            
             % Calinski-Harabasz - the higher the better
-            %CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
+            criteria.CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Silhouette
             distfun = @(XI,XJ)(1-abs(MyCorr(XI',XJ')));
@@ -323,20 +321,37 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     % number of extra graphs
     nExtraGraphs = sum(res(7:12) == 1);
 
-    % normalize and adjust metacriteria and compute metacriterion
+    % normalize criteria for metacriterion
     names = fieldnames(metacriteria);
-    votes = zeros(5, 1);         % change to 6 once gamma is done
+    votes = zeros(7, 1);
     for i=1:numel(names)
         % Normalize
         c = metacriteria.(names{i});
         metacriteria.(names{i}) = (c - min(c))/(max(c)-min(c));
-        if (strcmp(names{i},'DB'))     % smaller is beter for DB                                         
-            metacriteria.DB = 1 - metacriteria.DB;
-        end
         [m, ind] = max(metacriteria.(names{i}));
         votes(i) = ClusterNumbers(ind);
+
+        % Normalize
+        c = metacriteria.(names{i});
+        c = (c - min(c))/(max(c)-min(c));
+        metacriteria.(names{i}) = c;
+
+        if (strcmp(names{i}, 'DB'))
+            [m, ind] = min(metacriteria.(names{i}));
+            allMetacriteria(i, :) = 1 - c;
+        else
+            [m, ind] = max(metacriteria.(names{i}));
+            allMetacriteria(i, :) = c;
+        end
+        
+        votes(i) = ClusterNumbers(ind);
     end
-    criteria.metacriterion = median(votes);   
+
+    % Calculate metacriterion
+    medCriterion = median(allMetacriteria);
+    [m , ind] = max(medCriterion);
+    votes(end) = ClusterNumbers(ind);
+    metacriteria.MC = median(votes);
 
     % Normalize and adjust all extra criteria
     names = fieldnames(criteria);
@@ -348,9 +363,6 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             criteria.FVG = 1 - FVG;
         else
             criteria.(names{i}) = (c - min(c))/(max(c)-min(c));
-            if (strcmp(names{i}, 'CV'))
-                criteria.CV = 1 - criteria.CV
-            end
         end        
     end
     
@@ -373,7 +385,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end
     if (structout.useDB)
         nexttile
-        plot(ClusterNumbers, metacriteria.DB, "-o");
+        plot(ClusterNumbers, metacriteria.DB, "-ro");
         title("Davies-Bouldin");
     end
     if (structout.usePB)
@@ -383,7 +395,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end
     if (structout.useD)
         nexttile
-        plot(ClusterNumbers, metacriteria.D, "-o");
+        plot(ClusterNumbers, metacriteria.D, "-ro");
         title("Dunn");
     end
     if (structout.useKL)

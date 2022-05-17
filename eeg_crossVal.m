@@ -18,6 +18,6 @@ function crossVal = eeg_crossVal(eegdata, IndSamples, ClustLabels, clustNum)    
     end
     pre_sigma_sum = sum(pre_sigma(1,:));
 %     n_elec = size(eegdata,2);
-    sigma_squared = pre_sigma_sum / (size(eegdata.data,2) * (eegdata.nbchan - 1));
+    sigma_squared = pre_sigma_sum / (nTimepoints * (eegdata.nbchan - 1));
     crossVal = sigma_squared * ((eegdata.nbchan - 1)/(eegdata.nbchan - 1 - clustNum))^2;      % taken from Murray 2008 formula for Cross Validation Criterion
 end

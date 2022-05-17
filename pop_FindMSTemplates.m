@@ -147,7 +147,7 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
     % Distribute the random sampling across segments
     nSegments = TheEEG.trials;
     if ~isinf(ClustPar.MaxMaps)
-        MapsPerSegment = hist(ceil(nSegments * rand(ClustPar.MaxMaps,1)),nSegments);
+        MapsPerSegment = hist(ceil(double(nSegments) * rand(ClustPar.MaxMaps,1)),nSegments);
     else
         MapsPerSegment = inf(nSegments,1);
     end
