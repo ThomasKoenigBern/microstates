@@ -1,6 +1,8 @@
 % Load dataset
 [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
-EEG = pop_loadset('filename', '1.set', 'filepath','C:\\Program Files\\MATLAB\\R2021b\\eeglab2021.1\\sample_data\\eyes_closed\\');
+% EEG = pop_loadset('filename', '1.set', 'filepath','C:\\Program Files\\MATLAB\\R2021b\\eeglab2021.1\\sample_data\\eyes_closed\\');
+EEG = pop_loadset('filename', '02_S020_02mo_20161222_025626_copy_AO_markers_completed_fil_seg_bcr_ref_rej.set', 'filepath','C:\\Program Files\\MATLAB\\R2021b\\eeglab2021.1\\sample_data\\clean_data_good\\');
+
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 0,'study',0); 
 
 % Clustering
@@ -8,11 +10,11 @@ EEG = pop_loadset('filename', '1.set', 'filepath','C:\\Program Files\\MATLAB\\R2
 [EEG,com] = pop_FindMSTemplates(EEG, struct('MinClasses', 4, 'MaxClasses', 10, 'GFPPeaks', 1, 'IgnorePolarity', 1, 'MaxMaps', 1000, 'Restarts', 5, 'UseAAHC', 0, 'Normalize', 1), 0, 0);
 [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
-nRuns = 1000;
+nRuns = 10;
 idx = find(EEG.setname == '/') + 1;
 setname = EEG.setname(idx:length(EEG.setname)-4);
 
-sampleSizes = [1000 2000 4000 16000 inf];
+sampleSizes = [10 20 40 160 100];
 
 % metacriteria
 G = zeros(nRuns*length(sampleSizes), 7);

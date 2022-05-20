@@ -463,8 +463,8 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
     end
 %     function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
 %     com = sprintf('[%s,com] = pop_FindMSTemplates(%s, %s, %i, %i);', inputname(1),inputname(1),structInfo,ShowMaps,ShowDyn);
-% 
-%    com = sprintf('[%s, %s, com] = pop_ClustNumSelection(%s, %s, %s, %s, %i, %i);', inputname(1), inputname(1), inputname(1), inputname(1), inputname(1), UseMean,FitPar,MeanSet);
+
+   com = sprintf('[%s, %s, com] = pop_ClustNumSelection(AllEEG, %s, %s, %s, %i, %i);', inputname(1), inputname(1), inputname(1), CurrentSet, UseMean,FitPar,MeanSet);
 %     com = sprintf('[AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,UseMean,FitPar,MeanSet)
 
 end
