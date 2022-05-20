@@ -1,4 +1,4 @@
-parfor(dataset = 1:22)
+parfor(dataset = 1:23)
     % Load dataset
     [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
     EEG = pop_loadset('filename', strcat(dataset,'.set'), 'filepath','C:\\Program Files\\MATLAB\\R2021b\\eeglab2021.1\\sample_data\\eyes_closed\\');
