@@ -5,10 +5,15 @@ parfor(dataset = 1:23)
     [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 0,'study',0); 
 
     % Clustering
+    disp("Beginning clustering");
+    tic
     [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 24,'retrieve',1,'study',0); 
     [EEG,com] = pop_FindMSTemplates(EEG, struct('MinClasses', 4, 'MaxClasses', 10, 'GFPPeaks', 1, 'IgnorePolarity', 1, 'MaxMaps', 1000, 'Restarts', 5, 'UseAAHC', 0, 'Normalize', 1), 0, 0);
     [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
-
+    disp("Finished clustering");
+    toc
+    disp("Initializing metacriteria and votes arrays");
+    tic
     nRuns = 1000;
     idx = find(EEG.setname == '/') + 1;
     setname = EEG.setname(idx:length(EEG.setname)-4);
@@ -53,28 +58,66 @@ parfor(dataset = 1:23)
     TWvotes = zeros(nRuns*length(sampleSizes), 1);
     CHvotes = zeros(nRuns*length(sampleSizes), 1);
     MC2votes = zeros(nRuns*length(sampleSizes), 1);
+    disp("Done initializing metacriteria arrays");
+    toc
 
-
+    disp("Beginning calculating metacriteria for %d samples", sampleSizes);
+    tic
     for s = 1:length(sampleSizes)
         for i = 1:nRuns
             [metacriteria, criteria, GEVs, mcVotes, ~] = clustNumSelection(ALLEEG, EEG, CURRENTSET, sampleSizes(s));
         
             % metacriteria
+            disp("Gamma");
+            tic
             G((s-1)*nRuns+i, :) = metacriteria.G;
-            S((s-1)*nRuns+i , :) = metacriteria.S;
-            DB((s-1)*nRuns+i, :) = metacriteria.DB;
-            PB((s-1)*nRuns+i, :) = metacriteria.PB;
-            D((s-1)*nRuns+i , :) = metacriteria.D;
-            KL((s-1)*nRuns+i, :) = metacriteria.KL;
-            MC1((s-1)*nRuns+i, :) = metacriteria.MC1;        
-            
-            % extra criteria
-            CV ((s-1)*nRuns+i, :) = criteria.CV;
-            FVG((s-1)*nRuns+i, :) = criteria.FVG;
-            H((s-1)*nRuns+i  , :) = criteria.H;
-            TW ((s-1)*nRuns+i, :) = criteria.TW;
-            CH ((s-1)*nRuns+i, :) = criteria.CH;
+            toc
 
+            disp("Silhouette");
+            tic
+            S((s-1)*nRuns+i , :) = metacriteria.S;
+            toc
+            disp("Davies-Bouldin");
+            tic
+            DB((s-1)*nRuns+i, :) = metacriteria.DB;
+            toc
+            disp("Point-Biserial");
+            tic
+            PB((s-1)*nRuns+i, :) = metacriteria.PB;
+            toc
+            disp("Dunn");
+            tic
+            D((s-1)*nRuns+i , :) = metacriteria.D;
+            toc
+            disp("Krzanowski-Lai");
+            tic
+            KL((s-1)*nRuns+i, :) = metacriteria.KL;
+            toc
+            disp("Metacriteria 1");
+            tic
+            MC1((s-1)*nRuns+i, :) = metacriteria.MC1;        
+            toc
+            % extra criteria
+            disp("Cross validation");
+            tic
+            CV ((s-1)*nRuns+i, :) = criteria.CV;
+            toc
+            disp("Frey Van Groenwood");
+            tic
+            FVG((s-1)*nRuns+i, :) = criteria.FVG;
+            toc
+            disp("Hartigan");
+            tic
+            H((s-1)*nRuns+i  , :) = criteria.H;
+            toc
+            disp("Trace(dispersion)");
+            tic
+            TW ((s-1)*nRuns+i, :) = criteria.TW;
+            toc
+            disp("Calinski-Harabasz");
+            tic
+            CH ((s-1)*nRuns+i, :) = criteria.CH;
+            toc
             % GEVs
             GEV4((s-1)*nRuns+i, :) =  GEVs{1};
             GEV5 ((s-1)*nRuns+i, :) = GEVs{2};
@@ -102,7 +145,8 @@ parfor(dataset = 1:23)
             disp(display)
         end
     end
-
+    disp("Done calculating metacriteria for all %d samples", sampleSizes);
+    toc
     % write csvs with raw normalized criterion values, one for each cluster
     % solution
     mcNames = fieldnames(metacriteria);
