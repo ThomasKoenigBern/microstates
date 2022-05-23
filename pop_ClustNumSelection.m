@@ -206,8 +206,8 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             criteria.CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Silhouette
-%             distfun = @(XI,XJ)(1-abs(MyCorr(XI',XJ')));
-%             metacriteria.S(subj, i) = sum(silhouette(IndSamples', ClustLabels, distfun))/nsamples(i);
+            % distfun = @(XI,XJ)(1-abs(MyCorr(XI',XJ')));
+            % metacriteria.S(subj, i) = sum(silhouette(IndSamples', ClustLabels, distfun))/nsamples(i);
         end
 
         % Find MS maps for one greater than largest cluster solution
