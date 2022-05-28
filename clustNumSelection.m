@@ -184,7 +184,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG
 
     % Find MS maps for one less than smallest cluster solution
     % used for KL index
-    disp("Identifying MS maps for one less than smallest cluter solution (for KL)");
+    disp("Identifying MS maps for one less than smallest cluster solution (for KL)");
     tic
     minClustNumber = ClusterNumbers(1);
     [IndSamples, ClustLabels] = FindMSMaps(TheEEG, minClustNumber-1, FitPar, ClustPar, MaxSamples);
