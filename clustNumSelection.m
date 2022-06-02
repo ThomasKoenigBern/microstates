@@ -16,7 +16,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG
 
     % Criterion for metacriterion (6)
     metacriteria.G = nan(1, maxClusters);             % Gamma
-    metacriteria.S = nan( 1, maxClusters);            % Silhouette
+%     metacriteria.S = nan( 1, maxClusters);            % Silhouette
     metacriteria.DB = nan( 1, maxClusters);           % Davies-Bouldin
     metacriteria.PB = nan( 1, maxClusters);           % Point-Biserial
     metacriteria.D = nan( 1, maxClusters);            % Dunn
@@ -240,7 +240,12 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG
     disp("Normalize criteria for metacriterion");
     tic
     names = fieldnames(metacriteria);
-    votes = zeros(7, 1);
+    nCriterion = length(names);
+    if (mod(nCriterion, 2) == 0)
+        votes = zeros(nCriterion+1, 1);
+    else
+        votes = zeros(nCriterion, 1);
+    end
     for i=1:numel(names)
         % Normalize
         c = metacriteria.(names{i});
@@ -310,10 +315,11 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG
 
     metacriteria.MC1 = metacriterion;
     toc
-%     votes = zeros(1, nCriterion+1);
-    medCriterion = median(allMetacriteria);
-    [m , ind] = max(medCriterion);
-    votes(end) = ClusterNumbers(ind);
+    if (mod(nCriterion, 2) == 0)
+        medCriterion = median(allMetacriteria);
+        [m , ind] = max(medCriterion);
+        votes(end) = ClusterNumbers(ind);
+    end
     mcVotes.MC2 = median(votes);
 
 %     % calculate metacriterion (median of all votes)

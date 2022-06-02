@@ -12,12 +12,13 @@
     
     %EEG = pop_loadset('filename', strcat(d,'.set'), 'filepath','/project/sn_429_814/eeglab2022.0/Metacriterion_Testing_Data/');
     EEG = pop_loadset('filename', strcat(d,'.set'), 'filepath','C:\\Program Files\\MATLAB\\R2021b\\eeglab2021.1\\sample_data\\eyes_closed\\');
-    [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 0,'study',0); 
+    %[ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 0,'study',0); 
 
     % Clustering
     disp("Beginning clustering");
     tic
-    [EEG,com] = pop_FindMSTemplates(EEG, struct('MinClasses', 4, 'MaxClasses', 10, 'GFPPeaks', 1, 'IgnorePolarity', 1, 'MaxMaps', inf, 'Restarts', 15, 'UseAAHC', 0, 'Normalize', 1), 0, 0);
+    [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
+    [EEG,com] = pop_FindMSTemplates(EEG, struct('MinClasses', 4, 'MaxClasses', 10, 'GFPPeaks', 1, 'IgnorePolarity', 1, 'MaxMaps', inf, 'Restarts', 25, 'UseAAHC', 0, 'Normalize', 1), 0, 0);
     [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
     disp("Finished clustering");
     toc
@@ -84,7 +85,7 @@
 
         % metacriteria
         G(i, :) = gamma;
-        S(i, :) = metacriteria.S;
+%         S(i, :) = metacriteria.S;
         DB(i, :) = metacriteria.DB;
         PB(i, :) = metacriteria.PB;
         D(i , :) = metacriteria.D;
