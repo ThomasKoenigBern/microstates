@@ -10,8 +10,8 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
 
     ClustPar = TheEEG.msinfo.ClustPar;    
 
-    %% Compute criterion for each clustering solutiont
-    ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses;
+    %% Compute criterion for each clustering solution
+    ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses+1:TheEEG.msinfo.ClustPar.MaxClasses-1;
     maxClusters = size(ClusterNumbers, 2);                  
 
     % Criterion for metacriterion (6)
@@ -48,24 +48,24 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
     % cluster solution - used as input for Hartigan index function
     nsamples = zeros(1, maxClusters+1);
 
-    disp("About to loop through clusters");
+    %disp("About to loop through clusters");
     for i=1:maxClusters
-        fprintf("Calculating some criteria on cluster %d\n", i);
         warning('off', 'stats:pdist2:DataConversion');
         nc = ClusterNumbers(i);         % number of clusters
-        
+        %fprintf("Calculating criteria for %d cluster solution %d\n", nc);
+
         % Assign microstate labels
-        fprintf("Assigning microstate labels\n");
-        tic
+        %fprintf("Assigning microstate labels\n");
+%         tic
         Maps = TheEEG.msinfo.MSMaps(nc).Maps;            
         [ClustLabels, ~, ~, GEV_classes] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
         GEVs{i} = GEV_classes';
         IndSamples = TheEEG.data;
-        toc
+%         toc
 
         % Distribute random sampling across segments
-        fprintf("Distributing random sampling across segments\n");
-        tic
+        %fprintf("Distributing random sampling across segments\n");
+%         tic
         nSegments = TheEEG.trials;
         nSamples = size(TheEEG.data, 2)*size(TheEEG.data, 3);
         if (MaxSamples < nSamples)
@@ -73,7 +73,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
         else 
             SamplesPerSegment = inf(nSegments,1);
         end
-        toc
+%         toc
 
         SamplesToUse = [];
         ClustLabelsToUse = [];
@@ -106,43 +106,43 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
         % CRITERION CALCULATIONS %
 
         % Cross Validation
-        disp("Cross Validation");
-        tic
+%         disp("Cross Validation");
+%         tic
         criteria.CV( i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
-        toc
+%         toc
 
         % Trace(W)
-        disp("Trace(dispersion");
-        tic
+%         disp("Trace(dispersion");
+%         tic
         criteria.TW( i) = eeg_TW(IndSamples,ClustLabels);
-        toc
+%         toc
 
         % Davies-Bouldin - the lower the better
-        disp("Davies-Bouldin");
-        tic
+%         disp("Davies-Bouldin");
+%         tic
         metacriteria.DB( i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
-        toc
+%         toc
 
         % Dunn - the higher the better
-        disp("Dunn");
-        tic
+%         disp("Dunn");
+%         tic
         metacriteria.D( i) = eeg_Dunn(IndSamples', ClustLabels);
-        toc
+%         toc
 
         % Point-Biserial and Gamma
-        disp("Point-Biserial and Gamma");
-        tic
+%         disp("Point-Biserial and Gamma");
+%         tic
         [metacriteria.PB(i), metacriteria.G(i)] = eeg_GammaPointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
-        toc
+%         toc
 
         % Global Explained Variance - the higher the better
 %         criteria.GEV( i) = fit;
 
         % Calinski-Harabasz - the higher the better
-        disp("Calinski-Harabasz");
-        tic
+%         disp("Calinski-Harabasz");
+%         tic
         criteria.CH(i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
-        toc
+%         toc
 
         % Silhouette
         % disp("Silhouette");
@@ -154,93 +154,93 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
 
     % Find MS maps for one greater than largest cluster solution
     % used for Hartigan, KL, and Frey index
-    disp("Identifying MS maps (for Hartigan, KL, Frey)");
-    tic
+%     disp("Identifying MS maps for one greater than largest solution (H, KL, FVG)");
+%     tic
     maxClustNumber = ClusterNumbers(end);
     [IndSamples, ClustLabels] = FindMSMaps(TheEEG, maxClustNumber+1, FitPar, ClustPar, MaxSamples);
-    toc
+%     toc
 
     % Find Cross-Validation for one greater than largest cluster
     % solution
-    disp("Cross validation for one greater than largest cluster");
-    tic
-    CVmax = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
-    toc
+%     disp("Cross validation for one greater than largest cluster");
+%     tic
+    CVmax = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(end)+1);
+%     toc
 
     % compute Trace(W) of one greater than max cluster solution
-    disp("Trace(w) for one greater than largest cluster");
-    tic
+%     disp("Trace(w) for one greater than largest cluster");
+%     tic
     TWmax = eeg_TW(IndSamples, ClustLabels);
     TWsubj = criteria.TW(:);
-    toc
+%     toc
 
     AllIndSamples{end} = IndSamples;
     AllClustLabels{end} = ClustLabels;
 
     % Frey and Van Groenewoud - closer to 1 is better
-    disp("Frey Van Groenewoud");
-    tic
+%     disp("Frey Van Groenewoud");
+%     tic
     criteria.FVG(:) = eeg_FreyVanGroenewoud(AllIndSamples(2:end), AllClustLabels(2:end), ClusterNumbers);
-    toc
+%     toc
 
     % Find MS maps for one less than smallest cluster solution
-    % used for KL index
-    disp("Identifying MS maps for one less than smallest cluster solution (for KL)");
-    tic
+    % used for KL and CV index
+%     disp("Identifying MS maps for one less than smallest cluster solution (for KL)");
+%     tic
     minClustNumber = ClusterNumbers(1);
     [IndSamples, ClustLabels] = FindMSMaps(TheEEG, minClustNumber-1, FitPar, ClustPar, MaxSamples);
     nsamples(1) = size(IndSamples, 2);
-    toc
+%     toc
 
     % Find Cross-Validation for one less than smallest cluster solution
-    disp("Cross validation for one less than smallest cluster");
-    tic
-    CVmin = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
-    toc
+%     disp("Cross validation for one less than smallest cluster");
+%     tic
+    CVmin = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(1)-1);
+%     toc
 
     % Find Trace(W) for one less than smallest cluster solution
-    disp("Trace(w) for one less than smallest cluster");
-    tic
+%     disp("Trace(w) for one less than smallest cluster");
+%     tic
     TWmin = eeg_TW(IndSamples, ClustLabels);
-    toc
+%     toc
 
     % Take second difference of Cross-Validation values
-    disp("Second difference of Cross validation");
-    tic
+%     disp("Second difference of Cross validation");
+%     tic
     criteria.CV(:) = diff(diff([CVmin; criteria.CV(:); CVmax]));
-    toc
+%     toc
 
     % Take second difference of Trace(W) values
-    disp("Second difference of Trace(W)");
-    tic
+%     disp("Second difference of Trace(W)");
+%     tic
     criteria.TW(:) = diff(diff([TWmin; criteria.TW(:); TWmax]));
-    toc
+%     toc
 
     % Hartigan - higher is better
-    disp("Hartigan");
-    tic
+%     disp("Hartigan");
+%     tic
     H = eeg_Hartigan([TWmin; TWsubj; TWmax], [(ClusterNumbers(1) - 1) ClusterNumbers], nsamples);
-    toc
+%     toc
 
     % Take first difference of Hartigan values
-    disp("First difference of Hartigan");
-    tic
+%     disp("First difference of Hartigan");
+%     tic
     criteria.H(:) = diff(H);
-    toc
+%     toc
 
     AllIndSamples{1} = IndSamples;
     AllClustLabels{1} = ClustLabels;
     
     % Krzanowski-Lai - higher is better
-    disp("Krzanowski-Lai");
-    tic
+%     disp("Krzanowski-Lai");
+%     tic
     metacriteria.KL(:) = eeg_krzanowskiLai(AllIndSamples, AllClustLabels, ClusterNumbers, TheEEG.msinfo.ClustPar.IgnorePolarity);
-    toc
+%     toc
     
 
     % normalize criteria for metacriterion
-    disp("Normalize criteria for metacriterion");
-    tic
+%     disp("Normalize criteria for metacriterion");
+%     tic
     names = fieldnames(metacriteria);
     nCriterion = length(names);
     if (mod(nCriterion, 2) == 0)
@@ -265,11 +265,11 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
         votes(i) = ClusterNumbers(ind);
         mcVotes.(names{i}) = ClusterNumbers(ind);
     end
-    toc
+%     toc
 
     % Normalize and adjust all extra criteria
-    disp("Normalize and adjust all extra criteria");
-    tic
+%     disp("Normalize and adjust all extra criteria");
+%     tic
     names = fieldnames(criteria);
     for i=1:numel(names)
         c = criteria.(names{i});
@@ -284,11 +284,11 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
         [m, ind] = max(criteria.(names{i}));
         mcVotes.(names{i}) = ClusterNumbers(ind);
     end
-    toc
+%     toc
 
     % calculate metacriterion
-    disp("Calculate metacriterion");
-    tic
+%     disp("Calculate metacriterion");
+%     tic
     % compute IQM
     nCriterion = size(allMetacriteria, 1);
     criterionIQM = sort(allMetacriteria);             % first sort the columns and make copy of array
@@ -343,56 +343,72 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
 end
 
 function [IndSamples, ClustLabels] = FindMSMaps(TheEEG, numClusts, FitPar, ClustPar, MaxSamples)
-    % Distribute the random sampling across segments
-    nSegments = TheEEG.trials;
-    if ~isinf(ClustPar.MaxMaps)
-        MapsPerSegment = hist(ceil(double(nSegments) * rand(ClustPar.MaxMaps,1)),nSegments);
+    % Only do clustering if the maps do not already exist
+    doClustering = 0;
+
+    if (numClusts > length(TheEEG.msinfo.MSMaps))
+        doClustering = 1;
     else
-        MapsPerSegment = inf(nSegments,1);
-    end
-    
-    MapsToUse = [];
-    for s = 1:nSegments
-        if ClustPar.GFPPeaks == 1
-            gfp = std(TheEEG.data(:,:,s),1,1);
-            IsGFPPeak = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
-            if numel(IsGFPPeak) > MapsPerSegment(s) && MapsPerSegment(s) > 0
-                idx = randperm(numel(IsGFPPeak));
-                IsGFPPeak = IsGFPPeak(idx(1:MapsPerSegment(s)));
-            end
-            MapsToUse = [MapsToUse TheEEG.data(:,IsGFPPeak,s)];
-        else
-            if (size(TheEEG.data,2) > ClustPar.MaxMaps) && MapsPerSegment(s) > 0
-                idx = randperm(size(TheEEG.data,2));
-                MapsToUse = [MapsToUse TheEEG.data(:,idx(1:MapsPerSegment(s)),s)];
-            else
-                MapsToUse = [MapsToUse TheEEG.data(:,:,s)];
-            end
+        if (isempty(TheEEG.msinfo.MSMaps(numClusts).Maps))
+            doClustering = 1;
         end
     end
+
+    if doClustering
     
-    flags = '';
-    if ClustPar.IgnorePolarity == false
-        flags = [flags 'p'];
-    end
-    if ClustPar.Normalize == true
-        flags = [flags 'n'];
-    end
-    
-    if ClustPar.UseEMD == true
-        flags = [flags 'e'];
-    end
-    
-    if ClustPar.UseAAHC == false
-        [b_model,~,~,~] = eeg_kMeans(MapsToUse', numClusts ,ClustPar.Restarts,[],flags,TheEEG.chanlocs);
-        Maps = b_model;
+        % Distribute the random sampling across segments
+        nSegments = TheEEG.trials;
+        if ~isinf(ClustPar.MaxMaps)
+            MapsPerSegment = hist(ceil(double(nSegments) * rand(ClustPar.MaxMaps,1)),nSegments);
+        else
+            MapsPerSegment = inf(nSegments,1);
+        end
+        
+        MapsToUse = [];
+        for s = 1:nSegments
+            if ClustPar.GFPPeaks == 1
+                gfp = std(TheEEG.data(:,:,s),1,1);
+                IsGFPPeak = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
+                if numel(IsGFPPeak) > MapsPerSegment(s) && MapsPerSegment(s) > 0
+                    idx = randperm(numel(IsGFPPeak));
+                    IsGFPPeak = IsGFPPeak(idx(1:MapsPerSegment(s)));
+                end
+                MapsToUse = [MapsToUse TheEEG.data(:,IsGFPPeak,s)];
+            else
+                if (size(TheEEG.data,2) > ClustPar.MaxMaps) && MapsPerSegment(s) > 0
+                    idx = randperm(size(TheEEG.data,2));
+                    MapsToUse = [MapsToUse TheEEG.data(:,idx(1:MapsPerSegment(s)),s)];
+                else
+                    MapsToUse = [MapsToUse TheEEG.data(:,:,s)];
+                end
+            end
+        end
+        
+        flags = '';
+        if ClustPar.IgnorePolarity == false
+            flags = [flags 'p'];
+        end
+        if ClustPar.Normalize == true
+            flags = [flags 'n'];
+        end
+        
+        if ClustPar.UseEMD == true
+            flags = [flags 'e'];
+        end
+        
+        if ClustPar.UseAAHC == false
+            [b_model,~,~,~] = eeg_kMeans(MapsToUse', numClusts ,ClustPar.Restarts,[],flags,TheEEG.chanlocs);
+            Maps = b_model;
+        else
+            [b_model,~] = eeg_computeAAHC(double(MapsToUse'), numClusts, false, ClustPar.IgnorePolarity,ClustPar.Normalize);
+            Maps = b_model{1};
+        end
+        TheEEG.msinfo.MSMaps(numClusts).Maps = Maps;
     else
-        [b_model,~] = eeg_computeAAHC(double(MapsToUse'), numClusts, false, ClustPar.IgnorePolarity,ClustPar.Normalize);
-        Maps = b_model{1};
+        Maps = TheEEG.msinfo.MSMaps(numClusts).Maps;
     end
     
-    % Assign microstate labels for one greater than max cluster
-    % solution, add time samples and labels to cell arrays
+    % Assign microstate labels
     [ClustLabels, ~, ~] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
     
     IndSamples = TheEEG.data;
