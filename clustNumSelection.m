@@ -1,4 +1,4 @@
-function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG,TheEEG,CurrentSet,MaxSamples)
+function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG, MaxSamples)
     com = '';
     
     % Select fitting parameters
@@ -46,7 +46,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG
 
     % number of samples with valid microstate assignments for each
     % cluster solution - used as input for Hartigan index function
-    nsamples = zeros(maxClusters);
+    nsamples = zeros(1, maxClusters+1);
 
     disp("About to loop through clusters");
     for i=1:maxClusters
@@ -67,7 +67,8 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG
         fprintf("Distributing random sampling across segments\n");
         tic
         nSegments = TheEEG.trials;
-        if ~isinf(MaxSamples)
+        nSamples = size(TheEEG.data, 2)*size(TheEEG.data, 3);
+        if (MaxSamples < nSamples)
             SamplesPerSegment = hist(ceil(double(nSegments) * rand(MaxSamples,1)), nSegments);
         else 
             SamplesPerSegment = inf(nSegments,1);
@@ -188,6 +189,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(AllEEG
     tic
     minClustNumber = ClusterNumbers(1);
     [IndSamples, ClustLabels] = FindMSMaps(TheEEG, minClustNumber-1, FitPar, ClustPar, MaxSamples);
+    nsamples(1) = size(IndSamples, 2);
     toc
 
     % Find Cross-Validation for one less than smallest cluster solution
