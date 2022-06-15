@@ -135,7 +135,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
         % number of samples with valid microstate assignments for each
         % cluster solution - used as input for Hartigan index function
-        nsamples = zeros(maxClusters);
+        nsamples = zeros(1, maxClusters+1);
 
         for i=1:maxClusters
             warning('off', 'stats:pdist2:DataConversion');
@@ -177,7 +177,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
                 % remove clust labels of zero
                 ClustLabels(zeroIndices') = [];
             end
-            nsamples(i) = size(IndSamples, 2);
+            nsamples(i+1) = size(IndSamples, 2);
 
             AllIndSamples{i+1} = IndSamples;
             AllClustLabels{i+1} = ClustLabels;
@@ -216,7 +216,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
 
         % Find Cross-Validation for one greater than largest cluster
         % solution
-        CVmax = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+        CVmax = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(end)+1);
 
         % compute Trace(W) of one greater than max cluster solution
         TWmax = eeg_TW(IndSamples, ClustLabels);
@@ -229,12 +229,13 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         criteria.FVG(subj, :) = eeg_FreyVanGroenewoud(AllIndSamples(2:end), AllClustLabels(2:end), ClusterNumbers);
 
         % Find MS maps for one less than smallest cluster solution
-        % used for KL index
+        % used for KL and CV index
         minClustNumber = ClusterNumbers(1);
         [IndSamples, ClustLabels] = FindMSMaps(TheEEG, minClustNumber-1, FitPar, ClustPar, MaxSamples);
+        nsamples(1) = size(IndSamples, 2);
 
         % Find Cross-Validation for one less than smallest cluster solution
-        CVmin = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+        CVmin = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(1)-1);
 
         % Find Trace(W) for one less than smallest cluster solution
         TWmin = eeg_TW(IndSamples, ClustLabels);
