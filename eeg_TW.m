@@ -18,7 +18,7 @@ function TW = eeg_TW(IndSamples, ClustLabels)
       if any(members)
           clustMembers = IndSamples(:, members);
           centroid = mean(clustMembers, 2);
-          numSamples = size(clustMembers, 2);
+          numSamples = sum(members);
           for j = 1:numSamples
               W = W + (clustMembers(:, j) - centroid)*(clustMembers(:, j) - centroid)';
           end

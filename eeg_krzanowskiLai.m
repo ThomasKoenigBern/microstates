@@ -36,7 +36,8 @@ function KL = eeg_krzanowskiLai(AllIndSamples, AllClustLabels, ClusterNumbers, I
             members = (ClustLabels == clusters(j));
             clustMembers = IndSamples(:, members);
             nk = size(clustMembers, 2);
-            D = sum(sum(pairCorrDist(clustMembers)));
+            pairCorrs = pairCorrDist(clustMembers);
+            D = sum(sum(triu(pairCorrs, 1)));
             W(i) = W(i) + D/(2*nk);
         end    
 

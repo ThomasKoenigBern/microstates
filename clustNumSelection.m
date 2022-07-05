@@ -108,7 +108,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
         % Cross Validation
 %         disp("Cross Validation");
 %         tic
-        criteria.CV( i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+        criteria.CV( i) = eeg_crossVal(Maps, IndSamples', ClustLabels, ClusterNumbers(i));
 %         toc
 
         % Trace(W)
@@ -126,7 +126,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
         % Dunn - the higher the better
 %         disp("Dunn");
 %         tic
-        metacriteria.D( i) = eeg_Dunn(IndSamples', ClustLabels);
+        metacriteria.D( i) = eeg_Dunn(IndSamples, ClustLabels,TheEEG.msinfo.ClustPar.IgnorePolarity);
 %         toc
 
         % Point-Biserial and Gamma
@@ -164,7 +164,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
     % solution
 %     disp("Cross validation for one greater than largest cluster");
 %     tic
-    CVmax = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(end)+1);
+    CVmax = eeg_crossVal(Maps, IndSamples', ClustLabels, ClusterNumbers(end)+1);
 %     toc
 
     % compute Trace(W) of one greater than max cluster solution
@@ -195,7 +195,7 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
     % Find Cross-Validation for one less than smallest cluster solution
 %     disp("Cross validation for one less than smallest cluster");
 %     tic
-    CVmin = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(1)-1);
+    CVmin = eeg_crossVal(Maps, IndSamples', ClustLabels, ClusterNumbers(1)-1);
 %     toc
 
     % Find Trace(W) for one less than smallest cluster solution
@@ -291,8 +291,8 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
 %     tic
     % compute IQM
     nCriterion = size(allMetacriteria, 1);
-    criterionIQM = sort(allMetacriteria);             % first sort the columns and make copy of array
-    quartileSize = nCriterion/4;                % calculate quartile size
+    criterionIQM = sort(allMetacriteria);           % first sort the columns and make copy of array
+    quartileSize = nCriterion/4;                    % calculate quartile size
 
     % if number of criterion chosen is divisible by 4, can take IQM
     % without weighting partial values
@@ -322,7 +322,10 @@ function [metacriteria, criteria, GEVs, mcVotes, com] = clustNumSelection(TheEEG
         [m , ind] = max(medCriterion);
         votes(end) = ClusterNumbers(ind);
     end
+    [M I] = max(metacriterion);
+    mcVotes.MC1 = ClusterNumbers(I);
     mcVotes.MC2 = median(votes);
+    mcVotes.MC3 = mode(votes);
 
 %     % calculate metacriterion (median of all votes)
 %     names = fieldnames(metacriteria);

@@ -185,7 +185,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             % CRITERION CALCULATIONS %
 
             % Cross Validation
-            criteria.CV(subj, i) = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(i));
+            criteria.CV(subj, i) = eeg_crossVal(Maps, IndSamples', ClustLabels, ClusterNumbers(i));
 
             % Trace(W)
             criteria.TW(subj, i) = eeg_TW(IndSamples,ClustLabels);
@@ -194,7 +194,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             metacriteria.DB(subj, i) = eeg_DaviesBouldin(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Dunn - the higher the better
-            metacriteria.D(subj, i) = eeg_Dunn(IndSamples', ClustLabels);
+            metacriteria.D(subj, i) = eeg_Dunn(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
             
             % Point-Biserial and Gamma
             [metacriteria.PB(subj, i), metacriteria.G(subj, i)] = eeg_GammaPointBiserial(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
@@ -206,8 +206,8 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
             criteria.CH(subj, i) = eeg_CalinskiHarabasz(IndSamples, ClustLabels, TheEEG.msinfo.ClustPar.IgnorePolarity);
 
             % Silhouette
-            % distfun = @(XI,XJ)(1-abs(MyCorr(XI',XJ')));
-            % metacriteria.S(subj, i) = sum(silhouette(IndSamples', ClustLabels, distfun))/nsamples(i);
+            distfun = @(XI,XJ)(1-abs(MyCorr(XI',XJ')));
+            metacriteria.S(subj, i) = sum(silhouette(IndSamples', ClustLabels, distfun))/nsamples(i);
         end
 
         % Find MS maps for one greater than largest cluster solution

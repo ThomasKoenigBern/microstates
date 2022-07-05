@@ -9,7 +9,7 @@ function CH = eeg_CalinskiHarabasz(IndSamples, ClustLabels, IgnorePolarity)
     CH = getCH(IndSamples,centroids, Ni, SUMD, numClusts,IgnorePolarity);
 end 
 
-% Performs element-wise computation of 1 - abs(spatial correlation) or 
+    % Performs element-wise computation of 1 - abs(spatial correlation) or 
     % 1 - (spatial correlation) between matrices A and B
     function corrDist = elementCorrDist(A,B,IgnorePolarity)
         % average reference
