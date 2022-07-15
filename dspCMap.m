@@ -36,9 +36,9 @@ function [c,imap,xm,ym,chandle] = dspCMap(map,ChanPos,varargin)
 map = double(map);
 if isstruct(ChanPos)
     if isfield(ChanPos,'urchan')
-        y = cell2mat({ChanPos.X});
-        x = cell2mat({ChanPos.Y});
-        z = cell2mat({ChanPos.Z});
+        y =  cell2mat({ChanPos.X});
+        x = -cell2mat({ChanPos.Y});
+        z =  cell2mat({ChanPos.Z});
     else
         [x,y,z] = VAsph2cart(ChanPos);
     end

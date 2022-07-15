@@ -12,7 +12,6 @@ end
 function [xyz,nelec] = ChanPos2XYZ(chanlocs)
 
     nelec = numel(chanlocs);
-
     [x{1:nelec}] = deal(chanlocs.X);
     [y{1:nelec}] = deal(chanlocs.Y);
     [z{1:nelec}] = deal(chanlocs.Z);

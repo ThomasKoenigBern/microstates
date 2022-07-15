@@ -14,16 +14,19 @@ function [Result,Assignment, Polarity] = SwapMaps(MapsToSwap,MeanMap,RespectPola
         PermutedMaps(p,:,:) = MapsToSwap(1,permutations(p,:),:);
     end
     [PermFit,sgn] = GetMapSeriesOverallFit(PermutedMaps,MeanMap,RespectPolarity,chanloc);
+
     if isempty(chanloc)
         [~,idx] = max(PermFit);
     else
         [~,idx] = min(PermFit);
     end
+    Polarity = sgn(idx,:);
+    Polarity(Polarity == 0) = 1;
+    
     if idx == 1
         Result = [];
     else
-        Result = squeeze(PermutedMaps(idx,:,:)) .* repmat(sgn(idx,:)',1,nChannels);
+        Result = squeeze(PermutedMaps(idx,:,:)) .* repmat(Polarity',1,nChannels);
     end
     Assignment = permutations(idx,:);
-    Polarity = sgn(idx,:);
  end

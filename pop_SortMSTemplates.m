@@ -153,6 +153,9 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
     
     MinClasses     = ChosenTemplate.msinfo.ClustPar.MinClasses;
     MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+   
+    IsSingularSet = MinClasses == MaxClasses;
+   
     
     for index = 1:length(SelectedSet)
         sIndex = SelectedSet(index);
@@ -161,38 +164,35 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
             return;
         end
         
-% TK 3.12.2018
-        MinClasses = max(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
-        MaxClasses = min(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
-
-%         if  MinClasses     < AllEEG(sIndex).msinfo.ClustPar.MinClasses || ...
-%             MaxClasses     > AllEEG(sIndex).msinfo.ClustPar.MaxClasses
-%                 errordlg2('Microstate parameters differ between datasets','Sort microstate classes');
-%                 return;
-%         end
-    end
-
-    for n = MinClasses:MaxClasses
-        MapsToSort = nan(numel(SelectedSet),n,numel(ChosenTemplate.chanlocs));
-        % Here we go to the common set of channels
-        for index = 1:length(SelectedSet)
-            sIndex = SelectedSet(index);
-            LocalToGlobal = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
-           MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+        if ~IsSingularSet && (AllEEG(sIndex).msinfo.ClustPar.MinClasses ~= MinClasses || AllEEG(sIndex).msinfo.ClustPar.MaxClasses ~= MaxClasses)
+            errordlg2('Template class number has different range than data to sort','Sort microstate classes');
+            return
         end
-        % We sort out the stuff
-        [~,SortOrder, Communality, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
+        
+        LocalToGlobal = MakeResampleMatrices(ChosenTemplate.chanlocs,AllEEG(sIndex).chanlocs);
 
-         for index = 1:length(SelectedSet)
-            sIndex = SelectedSet(index);
-            AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder(index,:),:);
+        
+        
+        
+        for n = AllEEG(sIndex).msinfo.ClustPar.MinClasses:AllEEG(sIndex).msinfo.ClustPar.MaxClasses
+            MapsToSort = [];
+            MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps;
+            if IsSingularSet
+                TemplateClassToUse = MinClasses;
+            else
+                TemplateClassToUse = n;
+            end
+        % We sort out the stuff
+            [SortedMaps,SortOrder, Communality, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).Maps * LocalToGlobal',~IgnorePolarity);
+            AllEEG(sIndex).msinfo.MSMaps(n).Maps = squeeze(SortedMaps);
             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity(index,:)',1,numel(AllEEG(sIndex).chanlocs));
-            AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(n).ColorMap;
+            AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).ColorMap;
             AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
-            AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
+            AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).SortedBy '->' ChosenTemplate.setname];
             AllEEG(sIndex).msinfo.MSMaps(n).Communality = Communality(index,:);
-            if isfield(ChosenTemplate.msinfo.MSMaps(n),'Labels')
-                AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
+            if isfield(ChosenTemplate.msinfo.MSMaps(TemplateClassToUse),'Labels')
+                idx = SortOrder <= n;
+                AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).Labels(idx);
             end
             AllEEG(sIndex).saved = 'no';
          end

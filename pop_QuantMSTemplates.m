@@ -226,8 +226,8 @@ function [com, MSStats, EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, Us
         DataInfo.setname   = ActiveEEG.setname;
         Labels = [];
         AllEEG(sIdx).msinfo.FitPar = par;
-        ActiveEEG.msinfo
-        if UseMeanTmpl == 0
+
+         if UseMeanTmpl == 0
             if isfield(ActiveEEG.msinfo.MSMaps(par.nClasses),'Labels')
                 Labels = ActiveEEG.msinfo.MSMaps(par.nClasses).Labels;
             end
