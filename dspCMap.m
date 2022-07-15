@@ -497,7 +497,7 @@ if NoseRadius > 0
         line(-x,y,'LineWidth',1,'Color',[0 0 0]);
     end
     ell_h = ellipse(r_max*0.99,r_max*0.99,[],0,0);
-    set(ell_h,'LineWidth',2,'Color',[0 0 0]);
+    set(ell_h,'LineWidth',1,'Color',[0 0 0]);
     
 end
 
