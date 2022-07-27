@@ -4,7 +4,8 @@ function [Result,Assignment, pol] = SwapMaps2(MapsToSwap,MeanMap,RespectPolarity
     end
 
     nMaps = size(MeanMap,2);
-    
+    MeanMap    = double(MeanMap);
+    MapsToSwap = double(MapsToSwap);
     if isempty(chanloc)
         CorMat = MyCorr(squeeze(MapsToSwap)',squeeze(MeanMap)');
         if ~RespectPolarity == true

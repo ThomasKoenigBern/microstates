@@ -82,8 +82,13 @@ function [MeanMap,SortedMaps,OldMapFit] = PermutedMeanMaps(in,RespectPolarity, M
             % Find the order of misfit
             [~,Idx] = sort(MapFit(:),'ascend');
             WorkToBeDone = false;
+            UseOptimToolbox = true;
+            if isempty(which('intlinprog')) || license('test','optimization_toolbox') == false
+                UseOptimToolbox = false;
+            end
+                
             for i = 1:numel(Idx)
-                if (nMaps < 7) || (license('test','optimization_toolbox') == false) % Full permutations for small n or absent optimzation toolbox
+                if (nMaps < 7) || UseOptimToolbox == false % Full permutations for small n or absent optimzation toolbox
                     if UseEMD == false
                         [SwappedMaps,Order] = SwapMaps(SortedMaps(Idx(i),:,:),MeanMap,RespectPolarity);
                     else
@@ -164,7 +169,7 @@ function [MeanMap,SortedMaps,OldMapFit] = PermutedMeanMaps(in,RespectPolarity, M
             BestOldMapFit = OldMapFit;
             BestIndex = Run;
             if AutoReruns == true
-                Reruns = max(Run * 3,OrgReruns);
+                Reruns = max(Run + 20,OrgReruns);
             end
         end
         

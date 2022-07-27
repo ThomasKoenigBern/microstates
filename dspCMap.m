@@ -271,6 +271,7 @@ else
     ContourLevel = [-inf ll inf];
 end
 
+ContourLevel
 %ContourLevel = (nNegLevels:(nPosLevels-1)) * CStep;
 [c,h] = contourf(xm,ym,imap, ContourLevel);
 chandle.c = c;

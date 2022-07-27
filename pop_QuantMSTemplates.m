@@ -260,13 +260,12 @@ function [com, MSStats, EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, Us
         EpochData(s) = SSEpochData;
     end
     close(h);
-    FileName = [];
     idx = [];
+    
     if nargin < 6 && nargout < 2
         [FName,PName, idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.csv','Text file for R'},'Save microstate statistics');
         FileName = fullfile(PName,FName);
     end
-
     if ~isempty(FileName)
         if isempty(idx) 
             idx = 2;
@@ -281,7 +280,7 @@ function [com, MSStats, EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, Us
                 idx = 6;
             end
         end
-        
+
         switch idx
             case 1
                 SaveStructToTable(MSStats,FileName,',',Labels);

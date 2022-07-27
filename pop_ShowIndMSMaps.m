@@ -107,7 +107,13 @@ function [AllEEG,TheEEG,com, FigureHandle] = pop_ShowIndMSMaps(TheEEG,nclasses, 
     ud.Labels = cell(ud.msinfo.ClustPar.MaxClasses,ud.msinfo.ClustPar.MaxClasses);
     ud.TitleHandles = cell(ud.msinfo.ClustPar.MaxClasses,1);
     for i = ud.msinfo.ClustPar.MinClasses:ud.msinfo.ClustPar.MaxClasses
+        LabelsThere = false;
         if isfield(ud.AllMaps(i),'Labels')
+            if ~isempty(ud.AllMaps(i).Labels)
+                LabelsThere = true;
+            end
+        end
+        if LabelsThere
             ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
         else
             for j = 1:i

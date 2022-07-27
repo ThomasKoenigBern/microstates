@@ -1,5 +1,10 @@
-  function [SortedMaps,SortOrder, Communality, Polarity] = ArrangeMapsBasedOnMean(in, MeanMap,RespectPolarity)
+  function [SortedMaps,SortOrder, Communality, Polarity] = ArrangeMapsBasedOnMean(in, MeanMap,RespectPolarity, flags)
 
+  
+    if nargin < 4
+        flags = '';
+    end
+  
     in = NormDim(in,3);
     SortedMaps = in;
 
@@ -19,8 +24,7 @@
     Communality = nan(nSubjects,nMapsToSort);
     Polarity    = ones(nSubjects,nMapsToSort);
     
-    
-    if nMapsToSort > 1
+    if nSubjects > 1
         fprintf(1,'Sorting %i maps of %i subjects.\n',nMapsToSort,nSubjects);
     end
   
@@ -44,8 +48,8 @@
             Polarity(n,:) = pol;
             if ~isempty(SwappedMaps)
                 SortedMaps(n,:,:) = SwappedMaps;
-                SortOrder(n,:) = Assignment;
             end
+            SortOrder(n,:) = Assignment;
             Communality(n,:) = diag(MyCorr(squeeze(SortedMaps(n,:,:))',squeeze(ExtMeanMap)'))';
 
         elseif nTemplateMaps > nMapsToSort
@@ -53,17 +57,18 @@
             Polarity(n,:) = pol(MapsToKeep);
             if ~isempty(SwappedMaps)
                 SortedMaps(n,:,:) = SwappedMaps(MapsToKeep,:);
-                SortOrder(n,:) = Assignment;
             end
+            SortOrder(n,:) = Assignment;
+            
             d = diag(MyCorr(SwappedMaps',squeeze(ExtMeanMap)'))';
             Communality(n,:) = d(MapsToKeep);
         else    % TK tested the code below 10.2.2022, seems to be ok
             Polarity(n,:) = pol;
             if ~isempty(SwappedMaps)
                 SortedMaps(n,:,:) = SwappedMaps;
-                SortOrder(n,:) = Assignment;
-                SortOrder(n,(nTemplateMaps+1):end) = nan;
             end
+            SortOrder(n,:) = Assignment;
+            SortOrder(n,(nTemplateMaps+1):end) = nan;
             
             d = diag(MyCorr(squeeze(SortedMaps(n,:,:))',squeeze(ExtMeanMap)'))';
             Communality(n,:) = d(1:nMapsToSort);
