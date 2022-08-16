@@ -1,9 +1,8 @@
-function [SortedMaps,SortOrder, Communality, SpatialCorrelation, Polarity] = ArrangeMapsBasedOnMean(in, MeanMap,RespectPolarity)
+function [SortedMaps,SortOrder, Communality, Polarity] = ArrangeMapsBasedOnMean(in, MeanMap,RespectPolarity)
 
     [nSubjects,nMaps,nChannels] = size(in);
 
     Communality = nan(nSubjects,nMaps);
-    SpatialCorrelation = nan(nSubjects,nMaps);
     Polarity    = ones(nSubjects,nMaps);
     fprintf(1,'Sorting %i maps of %i subjects.\n',nMaps,nSubjects);
 
@@ -31,16 +30,11 @@ function [SortedMaps,SortOrder, Communality, SpatialCorrelation, Polarity] = Arr
             SortOrder(n,:) = Assignment;
         end
 
-        % Extract covariance and spatial correlation matrices from MyCorr
-        [covariance, spCorr] = MyCorr(squeeze(SortedMaps(n,:,:))',squeeze(ExtMeanMap)');
-        Communality(n,:) = diag(covariance)';
-        % add spatial correlation
-        SpatialCorrelation(n,:) = spCorr;
+        Communality(n,:) = diag(MyCorr(squeeze(SortedMaps(n,:,:))',squeeze(ExtMeanMap)'))';
 
 
     end
     if ~RespectPolarity
         Communality = abs(Communality);
-        SpatialCorrelation = abs(SpatialCorrelation);
     end
 end

@@ -70,13 +70,15 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
     nonemptyInd  = nonempty(~HasChildren);
     nonemptyMean = nonempty(HasChildren);
     
-%    if numel(nonemptyMean) < 1
-%        errordlg2('No mean templates found','Sort microstate classes');
-%        return;
-%    end
-    
     if nargin < 4
-        TemplateSet = nonemptyMean(1); 
+        if numel(nonemptyMean) < 1
+           errordlg2(['No mean templates found. Use Tools -> Microstates -> ' ...
+               'Compute mean microstate maps across individuals to create ' ...
+               'the mean maps before sorting.'],'Sort microstate classes');
+           return;
+        else
+            TemplateSet = nonemptyMean(1); 
+        end
     end
     
     if isstruct(TemplateSet)
@@ -155,7 +157,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
     MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     
     for index = 1:length(SelectedSet)
-        sIndex = SelectedSet(index);    % in sort: SelectedSet = curr_EEG, in quant: curr_EEG = AllEEG(sIdx)
+        sIndex = SelectedSet(index);
         if ~isfield(AllEEG(sIndex),'msinfo')
             errordlg2(sprintf('Microstate info not found in datset %s',AllEEG(sIndex).setname),'Sort microstate classes'); 
             return;
@@ -181,7 +183,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
            MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
         end
         % We sort out the stuff
-        [~,SortOrder, Communality, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
+        [~,SortOrder, Communality, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
 
          for index = 1:length(SelectedSet)
             sIndex = SelectedSet(index);
@@ -191,7 +193,6 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
             AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
             AllEEG(sIndex).msinfo.MSMaps(n).Communality = Communality(index,:);
-            AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation(index,:);
             if isfield(ChosenTemplate.msinfo.MSMaps(n),'Labels')
                 AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
             end
