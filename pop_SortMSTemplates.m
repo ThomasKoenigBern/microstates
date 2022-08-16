@@ -52,7 +52,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, TemplateSet, IgnorePolarity)
+function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, TemplateSet, TemplateName, IgnorePolarity)
 
     com = '';
     EEGout = [];
@@ -63,14 +63,16 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
 %    end
     SelectedSets = SetToSort;
     if nargin < 3  DoMeans = false;            end %#ok<*SEPEX>
-    if nargin < 5  IgnorePolarity = true;      end 
+    if nargin < 4  TemplateSet = [];           end
+    if nargin < 5  TemplateName = "";          end
+    if nargin < 6  IgnorePolarity = true;      end 
     
     nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
     HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
     nonemptyInd  = nonempty(~HasChildren);
     nonemptyMean = nonempty(HasChildren);
     
-    if nargin < 4
+    if isempty(TemplateSet)
         if numel(nonemptyMean) < 1
            errordlg2(['No mean templates found. Use Tools -> Microstates -> ' ...
                'Compute mean microstate maps across individuals to create ' ...
@@ -115,6 +117,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
         if isempty(res); return; end
     
         MeanIndex = res{2};
+        TemplateName = TemplateNames{MeanIndex};
         
         IgnorePolarity = res{3};
         if DoMeans == true
@@ -123,18 +126,27 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
             SelectedSet = nonemptyInd(res{1});
         end
     else
-        if nargin < 4
+        if isempty(TemplateSet) || (TemplateSet == -1 && TemplateName == "")
             res = inputgui('title','Sort microstate maps based on mean template',...
                 'geometry', {1 1 1}, 'geomvert', [1 1 1], 'uilist', { ...
                 { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
-                { 'Style', 'popupmenu', 'string', TemplateNames,'tag','MeanName' ,'Value',MeanIndex } ...
+                { 'Style', 'popupmenu', 'string', TemplateNames,'tag','MeanName' ,'Value', MeanIndex } ...
                 { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
                 });
         
             if isempty(res); return; end
             MeanIndex = res{1};
+            TemplateName = TemplateNames{MeanIndex};
             IgnorePolarity = res{2};
-        end    
+        else
+            MeanIndex = find(TemplateNames == TemplateName, 1);
+            if (isempty(MeanIndex))
+                errorMessage = sprintf("The specified template %s could not be found in the microstates/Templates" + ...
+                    "folder. Please add the template to the folder before sorting.", TemplateName);
+                errordlg2([errorMessage],'Sort microstate maps based on published template');
+                return;
+            end
+        end
         SelectedSet = SetToSort;
     end
 
@@ -214,5 +226,5 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG,SetToSort, DoMeans, Te
     
     EEGout = AllEEG(SelectedSets);
     
-    com = sprintf('[%s %s com] = pop_SortMSTemplates(%s, [%s], %i, %s, %i);', inputname(1),inputname(2),inputname(1), txt, DoMeans, txt2,IgnorePolarity);
+    com = sprintf('[%s %s com] = pop_SortMSTemplates(%s, [%s], %i, %s, "%s", %i);', inputname(1),inputname(2),inputname(1), txt, DoMeans, txt2, TemplateName, IgnorePolarity);
 end

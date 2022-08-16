@@ -72,10 +72,10 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
+function [AllEEG,TheEEG,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, ClustPar, ShowMaps, ShowDyn, SortMaps)
 
     com = '';
-    if nargin < 2
+    if nargin < 4
         ClustPar = [];
     end
     
@@ -89,8 +89,9 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
 
     iscomplete = all(isfield(ClustPar,FieldNames));
     
-    if nargin < 3;  ShowMaps       = false; end
-    if nargin < 4;  ShowDyn        = false; end
+    if nargin < 5;  ShowMaps       = false; end
+    if nargin < 6;  ShowDyn        = false; end
+    if nargin < 7;  SortMaps       = false; end
 
     %            { 'Style', 'checkbox', 'string','Use AAHC algorithm instead of k-means','tag','UseAAHC', 'Value', ClustPar.UseAAHC}  ... 
     if ~iscomplete 
@@ -101,7 +102,7 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
             ClustPar.UseAAHC = floor(ClustPar.UseAAHC) + 1;
         end
         
-        [res,~,~,structout] = inputgui( 'geometry', {1 [1 1] [1 1] [1 1] [1 1] [1 1] 1 1 1 1 1 1},  'uilist', { ...
+        [res,~,~,structout] = inputgui( 'geometry', {1 [1 1] [1 1] [1 1] [1 1] [1 1] 1 1 1 1 1 1 1},  'uilist', { ...
              { 'Style', 'text', 'string', 'Clustering parameters', 'fontweight', 'bold'  } ...  
              { 'Style', 'text', 'string', 'Algorithm', 'fontweight', 'normal'  } ...
              { 'Style', 'popupmenu', 'string',{'k-means','AAHC'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC}  ... 
@@ -117,6 +118,7 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
              { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', ClustPar.IgnorePolarity }  ...
              { 'Style', 'checkbox', 'string', 'Normalize EEG before clustering','tag','Normalize' ,'Value', ClustPar.Normalize }  ...
              { 'Style', 'text', 'string', 'Display options', 'fontweight', 'bold'  } ...
+             { 'Style', 'checkbox', 'string', 'Sort maps according to published template when done', 'tag', 'Sort_Maps', 'Value', SortMaps } ...
              { 'Style', 'checkbox', 'string','Show maps when done','tag','Show_Maps'    ,'Value', ShowMaps }  ...
              { 'Style', 'checkbox', 'string','Show dynamics when done','tag','Show_Dyn' ,'Value', ShowDyn } } ...
              ,'title','Microstate clustering parameters');
@@ -133,6 +135,7 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
         ClustPar.Normalize      = structout.Normalize;
         ShowMaps                = structout.Show_Maps;
         ShowDyn                 = structout.Show_Dyn;
+        SortMaps                = structout.Sort_Maps;
     end
 
     if ClustPar.UseAAHC == true && ClustPar.Normalize == true
@@ -215,8 +218,20 @@ function [TheEEG,com] = pop_FindMSTemplates(TheEEG, ClustPar, ShowMaps,ShowDyn)
     
     structInfo = sprintf('struct(''MinClasses'', %i, ''MaxClasses'', %i, ''GFPPeaks'', %i, ''IgnorePolarity'', %i, ''MaxMaps'', %i, ''Restarts'', %i, ''UseAAHC'', %i, ''Normalize'', %i)',ClustPar.MinClasses, ClustPar.MaxClasses, ClustPar.GFPPeaks, ClustPar.IgnorePolarity, ClustPar.MaxMaps, ClustPar.Restarts, ClustPar.UseAAHC, ClustPar.Normalize);
 
-    com = sprintf('[%s,com] = pop_FindMSTemplates(%s, %s, %i, %i);', inputname(1),inputname(1),structInfo,ShowMaps,ShowDyn);
+    com = sprintf('[%s, %s, com] = pop_FindMSTemplates(%s, %s, %s, %s, %i, %i, %i);', inputname(1),inputname(2),inputname(1),inputname(2),inputname(3),structInfo,ShowMaps,ShowDyn,SortMaps);
     
+    if SortMaps == true
+        % Sort 3-6 cluster solutions using 2002 normative maps and 7
+        % cluster solution with Custo 2017 maps
+        if (ClustPar.MinClasses < 3 && ClustPar.MaxClasses > 2) || (ClustPar.MinClasses > 2)
+            AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
+            [AllEEG, TheEEG, ~] = pop_SortMSTemplates(AllEEG, CurrentSet, 0, -1, "Norms NI2002", 1);
+        end
+        if (ClustPar.MinClasses <= 7 && ClustPar.MaxClasses >= 7)
+            AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
+            [AllEEG, TheEEG, ~] = pop_SortMSTemplates(AllEEG, CurrentSet, 0, -1, "Custo2017", 1);
+        end
+    end
     if ShowMaps == true
         pop_ShowIndMSMaps(TheEEG);
     end
