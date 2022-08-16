@@ -19,10 +19,11 @@ function [SortedMaps,SortOrder, Communality, Polarity] = ArrangeMapsBasedOnMean(
     for n = 1:nSubjects
 		MapsToSort = in(n,:,:);
 
-        if (nMaps < 7) || (license('test','optimization_toolbox') == false) % Full permutations for small n or absent optimzation toolbox
+        if (nMaps < 7) || (license('test','optimization_toolbox') == false) || isempty(which('intlinprog')) % Full permutations for small n or absent optimzation toolbox
             [SwappedMaps,Assignment, pol] = SwapMaps(MapsToSort,ExtMeanMap,RespectPolarity);
         else        % linear prgramming for larger problems
-            [SwappedMaps,Assignment,pol] = SwapMaps2(MapsToSort,ExtMeanMap,RespectPolarity);
+            %[SwappedMaps,Assignment,pol] = SwapMaps2(MapsToSort,ExtMeanMap,RespectPolarity);
+            [SwappedMaps,Assignment,pol] = SwapMaps(MapsToSort,ExtMeanMap,RespectPolarity);
         end
         Polarity(n,:) = pol;
         if ~isempty(SwappedMaps)
