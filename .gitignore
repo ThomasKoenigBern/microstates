@@ -31,3 +31,7 @@ codegen/
 
 # Octave session info
 octave-workspace
+=======
+
+*.asv
+>>>>>>> Stashed changes
