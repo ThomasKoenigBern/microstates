@@ -72,6 +72,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     if nargin < 5,  MeanSet       = [];     end 
 
     com = '';
+    % select type of templates to use
     if nargin < 3
         ButtonName = questdlg('What type of templates do  you want to use?', ...
                          'Microstate statistics', ...
@@ -86,10 +87,13 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
         end % switch
     end 
 
+    % identify valid (containing msinfo) datasets with and without children
     nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG),'UniformOutput',true);
     nonemptyMean = nonempty(HasChildren);
  
+    % identify available templates to use for quantifying based on
+    % template type
     if UseMeanTmpl == 0
         if (isempty(nonempty))
             error('No usable data found');
@@ -105,59 +109,55 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
     
     AvailableSets  = {AllEEG(nonemptyInd).setname};
 
-    if numel(CURRENTSET) > 1
-        SelectedSet = CURRENTSET;
-    
-        if UseMeanTmpl > 0 && isempty(MeanSet) 
-            res = inputgui( 'geometry', {1 1}, 'geomvert', [1 5], 'uilist', { ...
-                { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
-                 { 'Style', 'listbox', 'string', AvailableMeans, 'tag','SelectSets'}});
-     
-            if isempty(res)
-                return
-            end
-            if UseMeanTmpl == 1
-                MeanSet = nonemptyMean(res{1});
+    % Delara 8/22/22 change: remove pop-up selection of dataset to quantify
+    % if user has currently selected only one dataset. Check if the
+    % available sets with no children contain the selected datasets instead
+    % and provide detailed error message
+
+    SelectedSet = CURRENTSET;
+    validSets = ismember(SelectedSet, nonemptyInd);
+    invalidSets = find(~validSets);         % indices of selected sets that have children
+    if (~isempty(invalidSets))
+        if numel(CURRENTSET) > 1            % the user has selected multiple datasets
+            if (numel(invalidSets) == 1)
+                errordlg2(sprintf(['Dataset %d is a mean set and cannot be quantified.' ...
+                    ' Deselect this dataset to proceed.'], invalidSets),'Quantify microstates');
+            elseif (numel(invalidSets) > numel(SelectedSet))
+                errordlg2(sprintf(['Datasets %s are mean sets and cannot be quantified.' ...
+                    ' Deselect these datasets to proceed.'], ...
+                    [sprintf('%d,', invalidSets(1:end-1)), sprintf('%d', invalidSets(end))]), ...
+                    'Quantify microstates');
             else
-                MeanSet = res{1};
+                errordlg2(['The selected datasets are mean sets and cannot be quantified.' ...
+                    ' Please select different datasets.'],'Quantify microstates');
             end
-        end
-    else
-        if UseMeanTmpl > 0 && isempty(MeanSet)
-            res = inputgui('title','Quantify microstate features',...
-            'geometry', {1 1 1 1 1 1}, 'geomvert', [1 1 4 1 1 4], 'uilist', { ...
-                { 'Style', 'text', 'string', 'EEGs to analyze', 'fontweight', 'bold' } ...    
-                { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
-                { 'Style', 'listbox', 'string', AvailableSets, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
-                { 'Style', 'text', 'string', ''} ...
-                { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
-                { 'Style', 'listbox', 'string', AvailableMeans, 'tag','SelectSets'}});
-     
-            if isempty(res)
-                return
-            end
-            SelectedSet = nonemptyInd(res{1});
-            if UseMeanTmpl == 1
-                MeanSet     = nonemptyMean(res{2});
-            else
-                MeanSet     = res{2};
-            end
-           
         else
-           res = inputgui('title','Quantify microstate features',...
-                'geometry', {1 1 1}, 'geomvert', [1 1 4], 'uilist', { ...
-                { 'Style', 'text', 'string', 'EEGs to analyze', 'fontweight', 'bold' } ...    
-                { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
-                { 'Style', 'listbox', 'string', AvailableSets, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
-                });
-     
-            if isempty(res)
-                return
-            end
-            SelectedSet = nonemptyInd(res{1});
+            errordlg2(sprintf(['Dataset %d is a mean set and cannot be quantified.' ...
+                    ' Please select a different dataset.'], invalidSets),'Quantify microstates');
         end
     end
-    
+
+    % select template to use for quantifying
+    if UseMeanTmpl > 0 && isempty(MeanSet) 
+        if (UseMeanTmpl == 1)           % using mean maps
+            res = inputgui( 'geometry', {1 1}, 'geomvert', [1 5], 'uilist', { ...
+                { 'Style', 'text', 'string', 'Name of mean set', 'fontweight', 'bold'  } ...
+                 { 'Style', 'listbox', 'string', AvailableMeans, 'tag','SelectSets'}});
+        else
+            res = inputgui( 'geometry', {1 1}, 'geomvert', [1 5], 'uilist', { ...
+                { 'Style', 'text', 'string', 'Name of published template', 'fontweight', 'bold'  } ...
+                 { 'Style', 'listbox', 'string', AvailableMeans, 'tag','SelectSets'}});
+        end
+ 
+        if isempty(res)
+            return
+        end
+        if UseMeanTmpl == 1
+            MeanSet = nonemptyMean(res{1});
+        else
+            MeanSet = res{1};
+        end
+    end    
     
     switch UseMeanTmpl
         case 0,
