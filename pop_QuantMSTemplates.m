@@ -217,11 +217,10 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             Maps = NormDimL2(AllEEG(sIdx).msinfo.MSMaps(par.nClasses).Maps,2);
             SheetName = 'Individual Maps';
             AllEEG(sIdx).msinfo.FitPar = par;
-            [MSClass,gfp,ExpVar] = AssignMStates(AllEEG(sIdx),Maps,par,AllEEG(sIdx).msinfo.ClustPar.IgnorePolarity);
+            [MSClass,gfp,ExpVar, IndGEVs] = AssignMStates(AllEEG(sIdx),Maps,par,AllEEG(sIdx).msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
  %              MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, '<<own>>')];
-                fprintf("Calling QuantifyMSDynamics... (a)\n");
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, [],ExpVar, SingleEpochFileTemplate, AllEEG(sIdx), AllEEG, sIdx);
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, [],ExpVar, SingleEpochFileTemplate, AllEEG, sIdx, IndGEVs);
             end
         else
             if isfield(TheChosenTemplate.msinfo.MSMaps(par.nClasses),'Labels')
@@ -235,19 +234,15 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             if any(isnan(LocalToGlobal(:)))
                 errordlg2(['Set ' ALLEEG(sIdx) ' does not have all channel positions defined'],'Microstate fitting');
             end
-            [MSClass,gfp,ExpVar] = AssignMStates(AllEEG(sIdx),Maps,par, TheChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
+            [MSClass,gfp,ExpVar, IndGEVs] = AssignMStates(AllEEG(sIdx),Maps,par, TheChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
             if ~isempty(MSClass)
 %                MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname)]; 
-                fprintf("Calling QuantifyMSDynamics... (b)");
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname, ExpVar, SingleEpochFileTemplate, AllEEG(sIdx), AllEEG);
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, TheChosenTemplate.setname, ExpVar, SingleEpochFileTemplate, AllEEG, sIdx, IndGEVs);
             end
         end
         EpochData(s) = SSEpochData;
     end
     close(h);
-    
-%     add option for a graphical output in addition to file output
-%     DataVisualization(MSStats);
 
     idx = 1;
     if nargin < 7
@@ -291,10 +286,6 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
 
     com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %i, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, FileName);
 end
-
-% function StatAnalysis
-%     disp("will do statistical analysis here..")
-% end
 
 function Answer = DoesItHaveChildren(in)
     Answer = false;

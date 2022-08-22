@@ -7,6 +7,8 @@
 %        - info is the structure with the microstate information
 %        - Samplingrate is the sampling rate
 %        - DataInfo contains info about the dataset analyzed
+%        - (added by Delara) TemplateType is the type of templates used to
+%        quantify (0 = own, 1 = mean, 2 = published)
 %        - TemplateName is the name of the microstate map template used
 %        - ExpVar is the explained variance
 %          The last three parameters are only for the documentation of the
@@ -37,7 +39,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, SingleEpochFileTemplate, curr_EEG, AllEEG, idx)
+function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateType, TemplateName, ExpVar, SingleEpochFileTemplate, AllEEG, idx, IndGEVs)
     if nargin < 9
         SingleEpochFileTemplate = [];
     end
@@ -62,7 +64,9 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         res.SortInfo     = 'NA';
     end
 
-    res.ExpVar       = ExpVar;
+%     res.ExpVar       = ExpVar;
+    res.IndExpVar = mynanmean(IndGEVs, 3);
+    res.ExpVarTotal = sum(IndGEVs);
 
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
     eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
@@ -129,11 +133,29 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         end
     end
     
-    [curr_EEG,~,~] = pop_SortMSTemplates(AllEEG,idx,true, -1);
-    
-    % possibly issue that this selects (1) dataset out of curr_EEG. other
-    % datasets shouldn't have been creaed
-    eSpCorrelation = curr_EEG(1).msinfo.MSMaps(info.FitPar.nClasses).Communality;
+    % Sort according to chosen template if this has not already been done
+    % by the user to get spatial correlation values
+    if (TemplateType == 1)
+        if ~(info.MSMaps(info.FitPar.nClasses).SortMode == "mean map based" || ...
+                info.MSMaps(info.FitPar.nClasses).SortMode == "grand mean map based")
+            [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, idx, 0, [], TemplateName, info.ClustPar.IgnorePolarity);
+        else
+            if (info.MSMaps(info.FitPar.nClasses).SortedBy ~= TemplateName)
+                [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, idx, 0, [], TemplateName, info.ClustPar.IgnorePolarity);
+            end
+        end
+    end
+    if (TemplateType == 2)
+        if ~(info.MSMaps(info.FitPar.nClasses).SortMode == "template based")
+            [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, idx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
+        else
+            if (info.MSMaps(info.FitPar.nClasses).SortedBy ~= TemplateName)
+                [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, idx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
+            end
+        end
+    end
+
+    eSpCorrelation = AllEEG(idx).msinfo.MSMaps(info.FitPar.nClasses).Communality;
     eSpCorrelation = mynanmean(eSpCorrelation,3);
 
     res.TotalTime = sum(eTotalTime);
