@@ -21,6 +21,10 @@
 %   dataset with the normative template first and than make this the
 %   TemplateSet that you use for sorting. If the template set is an EEG
 %   structure, or an array of EEG structures, these will be used.
+% 
+%   "TemplateName" (added by Delara 8/16/22)
+%   -> Name of published template (currently either Norms NI2002 or
+%   Custo2017 that should be used for sorting
 %
 %   "IgnorePolarity"
 %   -> Ignore the polarity of the maps to be sorted   
@@ -139,7 +143,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
             TemplateName = TemplateNames{MeanIndex};
             IgnorePolarity = res{2};
         else
-            MeanIndex = find(TemplateNames == TemplateName, 1);
+            MeanIndex = find(contains(TemplateNames, TemplateName));
             if (isempty(MeanIndex))
                 errorMessage = sprintf("The specified template %s could not be found in the microstates/Templates" + ...
                     "folder. Please add the template to the folder before sorting.", TemplateName);
@@ -202,8 +206,19 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder(index,:),:);
             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity(index,:)',1,numel(AllEEG(sIndex).chanlocs));
             AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(n).ColorMap;
-            AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
-            AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
+%             AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+%             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
+            % Delara 8/17/22 change
+            if (TemplateSet == -1)
+                AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+            else
+                if (DoMeans)
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'grand mean map based';
+                else
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map based';
+                end
+            end
+            AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
             AllEEG(sIndex).msinfo.MSMaps(n).Communality = Communality(index,:);
             if isfield(ChosenTemplate.msinfo.MSMaps(n),'Labels')
                 AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
