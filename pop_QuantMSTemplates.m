@@ -283,8 +283,12 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     end
     txt = sprintf('%i ',SelectedSet);
     txt(end) = [];
-
-    com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %i, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, FileName);
+    
+    if (isempty(MeanSet))
+        com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, [], ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), FileName);
+    else
+        com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %s, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, FileName);
+    end
 end
 
 function Answer = DoesItHaveChildren(in)

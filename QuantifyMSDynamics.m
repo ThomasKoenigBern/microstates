@@ -149,8 +149,7 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
                 [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
             end
         end
-    end
-    if (TemplateType == 2)
+    elseif (TemplateType == 2)
         if ~(info.MSMaps(info.FitPar.nClasses).SortMode == "template based")
             [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
         else
@@ -158,6 +157,8 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
                 [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
             end
         end
+    else
+        EEGout = AllEEG(sIdx);
     end
 
     eSpCorrelation = AllEEG(sIdx).msinfo.MSMaps(info.FitPar.nClasses).Communality;
