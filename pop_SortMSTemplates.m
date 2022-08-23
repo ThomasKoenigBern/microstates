@@ -29,6 +29,11 @@
 %   "IgnorePolarity"
 %   -> Ignore the polarity of the maps to be sorted   
 %
+%   "NClasses" (added by Delara 8/22/22)
+%   -> optional argument specifying the cluster solution to sort (used when
+%   calling pop_SortMSTemplates from QuantifyMSDynamics to find spatial
+%   correlations)
+%
 % Output:
 %
 %   "AllEEG" 
@@ -56,7 +61,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, TemplateSet, TemplateName, IgnorePolarity)
+function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, TemplateSet, TemplateName, IgnorePolarity, NClasses)
 
     com = '';
     EEGout = [];
@@ -70,6 +75,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
     if nargin < 4  TemplateSet = [];           end
     if nargin < 5  TemplateName = "";          end
     if nargin < 6  IgnorePolarity = true;      end 
+    if nargin < 7  NClasses = [];              end
     
     nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
     HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
@@ -206,26 +212,33 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
         errordlg2('You must select at least one set of microstate maps','Sort microstate classes');
         return
     end
-    
-    MinClasses     = ChosenTemplate.msinfo.ClustPar.MinClasses;
-    MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-    
-    for index = 1:length(SelectedSet)
-        sIndex = SelectedSet(index);
-        if ~isfield(AllEEG(sIndex),'msinfo')
-            errordlg2(sprintf('Microstate info not found in datset %s',AllEEG(sIndex).setname),'Sort microstate classes'); 
-            return;
-        end
-        
-% TK 3.12.2018
-        MinClasses = max(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
-        MaxClasses = min(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
 
-%         if  MinClasses     < AllEEG(sIndex).msinfo.ClustPar.MinClasses || ...
-%             MaxClasses     > AllEEG(sIndex).msinfo.ClustPar.MaxClasses
-%                 errordlg2('Microstate parameters differ between datasets','Sort microstate classes');
-%                 return;
-%         end
+    % option to sort only one specified cluster solution
+    if ~isempty(NClasses)
+        MinClasses = NClasses;
+        MaxClasses = NClasses;
+    else
+    
+        MinClasses     = ChosenTemplate.msinfo.ClustPar.MinClasses;
+        MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+        
+        for index = 1:length(SelectedSet)
+            sIndex = SelectedSet(index);
+            if ~isfield(AllEEG(sIndex),'msinfo')
+                errordlg2(sprintf('Microstate info not found in datset %s',AllEEG(sIndex).setname),'Sort microstate classes'); 
+                return;
+            end
+            
+    % TK 3.12.2018
+            MinClasses = max(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
+            MaxClasses = min(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
+    
+    %         if  MinClasses     < AllEEG(sIndex).msinfo.ClustPar.MinClasses || ...
+    %             MaxClasses     > AllEEG(sIndex).msinfo.ClustPar.MaxClasses
+    %                 errordlg2('Microstate parameters differ between datasets','Sort microstate classes');
+    %                 return;
+    %         end
+        end
     end
 
     for n = MinClasses:MaxClasses
