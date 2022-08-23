@@ -145,10 +145,10 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comGetIndMSDynamics    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,false);'                    catch_strings.new_and_hist];
     comGetMeanMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true);'                     catch_strings.new_and_hist];
     comGetTMplMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true,[],-1);'               catch_strings.new_and_hist];
-    comQuantMSTemplatesS   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0);'              catch_strings.new_and_hist];
-    comQuantMSTemplatesM   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,1);'              catch_strings.new_and_hist];
-    comQuantMSTemplatesT   = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,2);'              catch_strings.new_and_hist];
-    comQuantMSDataVis      = [try_strings.no_check '[           LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0, [], [], 1);'   catch_strings.new_and_hist];
+    comQuantMSTemplatesS   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0);'              catch_strings.store_and_hist];
+    comQuantMSTemplatesM   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,1);'              catch_strings.store_and_hist];
+    comQuantMSTemplatesT   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,2);'              catch_strings.store_and_hist];
+    comQuantMSDataVis      = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0, [], [], 1);'   catch_strings.store_and_hist];
 
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'  catch_strings.add_to_hist];
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];

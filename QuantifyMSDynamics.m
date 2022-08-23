@@ -44,7 +44,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateType, TemplateName, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx)
+function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateType, TemplateName, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx)
     if nargin < 9
         SingleEpochFileTemplate = [];
     end
@@ -143,19 +143,19 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
     if (TemplateType == 1)
         if ~(info.MSMaps(info.FitPar.nClasses).SortMode == "mean map based" || ...
                 info.MSMaps(info.FitPar.nClasses).SortMode == "grand mean map based")
-            [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
+            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
         else
             if (info.MSMaps(info.FitPar.nClasses).SortedBy ~= TemplateName)
-                [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
+                [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
             end
         end
     end
     if (TemplateType == 2)
         if ~(info.MSMaps(info.FitPar.nClasses).SortMode == "template based")
-            [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
+            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
         else
             if (info.MSMaps(info.FitPar.nClasses).SortedBy ~= TemplateName)
-                [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
+                [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
             end
         end
     end

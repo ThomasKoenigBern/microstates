@@ -62,7 +62,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
+function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
     
     global MSTEMPLATE;
 
@@ -220,7 +220,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             [MSClass,gfp,ExpVar, IndGEVs] = AssignMStates(AllEEG(sIdx),Maps,par,AllEEG(sIdx).msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
  %              MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, '<<own>>')];
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, [], ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
+                [AllEEG, EEGout, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, [], ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
             end
         else
             if isfield(TheChosenTemplate.msinfo.MSMaps(par.nClasses),'Labels')
@@ -237,7 +237,7 @@ function [com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl,
             [MSClass,gfp,ExpVar, IndGEVs] = AssignMStates(AllEEG(sIdx),Maps,par, TheChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
             if ~isempty(MSClass)
 %                MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname)]; 
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, TheChosenTemplate.setname, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
+                [AllEEG, EEGout, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, TheChosenTemplate.setname, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
             end
         end
         EpochData(s) = SSEpochData;
