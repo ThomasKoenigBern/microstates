@@ -1,7 +1,7 @@
 %pop_FindMSTemplates() interactively identify microstate topographies
 %
 % Usage:
-%   >> [EEGOUT,com] = pop_FindMSTemplates(TheEEG,ClustPar,ShowMaps,ShowDyn)
+%   >> [EEGOUT,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, ClustPar,ShowMaps,ShowDyn, SortMaps)
 %
 % EEG lab specific:
 %
@@ -44,6 +44,10 @@
 %
 %   "Show dynamics when done" / ShowDyn
 %   -> Show dynamics when done
+%
+%   Added by Delara 8/16/22
+%   "Sort maps when done" / SortMaps
+%   -> Sort maps according to published templates when done
 %
 % Output:
 %

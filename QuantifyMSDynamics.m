@@ -141,21 +141,12 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
     % Sort according to chosen template if this has not already been done
     % by the user to get spatial correlation values
     if (TemplateType == 1)
-        if ~(info.MSMaps(info.FitPar.nClasses).SortMode == "mean map based" || ...
-                info.MSMaps(info.FitPar.nClasses).SortMode == "grand mean map based")
+        if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
             [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
-        else
-            if (info.MSMaps(info.FitPar.nClasses).SortedBy ~= TemplateName)
-                [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
-            end
         end
     elseif (TemplateType == 2)
-        if ~(info.MSMaps(info.FitPar.nClasses).SortMode == "template based")
+        if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
             [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
-        else
-            if (info.MSMaps(info.FitPar.nClasses).SortedBy ~= TemplateName)
-                [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
-            end
         end
     else
         EEGout = AllEEG(sIdx);

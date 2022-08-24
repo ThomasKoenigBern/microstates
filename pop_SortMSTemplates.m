@@ -70,7 +70,6 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
 %        errordlg2('pop_findMSTemplates() currently supports only a single EEG as input');
 %        return;
 %    end
-    SelectedSets = SetToSort;
     if nargin < 3  DoMeans = false;            end %#ok<*SEPEX>
     if nargin < 4  TemplateSet = [];           end
     if nargin < 5  TemplateName = "";          end
@@ -93,18 +92,15 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
     
     if isstruct(TemplateSet)
         TemplateNames = {TemplateSet.setname};
-        MeanIndex = 1;
     else
         if TemplateSet == -1
             TemplateNames = {MSTEMPLATE.setname};
-            MeanIndex = 1;
         else
             TemplateNames = {AllEEG(nonemptyMean).setname};
-            MeanIndex = find(nonemptyMean == TemplateSet,1);
         end
     end
            
-  
+    MeanIndex = 1;
     if numel(SetToSort) < 1
         if DoMeans == true 
             AvailableSets = {AllEEG(nonemptyMean).setname};
@@ -157,12 +153,33 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
 
              if isempty(res); return; end
              
-             IgnorePolarity = res{3};
+             IgnorePolarity = res{2};
              if DoMeans == true
                 SelectedSet = nonemptyMean(res{1});
-            else
+             else
                 SelectedSet = nonemptyInd(res{1});
-            end
+             end
+
+             if ~isempty(TemplateSet) && TemplateSet ~= -1
+                 MeanIndex = find(nonemptyMean == TemplateSet,1);
+                 TemplateName = TemplateNames(MeanIndex);
+             else
+                 MeanIndex = find(contains(TemplateNames, TemplateName));
+             end
+
+             if isempty(MeanIndex)
+                if TemplateSet == -1
+                    errorMessage = sprintf('The specified template %s could not be found in the microstates/Templates' + ...
+                        'folder. Please add the template to the folder before sorting.', TemplateName);
+                    errordlg2([errorMessage],'Sort microstate maps based on published template');
+                    return;
+                else
+                    errorMessage = sprintf('The specified mean set %s could not be found.', TemplateName);
+                    errordlg2([errorMessage], 'Sort microstate maps based on mean set');
+                    return;
+                end
+             end
+
         end
     else
         if (isempty(TemplateSet) && TemplateName == "") || (any(TemplateSet == -1) && TemplateName == "")
@@ -187,13 +204,25 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
             TemplateName = TemplateNames{MeanIndex};
             IgnorePolarity = res{2};
         else
-            MeanIndex = find(contains(TemplateNames, TemplateName));
-            if (isempty(MeanIndex))
-                errorMessage = sprintf("The specified template %s could not be found in the microstates/Templates" + ...
-                    "folder. Please add the template to the folder before sorting.", TemplateName);
-                errordlg2([errorMessage],'Sort microstate maps based on published template');
-                return;
-            end
+            if ~isempty(TemplateSet) && TemplateSet ~= -1
+                 MeanIndex = find(nonemptyMean == TemplateSet,1);
+                 TemplateName = TemplateNames(MeanIndex);
+             else
+                 MeanIndex = find(contains(TemplateNames, TemplateName));
+             end
+
+             if isempty(MeanIndex)
+                if TemplateSet == -1
+                    errorMessage = sprintf('The specified template %s could not be found in the microstates/Templates' + ...
+                        'folder. Please add the template to the folder before sorting.', TemplateName);
+                    errordlg2([errorMessage],'Sort microstate maps based on published template');
+                    return;
+                else
+                    errorMessage = sprintf('The specified mean set %s could not be found.', TemplateName);
+                    errordlg2([errorMessage], 'Sort microstate maps based on mean set');
+                    return;
+                end
+             end
         end
         SelectedSet = SetToSort;
     end
@@ -290,7 +319,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
         txt2(end) = [];
     end
     
-    EEGout = AllEEG(SelectedSets);
+    EEGout = AllEEG(SelectedSet);
     
-    com = sprintf('[%s %s com] = pop_SortMSTemplates(%s, [%s], %i, %s, "%s", %i);', inputname(1),inputname(2),inputname(1), txt, DoMeans, txt2, TemplateName, IgnorePolarity);
+    com = sprintf('[%s EEG com] = pop_SortMSTemplates(%s, [%s], %i, %s, "%s", %i);', inputname(1), inputname(1), txt, DoMeans, txt2, string(TemplateName), IgnorePolarity);
 end
