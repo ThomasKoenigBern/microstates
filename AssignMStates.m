@@ -39,8 +39,9 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [MSClass,gfp, fit, GEV_classes] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
+function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
 
+    
     if nargin < 5
         TheEEGData = eegdata.data;
     else
@@ -67,6 +68,7 @@ function [MSClass,gfp, fit, GEV_classes] = AssignMStates(eegdata, Maps, params, 
         if strcmp(eegdata.event(e).type,'boundary')
             BoundaryPoint = [BoundaryPoint,eegdata.event(e).latency];
             if isfield(eegdata.event(e),'epoch')
+                % should this be eegdata.event(e).epoch, not event?
                 BoundaryEpoch = [BoundaryEpoch, eegdata.event(e).event];
             else
                 BoundaryEpoch = [BoundaryEpoch, 1];
@@ -88,53 +90,58 @@ function [MSClass,gfp, fit, GEV_classes] = AssignMStates(eegdata, Maps, params, 
 %     Var_GEV = zeros(nClasses, 1);
     AllMFit = 0;
     AllMVar = 0;
+    IndGEVnum = zeros(1, nClasses);
+    IndGEVdenom = 0;
    
     if params.PeakFit == 1
         Fit = nan(nClasses,size(TheEEGData,2));
         for s = 1:nSegments
+            % Identify GFP Peaks
             IsIn = find([false (gfp(1,1:end-2,s) < gfp(1,2:end-1,s) & gfp(1,2:end-1,s) > gfp(1,3:end,s)) false]);
             if isempty(IsIn)
                 errordlg2('No GFP peaks found','Microstate fitting');
                 MSClass = [];
                 return;
             end
+            % Compute covariance between maps and timepoints
             Cov = NormDimL2(Maps,2) * squeeze(TheEEGData(:,IsIn,s)) / size(Maps,2);
             if IgnorePolarity == true
                 Cov = abs(Cov);
             end
+            % mfit = max covariance, GFPPClass = microstate label
             [mfit,GFPPClass] = max(Cov);
             
             AllMFit = AllMFit + squeeze(sum(mfit,2));
             PeakAssignment = zeros(nClasses,numel(IsIn));
+            % add sum of standard deviations 
             AllMVar = AllMVar +  squeeze(sum(std(TheEEGData(:,IsIn,s),1,1),2));
            
             for c = 1:nClasses
                 PeakAssignment(c,GFPPClass == c) = 1;
                 Fit(c,:) = interp1(IsIn,PeakAssignment(c,:),1:size(TheEEGData,2),'linear');
             end
-            Fit(isnan(Fit)) = 0;
+            Fit(isnan(Fit)) = 0;        % microstate assignments of 0
             % Whatever state is at the first and last GFP peak is not fully
             % defined and is removed
             
             [Hit,Winner] = max(Fit);
             
+            % Individual GEV calculations
             for c = 1:nClasses
-                for t = 1:size(Winner, 2)
-                    gfp_c_t = std(TheEEGData(:,t,s));
-                    % this is giving the same 
-%                     if Winner(t) ~= 0      % gamma = 1
-                    if Winner(t) == c       % implied: Winner != 0
-                        clustLabelRatios(c) = clustLabelRatios(c) + 1;
-                        GEV_classes_numerator(c) = GEV_classes_numerator(c) + (gfp_c_t * Hit(t))^2;
-                        GEV_classes_denominator(c) = GEV_classes_denominator(c) +(gfp_c_t^2);
+                clustMembers = TheEEGData(:, Winner == c, s);
+                if any(clustMembers)
+                    if (IgnorePolarity)
+                        clustCorr = abs(corr(clustMembers, Maps(c, :)'));
+                    else
+                        clustCorr = corr(clustMembers, Maps(c, :)');
                     end
+    
+                    IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, Winner == c, s).*clustCorr').^2);
+                    IndGEVdenom = IndGEVdenom + sum(gfp(1, Winner == c, s).^2);
                 end
             end
-            GEV_classes = GEV_classes_numerator ./ GEV_classes_denominator;
-            clustLabelRatios = clustLabelRatios ./ size(Winner, 2);
-            GEV_classes = GEV_classes .* clustLabelRatios;
-    
-            Winner(Hit == 0) = 0;
+
+            Winner(Hit == 0) = 0;       % microstate assignments of 0
             if params.BControl == true
                 % Kill microstates truncated by boundaries
                 for b = 1:numel(BoundaryPoint)
@@ -154,6 +161,22 @@ function [MSClass,gfp, fit, GEV_classes] = AssignMStates(eegdata, Maps, params, 
         MSClass = zeros(size(TheEEGData,2),nSegments);
         for s = 1:nSegments
             [Winner,ExpVar] = SmoothLabels(TheEEGData(:,:,s),Maps,params, eegdata.srate,IgnorePolarity);
+
+            % Individual GEV calculations
+            for c = 1:nClasses
+                clustMembers = TheEEGData(:, Winner == c, s);
+                if any(clustMembers)
+                    if (IgnorePolarity)
+                        clustCorr = abs(corr(clustMembers, Maps(c, :)'));
+                    else
+                        clustCorr = corr(clustMembers, Maps(c, :)');
+                    end
+    
+                    IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, Winner == c, s).*clustCorr').^2);
+                    IndGEVdenom = IndGEVdenom + sum(gfp(1, Winner == c, s).^2);
+                end
+            end
+
             % Kill microstates truncated by boundaries
             if params.BControl == true
                 for b = 1:numel(BoundaryPoint)
@@ -188,6 +211,8 @@ function [MSClass,gfp, fit, GEV_classes] = AssignMStates(eegdata, Maps, params, 
     end
     fit = AllMFit / AllMVar;
 
+    IndGEVs = IndGEVnum/IndGEVdenom;
+    TotalGEV = sum(IndGEVs);
 end
 
 

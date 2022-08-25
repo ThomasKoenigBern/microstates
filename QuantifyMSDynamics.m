@@ -7,10 +7,17 @@
 %        - info is the structure with the microstate information
 %        - Samplingrate is the sampling rate
 %        - DataInfo contains info about the dataset analyzed
+%        - (added by Delara) TemplateType is the type of templates used to
+%        quantify (0 = own, 1 = mean, 2 = published)
 %        - TemplateName is the name of the microstate map template used
 %        - ExpVar is the explained variance
+%        - (added by Delara) IndGEVs are the individual explained variance values for each
+%        microstate map
 %          The last three parameters are only for the documentation of the
 %          results.
+%        - (added by Delara) the entire ALLEEG and sIdx (current set
+%        number) are used to sort the maps and produce spatial correlation
+%        values
 %
 % Output: 
 %         - res: A Matlab table with the results, including the observed 
@@ -37,7 +44,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateName, ExpVar, SingleEpochFileTemplate, curr_EEG, AllEEG, idx, GEVs)
+function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateType, TemplateName, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx)
     if nargin < 9
         SingleEpochFileTemplate = [];
     end
@@ -62,6 +69,9 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         res.SortInfo     = 'NA';
     end
 
+%     res.ExpVar       = ExpVar;
+    res.IndExpVar = mynanmean(IndGEVs, 3);
+    res.ExpVarTotal = sum(IndGEVs);
 
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
     eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
@@ -128,19 +138,23 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         end
     end
     
-    [curr_EEG,~,~] = pop_SortMSTemplates(AllEEG,idx,true, -1);
-    
+    % Sort according to chosen template if this has not already been done
+    % by the user to get spatial correlation values
+    if (TemplateType == 1)
+        if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
+            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
+        end
+    elseif (TemplateType == 2)
+        if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
+            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
+        end
+    else
+        EEGout = AllEEG(sIdx);
+    end
 
-
-%     eExpVar          = mynanmean(GEVs,3);
-
-
-    % possibly issue that this selects (1) dataset out of curr_EEG. other
-    % datasets shouldn't have been creaed
-    eSpCorrelation = curr_EEG(1).msinfo.MSMaps(info.FitPar.nClasses).Communality;
+    eSpCorrelation = AllEEG(sIdx).msinfo.MSMaps(info.FitPar.nClasses).Communality;
     eSpCorrelation = mynanmean(eSpCorrelation,3);
-    res.ExpVar = mynanmean(GEVs, 3);
-    res.ExpVarTotal = ExpVar;  % 1002.
+
     res.TotalTime = sum(eTotalTime);
     res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
     res.Duration     = mynanmean(eDuration,3);

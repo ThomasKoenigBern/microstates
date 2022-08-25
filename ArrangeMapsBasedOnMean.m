@@ -32,11 +32,7 @@ function [SortedMaps,SortOrder, Communality, SpatialCorrelation, Polarity] = Arr
             SortOrder(n,:) = Assignment;
         end
 
-        % Extract covariance and spatial correlation matrices from MyCorr
-        [covariance, spCorr] = MyCorr(squeeze(SortedMaps(n,:,:))',squeeze(ExtMeanMap)');
-        Communality(n,:) = diag(covariance)';
-        % add spatial correlation
-        SpatialCorrelation(n,:) = spCorr;
+        Communality(n,:) = diag(MyCorr(squeeze(SortedMaps(n,:,:))',squeeze(ExtMeanMap)'))';
 
 
     end

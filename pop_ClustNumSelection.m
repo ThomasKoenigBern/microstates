@@ -213,7 +213,7 @@ function [AllEEG, TheEEG, com] = pop_ClustNumSelection(AllEEG,TheEEG,CurrentSet,
         % Find MS maps for one greater than largest cluster solution
         maxClustNumber = ClusterNumbers(end);
         [IndSamples, ClustLabels] = FindMSMaps(TheEEG, maxClustNumber+1, FitPar, ClustPar, MaxSamples);
-
+            CV(i) = crossVal;
         % Find Cross-Validation for one greater than largest cluster
         % solution
         CVmax = eeg_crossVal(TheEEG, IndSamples', ClustLabels, ClusterNumbers(end)+1);
