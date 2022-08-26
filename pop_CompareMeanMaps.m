@@ -34,10 +34,10 @@ function [AllEEG,EEGout,com] = pop_CompareMeanMaps(AllEEG, SelectedSets, NClasse
     
     com = '';
 
-    if nargin < 2   SelectedSets = [];          end
-    if nargin < 3   NClasses = [];              end
-    if nargin < 4   IgnorePolarity = true;      end
-    if nargin < 5   FileName = '';              end
+    if nargin < 2;   SelectedSets = [];          end
+    if nargin < 3;   NClasses = [];              end
+    if nargin < 4;   IgnorePolarity = true;      end
+    if nargin < 5;   FileName = '';              end
 
     % identify valid datasets to compare (with children, containing msinfo)
     nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
