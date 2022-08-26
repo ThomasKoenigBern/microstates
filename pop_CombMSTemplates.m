@@ -52,12 +52,13 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, IgnorePolarity)
+function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, IgnorePolarity, SortMaps)
 
     if nargin < 3;  DoMeans = false;            end
     if nargin < 4;  ShowWhenDone = false;       end
     if nargin < 5;  MeanSetName = 'GrandMean';  end
     if nargin < 6;  IgnorePolarity = true;      end
+    if nargin < 7;  SortMaps = false;           end
     com = '';
     EEGOUT = [];
     
@@ -75,34 +76,38 @@ function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhe
         AvailableSets = {AllEEG(nonempty).setname};
             
         res = inputgui('title','Average microstate maps across recordings',...
-        'geometry', {1 1 1 1 1 1 1}, 'geomvert', [1 1 4 1 1 1 1], 'uilist', { ...
+        'geometry', {1 1 1 1 1 1 1 1}, 'geomvert', [1 1 4 1 1 1 1 1], 'uilist', { ...
             { 'Style', 'text', 'string', 'Choose sets for averaging'} ...
             { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
             { 'Style', 'listbox', 'string', AvailableSets, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
             { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
             { 'Style', 'edit', 'string', MeanSetName,'tag','MeanName' } ...
             { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
+            { 'Style', 'checkbox', 'string' 'Sort maps according to published template when done' 'tag' 'Sort_Maps','Value', SortMaps } ...
             { 'Style', 'checkbox', 'string' 'Show maps when done' 'tag' 'Show_Maps'    ,'Value', ShowWhenDone }});
      
         if isempty(res); return; end
         MeanSetName = res{2};
         SelectedSet = nonempty(res{1});
         IgnorePolarity = res{3};
-        ShowWhenDone = res{4};
+        SortMaps = res{4};
+        ShowWhenDone = res{5};  
     else
         if nargin < 5
             res = inputgui('title','Average microstate maps across recordings',...
-                'geometry', {1 1 1 1}, 'geomvert', [1 1 1 1], 'uilist', { ...
+                'geometry', {1 1 1 1 1}, 'geomvert', [1 1 1 1 1], 'uilist', { ...
                 { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
                 { 'Style', 'edit', 'string', MeanSetName,'tag','MeanName' } ...
                 { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
+                { 'Style', 'checkbox', 'string' 'Sort maps according to published template when done' 'tag' 'Sort_Maps','Value', SortMaps } ...
                 { 'Style', 'checkbox', 'string' 'Show maps when done' 'tag' 'Show_Maps'    ,'Value', ShowWhenDone }});
         
             if isempty(res); return; end
     
             MeanSetName = res{1};
             IgnorePolarity = res{2};
-            ShowWhenDone = res{3};
+            SortMaps = res{3};
+            ShowWhenDone = res{4};
         end    
         SelectedSet = CURRENTSET;
     end
@@ -205,9 +210,23 @@ function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhe
     txt = sprintf('%i ',SelectedSet);
     txt(end) = [];
     com = sprintf('[EEG, com] = pop_CombMSTemplates(%s, [%s], %i, %i, ''%s'');',inputname(1),txt,DoMeans,ShowWhenDone,MeanSetName);
-
+    
+    [AllEEG, EEGOUT, CURRENTSET] = pop_newset(AllEEG, EEGOUT, CURRENTSET,'gui','off'); 
+    
+    if SortMaps == true
+        % Sort 3-6 cluster solutions using 2002 normative maps and 7
+        % cluster solution with Custo 2017 maps
+        if (MinClasses < 3 && MaxClasses > 2) || (MinClasses > 2)
+            [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Norms NI2002", 1);
+        end
+        if (MinClasses <= 7 && MaxClasses >= 7)
+            AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
+            [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Custo2017", 1);
+        end
+    end
     if ShowWhenDone == true
         pop_ShowIndMSMaps(EEGOUT);
     end
+    
 end
 
