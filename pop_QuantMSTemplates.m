@@ -245,11 +245,11 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     close(h);
 
     idx = 1;
-    if nargin < 7
+    if nargin < 6
         [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.csv','Text file for R'},'Save microstate statistics');
         FileName = fullfile(PName,FName);
     else
-        idx = 2;
+        idx = 1;
         if ~isempty(strfind(FileName,'.mat'))
             idx = 4;
         end
@@ -285,7 +285,7 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     txt(end) = [];
     
     if (isempty(MeanSet))
-        com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, [], ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), FileName);
+        com = sprintf('[ALLEEG EEG com] = pop_QuantMSTemplates(%s, [%s], %i, %s, [], ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), FileName);
     else
         com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %s, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), MeanSet, FileName);
     end

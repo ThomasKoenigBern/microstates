@@ -68,10 +68,12 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
         res.Template     = TemplateName;
         res.SortInfo     = 'NA';
     end
-
-%     res.ExpVar       = ExpVar;
+    
+    % (TEMPORARY) include both the old explained variance value (ExpVar)
+    % and the new value (ExpVarTotal)
     res.IndExpVar = mynanmean(IndGEVs, 3);
     res.ExpVarTotal = sum(IndGEVs);
+    res.ExpVar       = ExpVar;
 
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
     eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
