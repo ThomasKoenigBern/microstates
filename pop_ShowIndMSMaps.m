@@ -84,11 +84,19 @@ function [AllEEG,TheEEG,com] = pop_ShowIndMSMaps(TheEEG,nclasses, DoEdit, AllEEG
     end
     
     if nargin < 2
-        nclasses = ud.msinfo.ClustPar.MinClasses;
+        if (ud.msinfo.ClustPar.MinClasses <= 4 && ud.msinfo.ClustPar.MaxClasses >= 4)
+            nclasses = 4;
+        else
+            nclasses = ud.msinfo.ClustPar.MinClasses;
+        end
     end
 
     if isempty(nclasses)
-        nclasses = ud.msinfo.ClustPar.MinClasses;
+        if (ud.msinfo.ClustPar.MinClasses <= 4 && ud.msinfo.ClustPar.MaxClasses >= 4)
+            nclasses = 4;
+        else
+            nclasses = ud.msinfo.ClustPar.MinClasses;
+        end
     end
 
     ud.nClasses = nclasses;
