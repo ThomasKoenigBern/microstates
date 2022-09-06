@@ -100,8 +100,10 @@ function [AllEEG, TheEEG,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
                 });
 
         if isempty(res); return; end
-
-        SelectedSets = res{1};
+        
+        AllSets = 1:numel(AllEEG);
+        ValidSets = AllSets(~HasChildren);
+        SelectedSets = ValidSets(res{1});
     else
         SelectedSets = CurrentSet;
     end
