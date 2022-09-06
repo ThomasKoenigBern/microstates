@@ -150,7 +150,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comQuantMSTemplatesT   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,2);'              catch_strings.store_and_hist];
     comQuantMSDataVis      = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0, [], [], 1);'   catch_strings.store_and_hist];
     
-    comCompareMeanMaps     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CompareMeanMaps(ALLEEG);'                            catch_strings.add_to_hist];
+    comCompareMeanMaps     = [try_strings.no_check '[           LASTCOM] = pop_CompareMeanMaps(ALLEEG);'                            catch_strings.add_to_hist];
 
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'          catch_strings.add_to_hist];
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
