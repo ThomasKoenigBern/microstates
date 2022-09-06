@@ -67,11 +67,12 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     global MSTEMPLATE;
 
     if nargin < 2,  CURRENTSET    = [];     end   
-    if nargin < 3,  UseMeanTmpl   =  0;  end
+    if nargin < 3,  UseMeanTmpl   =  0;     end
     if nargin < 4,  FitParameters = [];     end 
     if nargin < 5,  MeanSet       = [];     end 
 
     com = '';
+    EEGout = AllEEG(CURRENTSET);
     % select type of templates to use
     if nargin < 3
         ButtonName = questdlg('What type of templates do  you want to use?', ...
@@ -109,20 +110,18 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     
     AvailableSets  = {AllEEG(nonemptyInd).setname};
 
-    % Delara 8/22/22 change: remove pop-up selection of dataset to quantify
-    % if user has currently selected only one dataset. Check if the
-    % available sets with no children contain the selected datasets instead
-    % and provide detailed error message
+    % Delara 8/29/22 change: remove pop-up selection of dataset to quantify
+    % if command string includes a dataset
 
-    SelectedSet = CURRENTSET;
-    isValid = ismember(SelectedSet, nonemptyInd);
+    SelectedSets = CURRENTSET;
+    isValid = ismember(SelectedSets, nonemptyInd);
     invalidSets = find(~isValid);           % indices of selected sets that have children
     if (~isempty(invalidSets))
         if numel(CURRENTSET) > 1            % the user has selected multiple datasets
             if (numel(invalidSets) == 1)
                 errordlg2(sprintf(['Dataset %d is a mean set and cannot be quantified.' ...
                     ' Deselect this dataset to proceed.'], invalidSets),'Quantify microstates');
-            elseif (numel(invalidSets) > numel(SelectedSet))
+            elseif (numel(invalidSets) < numel(SelectedSets))
                 errordlg2(sprintf(['Datasets %s are mean sets and cannot be quantified.' ...
                     ' Deselect these datasets to proceed.'], ...
                     [sprintf('%d,', invalidSets(1:end-1)), sprintf('%d', invalidSets(end))]), ...
@@ -161,8 +160,8 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     
     switch UseMeanTmpl
         case 0,
-            MinClasses = max(cellfun(@(x) GetClusterField(AllEEG(x),'MinClasses'),num2cell(SelectedSet)));
-            MaxClasses = min(cellfun(@(x) GetClusterField(AllEEG(x),'MaxClasses'),num2cell(SelectedSet)));
+            MinClasses = max(cellfun(@(x) GetClusterField(AllEEG(x),'MinClasses'),num2cell(SelectedSets)));
+            MaxClasses = min(cellfun(@(x) GetClusterField(AllEEG(x),'MaxClasses'),num2cell(SelectedSets)));
         case 1,
             TheChosenTemplate = AllEEG(MeanSet);
             MinClasses = TheChosenTemplate.msinfo.ClustPar.MinClasses;
@@ -173,7 +172,7 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
             MaxClasses = TheChosenTemplate.msinfo.ClustPar.MaxClasses;
     end
     if UseMeanTmpl == 0
-        if isfield(AllEEG(SelectedSet(1)).msinfo,'FitPar');     par = AllEEG(SelectedSet(1)).msinfo.FitPar;
+        if isfield(AllEEG(SelectedSets(1)).msinfo,'FitPar');     par = AllEEG(SelectedSets(1)).msinfo.FitPar;
         else par = [];
         end
     else
@@ -186,6 +185,7 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
  
     if ~paramsComplete
         par = SetFittingParameters(MinClasses:MaxClasses,par);
+        if isempty(par);    return; end
     end
     
 %    MSStats = table();
@@ -201,9 +201,9 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     set(findall(h,'type','text'),'Interpreter','none');
 
 %    MSStats(numel(SelectedSet)).DataSet = '';
-    for s = 1:numel(SelectedSet)
-        sIdx = SelectedSet(s);
-        waitbar((s-1) / numel(SelectedSet),h,sprintf('Working on %s',AllEEG(sIdx).setname),'Interpreter','none');
+    for s = 1:numel(SelectedSets)
+        sIdx = SelectedSets(s);
+        waitbar((s-1) / numel(SelectedSets),h,sprintf('Working on %s',AllEEG(sIdx).setname),'Interpreter','none');
         DataInfo.subject   = AllEEG(sIdx).subject;
         DataInfo.group     = AllEEG(sIdx).group;
         DataInfo.condition = AllEEG(sIdx).condition;
@@ -237,7 +237,11 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
             [MSClass,gfp,ExpVar, IndGEVs] = AssignMStates(AllEEG(sIdx),Maps,par, TheChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
             if ~isempty(MSClass)
 %                MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname)]; 
-                [AllEEG, EEGout, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, TheChosenTemplate.setname, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
+                try
+                    [AllEEG, EEGout, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, TheChosenTemplate.setname, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
+                catch ME
+                    return;
+                end
             end
         end
         EpochData(s) = SSEpochData;
@@ -281,7 +285,7 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
                 SaveStructToR(MSStats,FileName);
         end
     end
-    txt = sprintf('%i ',SelectedSet);
+    txt = sprintf('%i ',SelectedSets);
     txt(end) = [];
     
     if (isempty(MeanSet))

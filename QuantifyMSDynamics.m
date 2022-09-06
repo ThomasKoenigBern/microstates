@@ -143,18 +143,25 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
     % Sort according to chosen template if this has not already been done
     % by the user to get spatial correlation values
     if (TemplateType == 1)
-        if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
-            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, [], TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
+        ParentSetName = info.MSMaps(info.FitPar.nClasses).ParentSet;
+        if ~strcmp(ParentSetName, TemplateName)
+            errordlg2(sprintf(['The mean set %s is not the parent set of the individual set %s.\n' ...
+                'Did you mean to quantify using %s?'], TemplateName, DataInfo.setname, ParentSetName), ...
+                'Quantify microstate dynamics');
+            error("Wrong mean set chosen for quantifying");
+        else
+            eSpCorrelation = info.MSMaps(info.FitPar.nClasses).ParentSpatialCorrelation;
+            EEGout = AllEEG(sIdx);
         end
     elseif (TemplateType == 2)
         if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
-            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity);
+            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
         end
+        eSpCorrelation = AllEEG(sIdx).msinfo.MSMaps(info.FitPar.nClasses).SpatialCorrelation;
     else
         EEGout = AllEEG(sIdx);
     end
 
-    eSpCorrelation = AllEEG(sIdx).msinfo.MSMaps(info.FitPar.nClasses).Communality;
     eSpCorrelation = mynanmean(eSpCorrelation,3);
 
     res.TotalTime = sum(eTotalTime);
