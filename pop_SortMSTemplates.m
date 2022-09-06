@@ -279,7 +279,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
            MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
         end
         % We sort out the stuff
-        [~,SortOrder, Communality, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
+        [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
 
          for index = 1:length(SelectedSet)
             sIndex = SelectedSet(index);
@@ -299,7 +299,7 @@ function [AllEEG,EEGout,com] = pop_SortMSTemplates(AllEEG, SetToSort, DoMeans, T
                 end
             end
             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
-            AllEEG(sIndex).msinfo.MSMaps(n).Communality = Communality(index,:);
+            AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation(index,:);
             if isfield(ChosenTemplate.msinfo.MSMaps(n),'Labels')
                 AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
             end
