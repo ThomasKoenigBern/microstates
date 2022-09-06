@@ -52,7 +52,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, IgnorePolarity, SortMaps)
+function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, IgnorePolarity)
 
     if nargin < 3;  DoMeans = false;            end
     if nargin < 4;  ShowWhenDone = false;       end
@@ -76,38 +76,34 @@ function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhe
         AvailableSets = {AllEEG(nonempty).setname};
             
         res = inputgui('title','Average microstate maps across recordings',...
-        'geometry', {1 1 1 1 1 1 1 1}, 'geomvert', [1 1 4 1 1 1 1 1], 'uilist', { ...
+        'geometry', {1 1 1 1 1 1 1}, 'geomvert', [1 1 4 1 1 1 1], 'uilist', { ...
             { 'Style', 'text', 'string', 'Choose sets for averaging'} ...
             { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
             { 'Style', 'listbox', 'string', AvailableSets, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
             { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
             { 'Style', 'edit', 'string', MeanSetName,'tag','MeanName' } ...
             { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
-            { 'Style', 'checkbox', 'string' 'Sort maps according to published template when done' 'tag' 'Sort_Maps','Value', SortMaps } ...
             { 'Style', 'checkbox', 'string' 'Show maps when done' 'tag' 'Show_Maps'    ,'Value', ShowWhenDone }});
      
         if isempty(res); return; end
         MeanSetName = res{2};
         SelectedSet = nonempty(res{1});
         IgnorePolarity = res{3};
-        SortMaps = res{4};
-        ShowWhenDone = res{5};  
+        ShowWhenDone = res{4};  
     else
         if nargin < 5
             res = inputgui('title','Average microstate maps across recordings',...
-                'geometry', {1 1 1 1 1}, 'geomvert', [1 1 1 1 1], 'uilist', { ...
+                'geometry', {1 1 1 1}, 'geomvert', [1 1 1 1], 'uilist', { ...
                 { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
                 { 'Style', 'edit', 'string', MeanSetName,'tag','MeanName' } ...
                 { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
-                { 'Style', 'checkbox', 'string' 'Sort maps according to published template when done' 'tag' 'Sort_Maps','Value', SortMaps } ...
                 { 'Style', 'checkbox', 'string' 'Show maps when done' 'tag' 'Show_Maps'    ,'Value', ShowWhenDone }});
         
             if isempty(res); return; end
     
             MeanSetName = res{1};
             IgnorePolarity = res{2};
-            SortMaps = res{3};
-            ShowWhenDone = res{4};
+            ShowWhenDone = res{3};
         end    
         SelectedSet = CURRENTSET;
     end
@@ -186,7 +182,7 @@ function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhe
         msinfo.MSMaps(n).ColorMap = lines(n);
         msinfo.MSMaps(n).SortedBy = 'none';
         msinfo.MSMaps(n).SortMode = 'none';
-        msinfo.MSMaps(n).Communality = [];
+        msinfo.MSMaps(n).SpatialCorrelation = [];
     end
     
     EEGOUT = eeg_emptyset();
@@ -206,27 +202,70 @@ function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhe
     EEGOUT.xmin        = 1;
     EEGOUT.times       = 1:EEGOUT.pnts;
     EEGOUT.xmax        = EEGOUT.times(end);
-
-    txt = sprintf('%i ',SelectedSet);
-    txt(end) = [];
-    com = sprintf('[EEG, com] = pop_CombMSTemplates(%s, [%s], %i, %i, ''%s'');',inputname(1),txt,DoMeans,ShowWhenDone,MeanSetName);
     
     [AllEEG, EEGOUT, CURRENTSET] = pop_newset(AllEEG, EEGOUT, CURRENTSET,'gui','off'); 
     
-    if SortMaps == true
-        % Sort 3-6 cluster solutions using 2002 normative maps and 7
-        % cluster solution with Custo 2017 maps
-        if (MinClasses < 3 && MaxClasses > 2) || (MinClasses > 2)
-            [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Norms NI2002", 1);
-        end
-        if (MinClasses <= 7 && MaxClasses >= 7)
-            AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
-            [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Custo2017", 1);
+    % Sort 3-6 cluster solutions using 2002 normative maps and 7
+    % cluster solution with Custo 2017 maps
+    if (MinClasses < 3 && MaxClasses > 2) || (MinClasses > 2)
+        [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Norms NI2002", 1);
+    end
+    if (MinClasses <= 7 && MaxClasses >= 7)
+        AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
+        [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Custo2017", 1);
+    end
+
+    % Compute spatial correlations between child maps and permuted mean
+    % maps
+    for i = 1:length(SelectedSet)
+        for n = MinClasses:MaxClasses
+            % Make sure the individual maps are sorted by published
+            % template first
+            if (n >= 3 && n <= 6)
+                if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Norms NI2002")
+                    [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), 0, -1, "Norms NI2002", IgnorePolarity, n);
+                end
+            elseif n == 7
+                if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Custo2017")
+                    [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), 0, -1, "Custo2017", IgnorePolarity, n);
+                end
+            end
+
+            % compute and store spatial correlations in child structure
+            spCorr = elementCorr(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Maps', EEGOUT.msinfo.MSMaps(n).Maps', IgnorePolarity);
+            AllEEG(SelectedSet(i)).msinfo.MSMaps(n).ParentSet = MeanSetName;
+            AllEEG(SelectedSet(i)).msinfo.MSMaps(n).ParentSpatialCorrelation = spCorr;
         end
     end
+
     if ShowWhenDone == true
         pop_ShowIndMSMaps(EEGOUT);
     end
+
+    % Remove the new mean set from ALLEEG so EEGLAB can create a new one
+    % itself
+    AllEEG(CURRENTSET) = [];
+
+    txt = sprintf('%i ',SelectedSet);
+    txt(end) = [];
+    com = sprintf('[ALLEEG, EEG, com] = pop_CombMSTemplates(%s, [%s], %i, %i, ''%s'');',inputname(1),txt,DoMeans,ShowWhenDone,MeanSetName);
     
+end
+
+% Performs element-wise computation of abs(spatial correlation) or 
+% spatial correlation between matrices A and B
+function corr = elementCorr(A,B, IgnorePolarity)
+    % average reference
+    A = A - mean(A, 1);
+    B = B - mean(B, 1);
+
+    % get correlation
+    A = A./sqrt(sum(A.^2, 1));
+    B = B./sqrt(sum(B.^2, 1));           
+    if (IgnorePolarity) 
+        corr = abs(sum(A.*B, 1));
+    else 
+        corr = sum(A.*B, 1);
+    end
 end
 

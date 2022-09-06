@@ -135,6 +135,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     MSTEMPLATE = MSTemplate;
     
     comFindMSTemplates     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_FindMSTemplates(ALLEEG, EEG, CURRENTSET);'           catch_strings.add_to_hist]; % ok
+    comCombineMSTemplates  = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,false);'           catch_strings.new_and_hist];
+    comCombineMSMeans      = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,true );'           catch_strings.new_and_hist];
     comSortMSTemplates     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,false);'                   catch_strings.store_and_hist];
     comSortMSMeans         = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,true) ;'                   catch_strings.store_and_hist];
     comSortMSTemplatesT    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,false,-1);'                catch_strings.store_and_hist];
@@ -143,9 +145,9 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comGetIndMSDynamics    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,false);'                    catch_strings.new_and_hist];
     comGetMeanMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true);'                     catch_strings.new_and_hist];
     comGetTMplMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true,[],-1);'               catch_strings.new_and_hist];
-    comQuantMSTemplatesS   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0);'              catch_strings.store_and_hist];
-    comQuantMSTemplatesM   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,1);'              catch_strings.store_and_hist];
-    comQuantMSTemplatesT   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,2);'              catch_strings.store_and_hist];
+    comQuantMSTemplatesS   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0);'              catch_strings.store_and_hist];
+    comQuantMSTemplatesM   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],1);'              catch_strings.store_and_hist];
+    comQuantMSTemplatesT   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],2);'              catch_strings.store_and_hist];
     comQuantMSDataVis      = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_QuantMSTemplates(ALLEEG,CURRENTSET,0, [], [], 1);'   catch_strings.store_and_hist];
     
     comCompareMeanMaps     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CompareMeanMaps(ALLEEG);'                            catch_strings.add_to_hist];
@@ -191,9 +193,9 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (mean template maps)' , 'CallBack'       , comGetMeanMSDynamics   ,   'position',  10);
     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (published template maps)' , 'CallBack'  , comGetTMplMSDynamics   ,   'position',  11);
     
-    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (own template maps)'  , 'CallBack', comQuantMSTemplatesS,   'position', 12, 'Separator','on');
-    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (mean template maps)' , 'CallBack', comQuantMSTemplatesM,   'position', 13);
-    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (published template maps)', 'CallBack', comQuantMSTemplatesT,   'position', 14);
+    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (own template maps)'  , 'CallBack', comQuantMSTemplatesS,   'position', 12, 'userdata', 'study:on', 'Separator','on');
+    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (mean template maps)' , 'CallBack', comQuantMSTemplatesM,   'position', 13, 'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (published template maps)', 'CallBack', comQuantMSTemplatesT,   'position', 14, 'userdata', 'study:on');
 
     uimenu( toolssubmenu, 'Label', 'Compare spatial correlations between mean maps', 'Callback', comCompareMeanMaps, 'position', 15, 'Separator', 'on');
 
