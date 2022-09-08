@@ -76,7 +76,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, TheEEG,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, ClustPar, ShowMaps, ShowDyn, SortMaps)
+function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, ClustPar, ShowMaps, ShowDyn, SortMaps)
 
     com = '';
     if nargin < 4
@@ -174,7 +174,7 @@ function [AllEEG, TheEEG,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
         % Distribute the random sampling across segments
         nSegments = AllEEG(sIndex).trials;
         if ~isinf(ClustPar.MaxMaps)
-            MapsPerSegment = hist(ceil(nSegments * rand(ClustPar.MaxMaps,1)),nSegments);
+            MapsPerSegment = hist(ceil(double(nSegments) * rand(ClustPar.MaxMaps,1)),nSegments);
         else
             MapsPerSegment = inf(nSegments,1);
         end
@@ -259,6 +259,8 @@ function [AllEEG, TheEEG,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
         end
     
     end
+
+    EEGout = AllEEG(SelectedSets);
     
     structInfo = sprintf('struct(''MinClasses'', %i, ''MaxClasses'', %i, ''GFPPeaks'', %i, ''IgnorePolarity'', %i, ''MaxMaps'', %i, ''Restarts'', %i, ''UseAAHC'', %i, ''Normalize'', %i)',ClustPar.MinClasses, ClustPar.MaxClasses, ClustPar.GFPPeaks, ClustPar.IgnorePolarity, ClustPar.MaxMaps, ClustPar.Restarts, ClustPar.UseAAHC, ClustPar.Normalize);
 
