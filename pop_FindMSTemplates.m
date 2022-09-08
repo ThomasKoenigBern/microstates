@@ -86,9 +86,9 @@ function [AllEEG, TheEEG,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
     if nargin < 6;  ShowDyn        = false; end
     if nargin < 7;  SortMaps       = false; end
 
-    if numel(CurrentSet) <= 1
-        % if the user has not already selected multiple datasets, allow
-        % them to select them now
+    if isempty(CurrentSet)
+        % if command does not already include datasets, prompt the user to
+        % select them
         HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
         AvailableSets = {AllEEG(~HasChildren).setname};
 
