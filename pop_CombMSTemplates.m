@@ -58,7 +58,6 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
     if nargin < 4;  ShowWhenDone = false;       end
     if nargin < 5;  MeanSetName = 'GrandMean';  end
     if nargin < 6;  IgnorePolarity = true;      end
-    if nargin < 7;  SortMaps = false;           end
     com = '';
     EEGOUT = [];
     

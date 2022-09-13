@@ -89,7 +89,7 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
     if isempty(CurrentSet)
         % if command does not already include datasets, prompt the user to
         % select them
-        HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
+        HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG),'UniformOutput',true);
         AvailableSets = {AllEEG(~HasChildren).setname};
 
         res = inputgui('title','Identify microstate maps',...
@@ -265,4 +265,17 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
     structInfo = sprintf('struct(''MinClasses'', %i, ''MaxClasses'', %i, ''GFPPeaks'', %i, ''IgnorePolarity'', %i, ''MaxMaps'', %i, ''Restarts'', %i, ''UseAAHC'', %i, ''Normalize'', %i)',ClustPar.MinClasses, ClustPar.MaxClasses, ClustPar.GFPPeaks, ClustPar.IgnorePolarity, ClustPar.MaxMaps, ClustPar.Restarts, ClustPar.UseAAHC, ClustPar.Normalize);
 
     com = sprintf('[%s, %s, com] = pop_FindMSTemplates(%s, %s, %s, %s, %i, %i, %i);', inputname(1),inputname(2),inputname(1),inputname(2),inputname(3),structInfo,ShowMaps,ShowDyn,SortMaps);
+end
+
+function Answer = DoesItHaveChildren(in)
+    Answer = false;
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    if ~isfield(in.msinfo,'children')
+        return
+    else
+        Answer = true;
+    end
 end

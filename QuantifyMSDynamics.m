@@ -153,19 +153,20 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
             eSpCorrelation = info.MSMaps(info.FitPar.nClasses).ParentSpatialCorrelation;
             EEGout = AllEEG(sIdx);
         end
+        eSpCorrelation = mynanmean(eSpCorrelation,3);
+        res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
+
     elseif (TemplateType == 2)
         if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
             [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
         end
         eSpCorrelation = AllEEG(sIdx).msinfo.MSMaps(info.FitPar.nClasses).SpatialCorrelation;
+        res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
     else
         EEGout = AllEEG(sIdx);
     end
 
-    eSpCorrelation = mynanmean(eSpCorrelation,3);
-
     res.TotalTime = sum(eTotalTime);
-    res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
     res.Duration     = mynanmean(eDuration,3);
     res.MeanDuration = mean(eMeanDuration);
  

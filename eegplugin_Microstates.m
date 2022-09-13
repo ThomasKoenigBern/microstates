@@ -134,14 +134,14 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     
     MSTEMPLATE = MSTemplate;
     
-    comFindMSTemplates     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_FindMSTemplates(ALLEEG, EEG, []);'           catch_strings.add_to_hist]; % ok
+    comFindMSTemplates     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_FindMSTemplates(ALLEEG, EEG, CURRENTSET);'           catch_strings.add_to_hist]; % ok
     comCombineMSTemplates  = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,false);'           catch_strings.new_and_hist];
     comCombineMSMeans      = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,true );'           catch_strings.new_and_hist];
-    comSortMSTemplates     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,false);'                   catch_strings.store_and_hist];
-    comSortMSMeans         = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,true) ;'                   catch_strings.store_and_hist];
-    comSortMSTemplatesT    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,false,-1);'                catch_strings.store_and_hist];
-    comSortMSMeansT        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,true, -1) ;'               catch_strings.store_and_hist];
-    
+    comSortMSTemplates     = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,CURRENTSETfalse);'            catch_strings.store_and_hist];
+    comSortMSMeans         = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,CURRENTSET,true) ;'           catch_strings.store_and_hist];
+    comSortMSTemplatesT    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,CURRENTSET,false,-1);'        catch_strings.store_and_hist];
+    comSortMSMeansT        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_SortMSTemplates(ALLEEG,CURRENTSET,true, -1) ;'       catch_strings.store_and_hist];
+        
     comGetIndMSDynamics    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,false);'                    catch_strings.new_and_hist];
     comGetMeanMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true);'                     catch_strings.new_and_hist];
     comGetTMplMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true,[],-1);'               catch_strings.new_and_hist];
