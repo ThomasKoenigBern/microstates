@@ -66,7 +66,7 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
     % -------------------------------------------
     if numel(CURRENTSET) == 1 
         nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
-        HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
+        HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG),'UniformOutput',true);
         if DoMeans == true
             nonempty(~HasChildren) = [];
         else
@@ -182,6 +182,8 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
         msinfo.MSMaps(n).SortedBy = 'none';
         msinfo.MSMaps(n).SortMode = 'none';
         msinfo.MSMaps(n).SpatialCorrelation = [];
+        msinfo.MSMaps(n).Parents = [];
+        msinfo.MSMaps(n).Grandparents = [];
     end
     
     EEGOUT = eeg_emptyset();
@@ -207,11 +209,11 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
     % Sort 3-6 cluster solutions using 2002 normative maps and 7
     % cluster solution with Custo 2017 maps
     if (MinClasses < 3 && MaxClasses > 2) || (MinClasses > 2)
-        [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Norms NI2002", 1);
+        [EEGOUT, ~, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, 1, -1, "Norms NI2002", 1);
     end
     if (MinClasses <= 7 && MaxClasses >= 7)
         AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
-        [AllEEG, EEGOUT, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, DoMeans, -1, "Custo2017", 1);
+        [EEGOUT, ~, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, 1, -1, "Custo2017", 1);
     end
 
     % Compute spatial correlations between child maps and permuted mean
@@ -222,18 +224,33 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
             % template first
             if (n >= 3 && n <= 6)
                 if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Norms NI2002")
-                    [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), 0, -1, "Norms NI2002", IgnorePolarity, n);
+                    [AllEEG(SelectedSet(i)), ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), DoMeans, -1, "Norms NI2002", IgnorePolarity, n);
                 end
             elseif n == 7
                 if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Custo2017")
-                    [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), 0, -1, "Custo2017", IgnorePolarity, n);
+                    [AllEEG(SelectedSet(i)), ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), DoMeans, -1, "Custo2017", IgnorePolarity, n);
                 end
             end
 
-            % compute and store spatial correlations in child structure
+            % compute and store spatial correlations between child and
+            % parent set in child EEG structure
             spCorr = elementCorr(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Maps', EEGOUT.msinfo.MSMaps(n).Maps', IgnorePolarity);
-            AllEEG(SelectedSet(i)).msinfo.MSMaps(n).ParentSet = MeanSetName;
-            AllEEG(SelectedSet(i)).msinfo.MSMaps(n).ParentSpatialCorrelation = spCorr;
+            ParentStruct.setname = MeanSetName;
+            ParentStruct.spCorr = spCorr;
+            AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Parents = [AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Parents, ParentStruct];
+
+            % compute and store spatial correlations between grandchildren and
+            % mean set in the child EEG structures
+            if (DoMeans)
+                childSetnames = AllEEG(SelectedSet(i)).msinfo.children;
+                for s=1:numel(childSetnames)
+                    ChildSet = find(matches({AllEEG.setname}, childSetnames{s}), 1);
+                    spCorr = elementCorr(AllEEG(ChildSet).msinfo.MSMaps(n).Maps', EEGOUT.msinfo.MSMaps(n).Maps', IgnorePolarity);
+                    GrandparentStruct.setname = MeanSetName;
+                    GrandparentStruct.spCorr = spCorr;
+                    AllEEG(ChildSet).msinfo.MSMaps(n).Grandparents = [AllEEG(ChildSet).msinfo.MSMaps(n).Grandparents, GrandparentStruct];
+                end
+            end
         end
     end
 
@@ -249,6 +266,19 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
     txt(end) = [];
     com = sprintf('[ALLEEG, EEG, com] = pop_CombMSTemplates(%s, [%s], %i, %i, ''%s'');',inputname(1),txt,DoMeans,ShowWhenDone,MeanSetName);
     
+    end
+
+function Answer = DoesItHaveChildren(in)
+    Answer = false;
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    if ~isfield(in.msinfo,'children')
+        return
+    else
+        Answer = true;
+    end
 end
 
 % Performs element-wise computation of abs(spatial correlation) or 

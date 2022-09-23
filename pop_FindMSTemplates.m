@@ -1,12 +1,15 @@
 %pop_FindMSTemplates() interactively identify microstate topographies
 %
 % Usage:
-%   >> [EEGOUT,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, ClustPar,ShowMaps,ShowDyn, SortMaps)
+%   >> [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar,ShowMaps,ShowDyn, SortMaps)
 %
 % EEG lab specific:
 %
-%   "TheEEG" 
-%   -> EEG structure with the EEG to search for templates
+%   "EEGout"
+%   -> The refreshed set of current EEGs
+%
+%   "CurrentSet"
+%   -> The indices of the refreshed set of current EEGs
 %
 % Graphical interface / parameters:
 %
@@ -51,8 +54,11 @@
 %
 % Output:
 %
-%   "EEGOUT" 
+%   "EEGout" 
 %   -> EEG structure with the EEG containing the identified cluster centers
+% 
+%   "CurrentSet"
+%   -> The indices of the EEGs containing the identified cluster centers
 %
 %   "com"
 %   -> Command necessary to replicate the computation
@@ -76,9 +82,15 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, ClustPar, ShowMaps, ShowDyn, SortMaps)
+function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar, ShowMaps, ShowDyn, SortMaps)
 
+    global EEG;
+    global CURRENTSET;
+    global MSTEMPLATE;
     com = '';
+    EEGout = EEG;
+    CurrentSet = CURRENTSET;
+    
     if nargin < 4
         ClustPar = [];
     end
@@ -86,9 +98,9 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
     if nargin < 6;  ShowDyn        = false; end
     if nargin < 7;  SortMaps       = false; end
 
-    if isempty(CurrentSet)
-        % if command does not already include datasets, prompt the user to
-        % select them
+    if isempty(SelectedSets)
+        % if multiple datasets have not already been selected, prompt the
+        % user to select them
         HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG),'UniformOutput',true);
         AvailableSets = {AllEEG(~HasChildren).setname};
 
@@ -104,8 +116,6 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
         AllSets = 1:numel(AllEEG);
         ValidSets = AllSets(~HasChildren);
         SelectedSets = ValidSets(res{1});
-    else
-        SelectedSets = CurrentSet;
     end
     
     FieldNames = {'MinClasses','MaxClasses','GFPPeaks','IgnorePolarity','MaxMaps','Restarts', 'UseAAHC','Normalize'};
@@ -221,6 +231,8 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
                 msinfo.MSMaps(nClusters).SortMode = 'none';
                 msinfo.MSMaps(nClusters).SortedBy = '';
                 msinfo.MSMaps(nClusters).SpatialCorrelation= [];
+                msinfo.MSMaps(nClusters).Parents = [];
+                msinfo.MSMaps(nClusters).Grandparents = [];
             end
         else
             [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize);
@@ -232,6 +244,8 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
                 msinfo.MSMaps(nClusters).SortMode = 'none';
                 msinfo.MSMaps(nClusters).SortedBy = '';
                 msinfo.MSMaps(nClusters).SpatialCorrelation= [];
+                msinfo.MSMaps(nClusters).Parents = [];
+                msinfo.MSMaps(nClusters).Grandparents = [];
             end
         end
     
@@ -243,12 +257,10 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
             % Sort 3-6 cluster solutions using 2002 normative maps and 7
             % cluster solution with Custo 2017 maps
             if (ClustPar.MinClasses < 3 && ClustPar.MaxClasses > 2) || (ClustPar.MinClasses > 2)
-                AllEEG(sIndex).msinfo = AllEEG(sIndex).msinfo;
-                [AllEEG, AllEEG(sIndex), ~] = pop_SortMSTemplates(AllEEG, sIndex, 0, -1, "Norms NI2002", 1);
+                [AllEEG(sIndex), ~, ~] = pop_SortMSTemplates(AllEEG, sIndex, 0, -1, "Norms NI2002", 1);
             end
             if (ClustPar.MinClasses <= 7 && ClustPar.MaxClasses >= 7)
-                AllEEG(sIndex).msinfo = AllEEG(sIndex).msinfo;
-                [AllEEG, AllEEG(sIndex), ~] = pop_SortMSTemplates(AllEEG, sIndex, 0, -1, "Custo2017", 1);
+                [AllEEG(sIndex), ~, ~] = pop_SortMSTemplates(AllEEG, sIndex, 0, -1, "Custo2017", 1);
             end
         end
         if ShowMaps == true
@@ -261,10 +273,11 @@ function [AllEEG, EEGout,com] = pop_FindMSTemplates(AllEEG, TheEEG, CurrentSet, 
     end
 
     EEGout = AllEEG(SelectedSets);
+    CurrentSet = SelectedSets;
     
     structInfo = sprintf('struct(''MinClasses'', %i, ''MaxClasses'', %i, ''GFPPeaks'', %i, ''IgnorePolarity'', %i, ''MaxMaps'', %i, ''Restarts'', %i, ''UseAAHC'', %i, ''Normalize'', %i)',ClustPar.MinClasses, ClustPar.MaxClasses, ClustPar.GFPPeaks, ClustPar.IgnorePolarity, ClustPar.MaxMaps, ClustPar.Restarts, ClustPar.UseAAHC, ClustPar.Normalize);
 
-    com = sprintf('[%s, %s, com] = pop_FindMSTemplates(%s, %s, %s, %s, %i, %i, %i);', inputname(1),inputname(2),inputname(1),inputname(2),inputname(3),structInfo,ShowMaps,ShowDyn,SortMaps);
+    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(ALLEEG, %s, %s, %i, %i, %i, %i);', mat2str(SelectedSets),structInfo,ShowMaps,ShowDyn,SortMaps);
 end
 
 function Answer = DoesItHaveChildren(in)
