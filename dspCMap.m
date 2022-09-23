@@ -36,9 +36,9 @@ function [c,imap,xm,ym,chandle] = dspCMap(map,ChanPos,varargin)
 map = double(map);
 if isstruct(ChanPos)
     if isfield(ChanPos,'urchan')
-        y = cell2mat({ChanPos.X});
-        x = cell2mat({ChanPos.Y});
-        z = cell2mat({ChanPos.Z});
+        y =  cell2mat({ChanPos.X});
+        x = -cell2mat({ChanPos.Y});
+        z =  cell2mat({ChanPos.Z});
     else
         [x,y,z] = VAsph2cart(ChanPos);
     end
@@ -304,7 +304,7 @@ switch cmap
             end
         end
 
-        colormap(cm);
+        colormap(gca,cm);
         contour(xm,ym,imap,ContourLevel(ContourLevel < 0),'LineColor',[0.99 0.99 0.99],'LineWidth',2);
 
     case 'ww'
@@ -327,7 +327,7 @@ switch cmap
         size(hot(cntpos))
         cm = [zeros(negpos,3);hot(cntpos)];
         
-        colormap(cm);
+        colormap(gca,cm);
         
     case 'br'
         if verLessThan('matlab','8.0')
@@ -354,7 +354,7 @@ switch cmap
 %            dummy = colormap(bluered)
            % contourcmap('bluered',ll)
 
-            colormap(bluered);
+            colormap(gca,bluered);
         end
         LabBkG = 1;
     case 'rr'
@@ -368,7 +368,7 @@ switch cmap
                 cm(i,:) = [1 0.875-l 0.875-l];
             end
         end
-        colormap(cm);
+        colormap(gca,cm);
         
         LabBkG = 1;
 %        if (ll(1) < 0)
@@ -497,7 +497,7 @@ if NoseRadius > 0
         line(-x,y,'LineWidth',1,'Color',[0 0 0]);
     end
     ell_h = ellipse(r_max*0.99,r_max*0.99,[],0,0);
-    set(ell_h,'LineWidth',2,'Color',[0 0 0]);
+    set(ell_h,'LineWidth',1,'Color',[0 0 0]);
     
 end
 

@@ -62,17 +62,17 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTSET, UseMeanTmpl, FitParameters, MeanSet, FileName)
+function [EEGout, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, SelectedSets, UseMeanTmpl, FitParameters, MeanSet, FileName)
     
     global MSTEMPLATE;
 
-    if nargin < 2,  CURRENTSET    = [];     end   
+    if nargin < 2,  SelectedSets    = [];     end   
     if nargin < 3,  UseMeanTmpl   =  0;     end
     if nargin < 4,  FitParameters = [];     end 
     if nargin < 5,  MeanSet       = [];     end 
 
     com = '';
-    EEGout = AllEEG(CURRENTSET);
+    EEGout = AllEEG(SelectedSets);
     % select type of templates to use
     if nargin < 3
         ButtonName = questdlg('What type of templates do  you want to use?', ...
@@ -113,11 +113,10 @@ function [AllEEG, EEGout, com,EpochData] = pop_QuantMSTemplates(AllEEG, CURRENTS
     % Delara 8/29/22 change: remove pop-up selection of dataset to quantify
     % if command string includes a dataset
 
-    SelectedSets = CURRENTSET;
     isValid = ismember(SelectedSets, nonemptyInd);
     invalidSets = find(~isValid);           % indices of selected sets that have children
     if (~isempty(invalidSets))
-        if numel(CURRENTSET) > 1            % the user has selected multiple datasets
+        if numel(SelectedSets) > 1            % the user has selected multiple datasets
             if (numel(invalidSets) == 1)
                 errordlg2(sprintf(['Dataset %d is a mean set and cannot be quantified.' ...
                     ' Deselect this dataset to proceed.'], invalidSets),'Quantify microstates');

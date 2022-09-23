@@ -1,7 +1,7 @@
 %pop_RaguMSTemplates() transfers the microstate topographies to Ragu for topographic testing
 %
 % Usage:
-%   >> com = pop_RaguMSTemplates(AllEEG, CURRENTSET)
+%   >> com = pop_RaguMSTemplates(AllEEG, CURRENTSET, nClasses)
 %
 % EEG lab specific:
 %
@@ -11,6 +11,7 @@
 %   "CURRENTSET" 
 %   -> Index of selected EEGs. If more than one EEG is selected, the analysis
 %      will be limited to those, if not, the user is asked
+%   -> nClasses: The number of microstate classes you want to have analyzed
 %
 % Output:
 %
@@ -36,7 +37,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function com = pop_RaguMSTemplates(AllEEG, SetToTest)
+function com = pop_RaguMSTemplates(AllEEG, SetToTest, nClasses)
 
     com = '';
 
@@ -65,19 +66,19 @@ function com = pop_RaguMSTemplates(AllEEG, SetToTest)
      for i = 1:numel(PossibleNs)
         choice = [choice sprintf('%i Classes|',PossibleNs(i))];
      end
-
-      
     
-   res = inputgui('title','Topographic tests using Ragu', 'geometry', {[1 1]}, 'geomvert', [3],  'uilist', { ...
-        { 'Style', 'text', 'string', 'Number of classes', 'fontweight', 'bold'  } ...
-        { 'style', 'listbox', 'string', choice}});
+    if nargin < 3
+        res = inputgui('title','Topographic tests using Ragu', 'geometry', {[1 1]}, 'geomvert', [3],  'uilist', { ...
+            { 'Style', 'text', 'string', 'Number of classes', 'fontweight', 'bold'  } ...
+            { 'style', 'listbox', 'string', choice}});
   
-    if isempty(res)
-        return
-    else
-        nClasses = PossibleNs(res{1});
+        if isempty(res)
+            return
+        else
+            nClasses = PossibleNs(res{1});
+        end
     end
-
+    
     rd = SaveMSMapsForRagu(AllEEG(SetToTest),nClasses);
     Ragu(rd);
 

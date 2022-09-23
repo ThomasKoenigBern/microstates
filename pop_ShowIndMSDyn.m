@@ -269,7 +269,7 @@ function PlotMSDyn(obj, ~,fh, varargin)
     if (xtick{2} - xtick{1}) >= 1
         labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f',floor(x/3600),floor(rem(x/60,60)),rem(x,60)),xtick, 'UniformOutput',false);
     else
-        labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f:%03.0f',floor(x/3600),floor(rem(x/60,60)),rem(x,60),rem(x*1000,1000)),xtick, 'UniformOutput',false);
+        labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f:%03.0f',floor(x/3600),floor(rem(x/60,60)),floor(rem(x,60)),rem(x*1000,1000)),xtick, 'UniformOutput',false);
     end
     set(ax,'XTickLabel',labels,'FontSize',7);
     
