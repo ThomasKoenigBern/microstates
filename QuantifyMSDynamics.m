@@ -81,13 +81,13 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
         ChangeIndex = find([0 diff(MSClass(:,e)')]);
         StartTimes   = TimeAxis(ChangeIndex(1:(end-1)    ));
         EndTimes     = TimeAxis((ChangeIndex(2:end    )-1));
-
+        
         Duration = EndTimes - StartTimes + TimeAxis(1);
         Class    = MSClass(ChangeIndex,e);
         
        if numel(Class) == 0
             Class(1) = nan;
-        end
+       end
         
         Class(end) = nan;
 
@@ -132,10 +132,11 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, Da
     res.TotalTime = sum(eTotalTime);
 
     res.Duration     = mynanmean(eDuration,3);
-    res.MeanDuration = mean(eMeanDuration);
+    res.MeanDuration = mynanmean(eMeanDuration,2);
  
-    res.Occurrence   = mynanmean(eOccurrence,3);
-    res.MeanOccurrence = mean(eMeanOccurrence);
+    
+    res.Occurrence     = mynanmean(eOccurrence,3);
+    res.MeanOccurrence = mynanmean(eMeanOccurrence,2);
 
     res.Contribution = mynanmean(eContribution,3);
 

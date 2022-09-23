@@ -7,7 +7,6 @@ function [Result,Assignment, Polarity] = SwapMaps(MapsToSwap,MeanMap,RespectPola
     [~,nMaps,nChannels] = size(MeanMap);
     permutations = fliplr(perms(1:nMaps));
     nPerms = size(permutations,1);
-    
     PermutedMaps = zeros(nPerms,nMaps,nChannels);
  
     for p = 1:nPerms
@@ -20,13 +19,16 @@ function [Result,Assignment, Polarity] = SwapMaps(MapsToSwap,MeanMap,RespectPola
     else
         [~,idx] = min(PermFit);
     end
-    Polarity = sgn(idx,:);
-    Polarity(Polarity == 0) = 1;
+%    Polarity = sgn(idx,:);
+%    Polarity(Polarity == 0) = 1;    
     
     if idx == 1
         Result = [];
+        Polarity = sign(diag(MyCorr(squeeze(MapsToSwap)',squeeze(MeanMap)')))';    
+
     else
-        Result = squeeze(PermutedMaps(idx,:,:)) .* repmat(Polarity',1,nChannels);
+        Result = squeeze(PermutedMaps(idx,:,:));
+        Polarity = sign(diag(MyCorr(squeeze(Result)',squeeze(MeanMap)')))';
     end
     Assignment = permutations(idx,:);
  end

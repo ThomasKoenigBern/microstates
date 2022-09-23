@@ -1,5 +1,8 @@
   function [SortedMaps,SortOrder, Communality, Polarity] = ArrangeMapsBasedOnMean(in, MeanMap,RespectPolarity, flags)
 
+    if ismatrix(in)
+        in = shiftdim(in,-1);
+    end
   
     if nargin < 4
         flags = '';
@@ -10,7 +13,6 @@
 
     [nSubjects,nMapsToSort,nChannels] = size(in);
     nTemplateMaps = size(MeanMap,1);
-    
     if nMapsToSort < nTemplateMaps
         PatchToAdd = zeros(nSubjects,(nTemplateMaps-nMapsToSort),nChannels);
         in = cat(2,in,PatchToAdd);
@@ -37,8 +39,8 @@
     
     for n = 1:nSubjects
 		MapsToSort = in(n,:,:);
-
-        if (nMapsToSort < 7) || (license('test','optimization_toolbox') == false) || isempty(which('intlinprog')) % Full permutations for small n or absent optimzation toolbox
+       
+        if (nMapsToSort > nTemplateMaps) || (nMapsToSort < 7) || (license('test','optimization_toolbox') == false) || isempty(which('intlinprog')) % Full permutations for small n or absent optimzation toolbox
             [SwappedMaps,Assignment, pol] = SwapMaps(MapsToSort,ExtMeanMap,RespectPolarity);
         else        % linear prgramming for larger problems
             [SwappedMaps,Assignment,pol] = SwapMaps2(MapsToSort,ExtMeanMap,RespectPolarity);
@@ -63,12 +65,12 @@
             d = diag(MyCorr(SwappedMaps',squeeze(ExtMeanMap)'))';
             Communality(n,:) = d(MapsToKeep);
         else    % TK tested the code below 10.2.2022, seems to be ok
+            pol(isnan(pol)) = 1;
             Polarity(n,:) = pol;
             if ~isempty(SwappedMaps)
                 SortedMaps(n,:,:) = SwappedMaps;
             end
             SortOrder(n,:) = Assignment;
-            SortOrder(n,(nTemplateMaps+1):end) = nan;
             
             d = diag(MyCorr(squeeze(SortedMaps(n,:,:))',squeeze(ExtMeanMap)'))';
             Communality(n,:) = d(1:nMapsToSort);

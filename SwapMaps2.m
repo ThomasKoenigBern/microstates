@@ -2,7 +2,6 @@ function [Result,Assignment, pol] = SwapMaps2(MapsToSwap,MeanMap,RespectPolarity
     if nargin < 4 
         chanloc = [];
     end
-
     nMaps = size(MeanMap,2);
     MeanMap    = double(MeanMap);
     MapsToSwap = double(MapsToSwap);
@@ -34,9 +33,12 @@ function [Result,Assignment, pol] = SwapMaps2(MapsToSwap,MeanMap,RespectPolarity
     x = intlinprog(DistMat,intcon,[],[],A,b,lb,ub,optimoptions('intlinprog','Display','off'));
     AssignMatrix = reshape(x,nMaps,nMaps);
     [~,Assignment] = max(AssignMatrix == 1);
-    Result = MapsToSwap(:,Assignment,:);
-    pol = sign(diag(MyCorr(squeeze(Result)',squeeze(MeanMap)')));    
+    Result = squeeze(MapsToSwap(:,Assignment,:));
+    pol = sign(diag(MyCorr(squeeze(Result)',squeeze(MeanMap)')))';    
     if all(Assignment == 1:nMaps)
         Result = [];
+    else
+        %Result = squeeze(Result .* repmat(pol',1,size(Result,2)));
+
     end
 end
