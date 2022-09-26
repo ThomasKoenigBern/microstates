@@ -353,7 +353,8 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
                 AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
             end
             AllEEG(sIndex).saved = 'no';
-
+         end
+    end
     SetsString = sprintf('%i ',SelectedSets);
     SetsString(end) = [];
     if isstruct(TemplateSet)

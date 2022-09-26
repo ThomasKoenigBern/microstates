@@ -208,29 +208,44 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
     
     % Sort 3-6 cluster solutions using 2002 normative maps and 7
     % cluster solution with Custo 2017 maps
-    if (MinClasses < 3 && MaxClasses > 2) || (MinClasses > 2)
-        [EEGOUT, ~, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, 1, -1, "Norms NI2002", 1);
-    end
-    if (MinClasses <= 7 && MaxClasses >= 7)
-        AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
-        [EEGOUT, ~, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, 1, -1, "Custo2017", 1);
-    end
 
+% ---------------------------------------------------------------------    
+% TK 26-9.2022: I took this out for the moment, as this should be made
+% an explict choice by the user, ok?
+
+%     if (MinClasses < 3 && MaxClasses > 2) || (MinClasses > 2)
+%         [EEGOUT, ~, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, 1, -1, "Norms NI2002", 1);
+%     end
+%     if (MinClasses <= 7 && MaxClasses >= 7)
+%         AllEEG(CurrentSet).msinfo = TheEEG.msinfo;
+%         [EEGOUT, ~, ~] = pop_SortMSTemplates(AllEEG, CURRENTSET, 1, -1, "Custo2017", 1);
+%     end
+%    
+%   End of the changes by TK 26.9.2022
+% ---------------------------------------------------------------------
+ 
     % Compute spatial correlations between child maps and permuted mean
     % maps
     for i = 1:length(SelectedSet)
         for n = MinClasses:MaxClasses
             % Make sure the individual maps are sorted by published
             % template first
-            if (n >= 3 && n <= 6)
-                if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Norms NI2002")
-                    [AllEEG(SelectedSet(i)), ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), DoMeans, -1, "Norms NI2002", IgnorePolarity, n);
-                end
-            elseif n == 7
-                if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Custo2017")
-                    [AllEEG(SelectedSet(i)), ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), DoMeans, -1, "Custo2017", IgnorePolarity, n);
-                end
-            end
+            
+% ---------------------------------------------------------------------    
+% TK 26-9.2022: I took this out for the moment, as this should be made
+% an explict choice by the user, ok?
+
+%             if (n >= 3 && n <= 6)
+%                 if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Norms NI2002")
+%                     [AllEEG(SelectedSet(i)), ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), DoMeans, -1, "Norms NI2002", IgnorePolarity, n);
+%                 end
+%             elseif n == 7
+%                 if ~strcmp(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).SortedBy, "Custo2017")
+%                     [AllEEG(SelectedSet(i)), ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSet(i), DoMeans, -1, "Custo2017", IgnorePolarity, n);
+%                 end
+%             end
+%   End of the changes by TK 26.9.2022
+% ---------------------------------------------------------------------
 
             % compute and store spatial correlations between child and
             % parent set in child EEG structure
