@@ -112,7 +112,7 @@ function [AllEEG,TheEEG,com, FigureHandle] = pop_ShowIndMSMaps(TheEEG,nclasses, 
                 continue
             end
         else    % use numerical labels in most cases
-            ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
+%            ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
         end
         for j = 1:i
             ud.AllMaps(i).Labels{j} = sprintf('MS_%i.%i',i,j);

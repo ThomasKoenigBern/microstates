@@ -317,44 +317,127 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
 
         end
     end
+    
+    
+    MinClasses     = ChosenTemplate.msinfo.ClustPar.MinClasses;
+    MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+   
+    IsSingularSet = MinClasses == MaxClasses;
+   
+    strcnt = fprintf(1,'pop_SortMSTemplates: Permuting %i of %i subjects ',1,length(SelectedSets));
 
-    % Sorting
-    for n = MinClasses:MaxClasses
-        MapsToSort = nan(numel(SelectedSets),n,numel(ChosenTemplate.chanlocs));
-        % Here we go to the common set of channels
-        for index = 1:length(SelectedSets)
-            sIndex = SelectedSets(index);
-            LocalToGlobal = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
-           MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+    
+    for index = 1:length(SelectedSets)
+        sIndex = SelectedSets(index);
+        if ~isfield(AllEEG(sIndex),'msinfo')
+            errordlg2(sprintf('Microstate info not found in datset %s',AllEEG(sIndex).setname),'Sort microstate classes'); 
+            return;
         end
-        % We sort out the stuff
-        [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
+        
+        if ~IsSingularSet && (AllEEG(sIndex).msinfo.ClustPar.MinClasses ~= MinClasses || AllEEG(sIndex).msinfo.ClustPar.MaxClasses ~= MaxClasses)
+            errordlg2('Template class number has different range than data to sort','Sort microstate classes');
+            return
+        end
+        
+        progStrArray = '/-\|';
+        
+        LocalToGlobal = MakeResampleMatrices(ChosenTemplate.chanlocs,AllEEG(sIndex).chanlocs);
 
-         for index = 1:length(SelectedSets)
-            sIndex = SelectedSets(index);
-            AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder(index,:),:);
-            AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity(index,:)',1,numel(AllEEG(sIndex).chanlocs));
-            AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(n).ColorMap;
-%             AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
-%             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
-            % Delara 8/17/22 change
-            if (TemplateSet == -1)
-                AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+        fprintf(1, repmat('\b', 1, strcnt));
+        strcnt = fprintf(1,'pop_SortMSTemplates: Permuting %i of %i subjects ',index,length(SelectedSets));
+        
+        for n = AllEEG(sIndex).msinfo.ClustPar.MinClasses:AllEEG(sIndex).msinfo.ClustPar.MaxClasses
+            MapsToSort = [];
+            MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps;
+            if IsSingularSet
+                TemplateClassToUse = MinClasses;
             else
-                if (DoMeans)
-                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'grand mean map based';
-                else
-                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map based';
-                end
+                TemplateClassToUse = n;
             end
-            AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
-            AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation(index,:);
-            if isfield(ChosenTemplate.msinfo.MSMaps(n),'Labels')
-                AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
+        % We sort out the stuff
+            [SortedMaps,SortOrder, Communality, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).Maps * LocalToGlobal',~IgnorePolarity);
+%            polarity
+            AllEEG(sIndex).msinfo.MSMaps(n).Maps = squeeze(SortedMaps);
+            AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity',1,numel(AllEEG(sIndex).chanlocs));
+            AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).ColorMap;
+            AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+            AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).SortedBy '->' ChosenTemplate.setname];
+            AllEEG(sIndex).msinfo.MSMaps(n).Communality = Communality;
+            if IsFieldWithInformation(ChosenTemplate.msinfo.MSMaps(TemplateClassToUse),'Labels')
+                if IsFieldWithInformation(AllEEG(sIndex).msinfo.MSMaps(n).Labels)
+                    [Labels,Colors] = UpdateMicrostateLabels(AllEEG(sIndex).msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassToUse).Labels,SortOrder);
+                    AllEEG(sIndex).msinfo.MSMaps(n).Labels = Labels;
+                    AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = Colors;
+                else
+                    AllEEG(sIndex).msinfo.MSMaps(n).Labels   = ChosenTemplate.msinfo.MSMaps(n).Labels;
+                    AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(n).ColorMap;
+                end
+                    
             end
             AllEEG(sIndex).saved = 'no';
-         end
+
+% %           This was for debugging only            
+%             figure(100+n);
+%             for j = 1:n
+%                 subplot(length(SelectedSet)+1,n,(index-1)*n+j);
+%                 tit = sprintf('%i',polarity(j));
+%                 dspCMap(AllEEG(sIndex).msinfo.MSMaps(n).Maps(j,:),AllEEG(sIndex).chanlocs,0.2,'Title',tit);
+%             end
+        end
     end
+    
+% %   More debugging    
+%     for n = AllEEG(sIndex).msinfo.ClustPar.MinClasses:AllEEG(sIndex).msinfo.ClustPar.MaxClasses
+%         figure(100+n);
+% 
+%         for j = 1:n
+%             subplot(length(SelectedSet)+1,n,length(SelectedSet)*n+j);
+%             dspCMap(ChosenTemplate.msinfo.MSMaps(n).Maps(j,:),AllEEG(sIndex).chanlocs,0.2,'Title','GM');
+%         end 
+%     end
+    fprintf(1,'\n');
+
+    
+    
+    
+% Start TK 26.9.2022    
+%     % Sorting
+%     for n = MinClasses:MaxClasses
+%         MapsToSort = nan(numel(SelectedSets),n,numel(ChosenTemplate.chanlocs));
+%         % Here we go to the common set of channels
+%         for index = 1:length(SelectedSets)
+%             sIndex = SelectedSets(index);
+%             LocalToGlobal = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
+%            MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+%         end
+%         % We sort out the stuff
+%         [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
+% 
+%          for index = 1:length(SelectedSets)
+%             sIndex = SelectedSets(index);
+%             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder(index,:),:);
+%             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity(index,:)',1,numel(AllEEG(sIndex).chanlocs));
+%             AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(n).ColorMap;
+% %             AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+% %             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
+%             % Delara 8/17/22 change
+%             if (TemplateSet == -1)
+%                 AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+%             else
+%                 if (DoMeans)
+%                     AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'grand mean map based';
+%                 else
+%                     AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map based';
+%                 end
+%             end
+%             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
+%             AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation(index,:);
+%             if isfield(ChosenTemplate.msinfo.MSMaps(n),'Labels')
+%                 AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
+%             end
+%             AllEEG(sIndex).saved = 'no';
+%          end
+%     end End TK 26.9.2022
     SetsString = sprintf('%i ',SelectedSets);
     SetsString(end) = [];
     if isstruct(TemplateSet)

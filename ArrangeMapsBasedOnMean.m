@@ -4,7 +4,7 @@ function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBased
 
     SpatialCorrelation = nan(nSubjects,nMaps);
     Polarity    = ones(nSubjects,nMaps);
-    fprintf(1,'Sorting %i maps of %i subjects.\n',nMaps,nSubjects);
+    %fprintf(1,'Sorting %i maps of %i subjects.\n',nMaps,nSubjects);
 
     if ismatrix(in)
         in = shiftdim(in,-1);
