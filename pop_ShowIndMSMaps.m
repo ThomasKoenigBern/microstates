@@ -111,12 +111,11 @@ function [AllEEG,TheEEG,com, FigureHandle] = pop_ShowIndMSMaps(TheEEG,nclasses, 
             if ~isempty(ud.AllMaps(i).Labels)
                 continue
             end
-        else    % use numerical labels in most cases
-            ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
-        end
+        end    % use numerical labels in most cases
         for j = 1:i
             ud.AllMaps(i).Labels{j} = sprintf('MS_%i.%i',i,j);
         end
+        ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
     end
 
     AvailableClassesText = '';
