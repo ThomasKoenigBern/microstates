@@ -83,10 +83,16 @@ function [PB, G] = eeg_GammaPointBiserial(IndSamples, ClustLabels, IgnorePolarit
     % compute Point-Biserial index
     PB = (meanSB - meanSW)*sqrt((NW*NB)/(NT*NT))/sd;
 
-    % compute Gamma index
+    % compute splus and sminus
+    % splus = number of times 2 points not clustered together have a larger
+    % distance than 2 points in the same cluster
+    % sminus = number of times 2 points not clustered together have a
+    % smaller distance than 2 points in the same cluster
     parfor i=1:length(allBetweenPairCorrs)
         splus = splus + sum(allBetweenPairCorrs(i) > allWithinPairCorrs);
         sminus = sminus + sum(allBetweenPairCorrs(i) < allWithinPairCorrs);
     end
+
+    % compute Gamma index
     G = (splus - sminus)/(splus + sminus);
 end
