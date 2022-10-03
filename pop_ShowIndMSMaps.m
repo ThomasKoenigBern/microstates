@@ -340,7 +340,7 @@ function ManSort(obj, event,fh)
         
             
         UserData.AllMaps(UserData.nClasses).Maps = UserData.AllMaps(UserData.nClasses).Maps(NewOrder,:).*repmat(NewOrderSign,1,size(UserData.AllMaps(UserData.nClasses).Maps,2));
-        UserData.AllMaps(UserData.nClasses).SortedMode = 'manual';
+        UserData.AllMaps(UserData.nClasses).SortMode = 'manual';
         UserData.AllMaps(UserData.nClasses).SortedBy = 'user';
         UserData.wasSorted = true;
         set(fh,'UserData',UserData);
@@ -451,16 +451,18 @@ function TemplateSort(fh,MeanIndex,IgnorePolarity)
     TemplateClassesToUse = find(HasTemplates == true);
 
         
-    [SortedMaps,SortOrder, Communality] = ArrangeMapsBasedOnMean(MapsToSort, MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps * LocalToGlobal',IgnorePolarity);
-    UserData.AllMaps(nClasses).Maps = squeeze(SortedMaps);
+    [SortedMaps,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort, MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps * LocalToGlobal',~IgnorePolarity);
+    %UserData.AllMaps(nClasses).Maps = squeeze(SortedMaps);
+    UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps(SortOrder(1,:), :);
+    UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps .* repmat(polarity',1,size(UserData.AllMaps(nClasses).Maps,2));
        
     [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(nClasses).Labels,MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,UserData.AllMaps(nClasses).ColorMap,MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).ColorMap);
     UserData.AllMaps(nClasses).Labels = Labels;
     UserData.AllMaps(nClasses).ColorMap = Colors;
     
     UserData.AllMaps(nClasses).SortedBy = MSTEMPLATE(MeanIndex).setname;
-    UserData.AllMaps(nClasses).SortedMode = "Published Template";
-    UserData.AllMaps(nClasses).Communality = Communality;
+    UserData.AllMaps(nClasses).SortMode = "Published Template";
+    UserData.AllMaps(nClasses).SpatialCorrelation = SpatialCorrelation;
     UserData.wasSorted = true;
     fh.UserData = UserData;
 
@@ -490,7 +492,7 @@ function SingleSort(fh, DoThemAll)
     
         UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps(NewOrder,:).*repmat(NewOrderSign,1,size(UserData.AllMaps(nClasses).Maps,2));
         UserData.AllMaps(nClasses).Labels = UserData.AllMaps(nClasses).Labels(NewOrder);
-        UserData.AllMaps(nClasses).SortedMode = 'manual';
+        UserData.AllMaps(nClasses).SortMode = 'manual';
         UserData.AllMaps(nClasses).SortedBy = 'user';
 
     else
@@ -500,16 +502,17 @@ function SingleSort(fh, DoThemAll)
             if i == nClasses
                 continue
             end
-            [SortedMaps,SortOrder, Communality, polarity] = ArrangeMapsBasedOnMean(UserData.AllMaps(i).Maps, UserData.AllMaps(nClasses).Maps,~UserData.IgnorePolarity.Value);
+            [SortedMaps,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(UserData.AllMaps(i).Maps, UserData.AllMaps(nClasses).Maps,~UserData.IgnorePolarity.Value);
             
-            UserData.AllMaps(i).Maps = squeeze(SortedMaps) .* repmat(polarity',1,size(UserData.AllMaps(i).Maps,2));
+            UserData.AllMaps(i).Maps = UserData.AllMaps(i).Maps(SortOrder(1,:), :);
+            UserData.AllMaps(i).Maps = UserData.AllMaps(i).Maps .* repmat(polarity',1,size(UserData.AllMaps(i).Maps,2));
 
             [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(i).Labels,UserData.AllMaps(nClasses).Labels,SortOrder,UserData.AllMaps(i).ColorMap,UserData.AllMaps(nClasses).ColorMap);
             UserData.AllMaps(i).Labels = Labels;
             UserData.AllMaps(i).ColorMap = Colors;
 
             if i > nClasses+2
-                [SortedMaps,SortOrder, Communality, polarity] = ArrangeMapsBasedOnMean(UserData.AllMaps(i).Maps((nClasses+1):end,:), UserData.AllMaps(i-1).Maps(nClasses+1:end,:),~UserData.IgnorePolarity.Value);
+                [SortedMaps,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(UserData.AllMaps(i).Maps((nClasses+1):end,:), UserData.AllMaps(i-1).Maps(nClasses+1:end,:),~UserData.IgnorePolarity.Value);
                 [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(i).Labels(nClasses+1:end),UserData.AllMaps(i-1).Labels(nClasses+1:end),SortOrder,UserData.AllMaps(i).ColorMap(nClasses+1:end,:),UserData.AllMaps(i-1).ColorMap(nClasses+1:end,:));
                 UserData.AllMaps(i).Maps((nClasses+1):end,:) = squeeze(SortedMaps) .* repmat(polarity',1,size(UserData.AllMaps(i).Maps,2));
                 UserData.AllMaps(i).Labels((nClasses+1):end) = Labels;
@@ -518,8 +521,8 @@ function SingleSort(fh, DoThemAll)
             end
             
             
-            UserData.AllMaps(i).SortedMode = 'Template';
-            UserData.AllMaps(i).Communiality = Communality;
+            UserData.AllMaps(i).SortMode = 'Template';
+            UserData.AllMaps(i).SpatialCorrelation = SpatialCorrelation;
             UserData.AllMaps(i).SortedBy = sprintf("%s->This set (%i Classes)",UserData.AllMaps(i+1).SortedBy,nClasses);
 
         end
