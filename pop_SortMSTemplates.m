@@ -101,7 +101,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         AvailableSets = nonemptyInd;
     end
 
-    % Check if there are available sets to srot
+    % Check if there are available sets to sort
     if isempty(AvailableSets)
         if DoMeans
             errordlg2(['No mean sets found. Use Tools -> Microstates ->' ...
@@ -264,23 +264,26 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         TemplateMaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     end
 
+    % Delara 9/29/22 edit: use widest rather than narrowest range of
+    % classes (skip over classes that do not exist for certain sets in
+    % later loop)
     MinClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MinClasses;
     MaxClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MaxClasses;
     for index = 2:length(SelectedSets)
         sIndex = SelectedSets(index);
-        MinClasses = max(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
-        MaxClasses = min(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
+        MinClasses = min(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
+        MaxClasses = max(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
     end
 
     % Check for overlap between selected sets and template set classes
-    if ~any(ismember(MinClasses:MaxClasses, TemplateMinClasses:TemplateMaxClasses))
-        warningMessage = sprintf('Not all selected sets to sort contain ' + ...
-            'cluster solutions in the range %i to %i of the template set ' + ...
-            '%s. No sorting will occur.', TemplateMinClasses, TemplateMaxClasses, ...
-            TemplateName);
-        warndlg2([warningMessage], 'Sort microstate classes');
-        return;
-    end
+%     if ~any(ismember(MinClasses:MaxClasses, TemplateMinClasses:TemplateMaxClasses))
+%         warningMessage = sprintf('Not all selected sets to sort contain ' + ...
+%             'cluster solutions in the range %i to %i of the template set ' + ...
+%             '%s. No sorting will occur.', TemplateMinClasses, TemplateMaxClasses, ...
+%             TemplateName);
+%         warndlg2([warningMessage], 'Sort microstate classes');
+%         return;
+%     end
 
     % Check if template set is a parent set of all the selected sets
     if isempty(TemplateSet) || TemplateSet ~= -1
@@ -288,10 +291,15 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         for index = 1:length(SelectedSets)
             sIndex = SelectedSets(index);
             minClasses = max(AllEEG(sIndex).msinfo.ClustPar.MinClasses, TemplateMinClasses);
-            maxClasses = min(AllEEG(sIndex).msinfo.ClustPar.MaxClasses, TemplateMaxClasses);
-    
-            containsParent = checkSetForParent(AllEEG(sIndex), minClasses, maxClasses, TemplateName);
-            if ~containsParent
+%             maxClasses = min(AllEEG(sIndex).msinfo.ClustPar.MaxClasses, TemplateMaxClasses);
+%     
+%             containsParent = checkSetForParent(AllEEG(sIndex), minClasses, maxClasses, TemplateName);
+%             if ~containsParent
+%                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
+%             end
+
+            containsChild = checkSetForChild(AllEEG, TemplateIndex, AllEEG(sIndex).setname);
+            if ~containsChild
                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
             end
         end
@@ -320,10 +328,22 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
 
     % Sorting
     for n = MinClasses:MaxClasses
-        MapsToSort = nan(numel(SelectedSets),n,numel(ChosenTemplate.chanlocs));
-        % Here we go to the common set of channels
+        % find valid set indices
+        validSetIndices = [];
         for index = 1:length(SelectedSets)
             sIndex = SelectedSets(index);
+            if n > numel(AllEEG(sIndex).msinfo.MSMaps)
+                continue
+            elseif isempty(AllEEG(sIndex).msinfo.MSMaps(n).Maps)
+                continue
+            else
+                validSetIndices = [validSetIndices sIndex];
+            end
+        end
+        MapsToSort = nan(numel(validSetIndices),n,numel(ChosenTemplate.chanlocs));
+        % Here we go to the common set of channels
+        for index = 1:length(validSetIndices)
+            sIndex = validSetIndices(index);
             LocalToGlobal = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
            MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
         end
@@ -334,8 +354,14 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             sIndex = SelectedSets(index);
             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder(index,:),:);
             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity(index,:)',1,numel(AllEEG(sIndex).chanlocs));
-            AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = ChosenTemplate.msinfo.MSMaps(n).ColorMap;
-%             AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+            
+            HasTemplates = ~cellfun(@isempty,{MSTEMPLATE(MeanIndex).msinfo.MSMaps.Maps});
+            TemplateClassesToUse = find(HasTemplates == true);
+            [Labels,Colors] = UpdateMicrostateLabels(AllEEG(sIndex).msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(n).Labels,SortOrder,AllEEG(sIndex).msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
+            AllEEG(sIndex).msinfo.MSMaps(n).Labels = Labels;
+            AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = Colors;
+
+            %             AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
 %             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
             % Delara 8/17/22 change
             if (TemplateSet == -1)
@@ -349,12 +375,10 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             end
             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
             AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation(index,:);
-            if isfield(ChosenTemplate.msinfo.MSMaps(n),'Labels')
-                AllEEG(sIndex).msinfo.MSMaps(n).Labels = ChosenTemplate.msinfo.MSMaps(n).Labels;
-            end
             AllEEG(sIndex).saved = 'no';
          end
     end
+
     SetsString = sprintf('%i ',SelectedSets);
     SetsString(end) = [];
     if isstruct(TemplateSet)
@@ -363,14 +387,18 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             TemplateSetString = '[]';
         end
     else
-        TemplateSetString = sprintf('%i ',TemplateSet);
-        TemplateSetString(end) = [];
+        TemplateSetString = string(TemplateSet);
+    end
+    if isempty(NClasses)
+        NClassesString = '[]';
+    else
+        NClassesString = string(NClasses);
     end
     
     EEGOUT = AllEEG(SelectedSets);
     CurrentSet = SelectedSets;
     
-    com = sprintf('[EEG CURRENTSET com] = pop_SortMSTemplates(%s, [%s], %i, %s, "%s", %i, 1);', inputname(1), SetsString, DoMeans, TemplateSetString, string(TemplateName), IgnorePolarity);
+    com = sprintf('[EEG CURRENTSET com] = pop_SortMSTemplates(%s, [%s], %i, %s, "%s", %i, 1, %s);', inputname(1), SetsString, DoMeans, TemplateSetString, string(TemplateName), IgnorePolarity, NClassesString);
 end
 
 function Answer = DoesItHaveChildren(in)
@@ -384,6 +412,23 @@ function Answer = DoesItHaveChildren(in)
     else
         Answer = true;
     end
+end
+
+function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
+    if isempty(SetsToSearch)
+        containsChild = false;
+        return;
+    end
+    
+    meanSetInfos = [AllEEG(SetsToSearch).msinfo];
+    containsChild = any(cellfun(@(x) matches(childSetName, x), {meanSetInfos.children}));
+
+    % if the child cannot be found, search the children of the children
+    if ~containsChild
+        childSetIndices = cell2mat(cellfun(@(x) find(matches({AllEEG.setname}, x)), {meanSetInfos.children}, 'UniformOutput', false));
+        containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
+    end
+
 end
 
 function containsParent = checkSetForParent(TheEEG, MinClasses, MaxClasses, TemplateName)
