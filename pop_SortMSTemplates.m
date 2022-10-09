@@ -74,6 +74,7 @@
 %
 function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, DoMeans, TemplateSet, TemplateName, IgnorePolarity, NClasses)
 
+    %% Set default values for outputs and input parameters
     global EEG;
     global CURRENTSET;
     global MSTEMPLATE;
@@ -94,7 +95,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
     nonemptyInd  = nonempty(~HasChildren);
     nonemptyMean = nonempty(HasChildren);
 
-    % Validate SelectedSets
+    %% Validate SelectedSets
     if DoMeans 
         AvailableSets = nonemptyMean;
     else
@@ -139,7 +140,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         end
     end
 
-    % Validate TemplateSet    
+    %% Validate TemplateSet    
     if isstruct(TemplateSet)
         TemplateNames = {TemplateSet.setname};
     else
@@ -195,7 +196,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         TemplateIndex = 1;
     end
 
-    % Prompt user to select sets to sort and template sets if needed in pop-up windows
+    %% Prompt user to select sets to sort and template sets if needed in pop-up windows
     if isempty(SelectedSets)
         AvailableSetnames = {AllEEG(AvailableSets).setname};
 
@@ -253,26 +254,22 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         end
     end
 
-    % Verify compatibility between selected sets to sort and template set
-
-    % option to sort only one specified cluster solution
-    if ~isempty(NClasses)
-        TemplateMinClasses = NClasses;
-        TemplateMaxClasses = NClasses;
-    else
-        TemplateMinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
-        TemplateMaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-    end
+    %% Verify compatibility between selected sets to sort and template set
 
     % Delara 9/29/22 edit: use widest rather than narrowest range of
     % classes (skip over classes that do not exist for certain sets in
     % later loop)
-    MinClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MinClasses;
-    MaxClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MaxClasses;
-    for index = 2:length(SelectedSets)
-        sIndex = SelectedSets(index);
-        MinClasses = min(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
-        MaxClasses = max(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
+    if ~isempty(NClasses)
+        MinClasses = NClasses;
+        MaxClasses = NClasses;
+    else
+        MinClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MinClasses;
+        MaxClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MaxClasses;
+        for index = 2:length(SelectedSets)
+            sIndex = SelectedSets(index);
+            MinClasses = min(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
+            MaxClasses = max(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
+        end
     end
 
     % Check for overlap between selected sets and template set classes
@@ -290,7 +287,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         warningSetnames = {};
         for index = 1:length(SelectedSets)
             sIndex = SelectedSets(index);
-            minClasses = max(AllEEG(sIndex).msinfo.ClustPar.MinClasses, TemplateMinClasses);
+%             minClasses = max(AllEEG(sIndex).msinfo.ClustPar.MinClasses, TemplateMinClasses);
 %             maxClasses = min(AllEEG(sIndex).msinfo.ClustPar.MaxClasses, TemplateMaxClasses);
 %     
 %             containsParent = checkSetForParent(AllEEG(sIndex), minClasses, maxClasses, TemplateName);
@@ -298,7 +295,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
 %                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
 %             end
 
-            containsChild = checkSetForChild(AllEEG, TemplateIndex, AllEEG(sIndex).setname);
+            containsChild = checkSetForChild(AllEEG, nonemptyMean(TemplateIndex), AllEEG(sIndex).setname);
             if ~containsChild
                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
             end
@@ -310,6 +307,9 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             warningMessage = sprintf(['Template set %s is not the parent set of ' ...
                 'the following sets: %s. Are you sure you would like to proceed?'], ...
                 TemplateName, txt);
+
+               
+
             res = inputgui('title', 'Sort microstate classes', ...
                 'geometry', {1 [1 1] 1}, 'uilist', { ...
                 { 'Style', 'text', 'string', warningMessage} ...
@@ -326,7 +326,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         end
     end
 
-    % Sorting
+    %% Sorting
     for n = MinClasses:MaxClasses
         % find valid set indices
         validSetIndices = [];
@@ -344,11 +344,18 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
         % Here we go to the common set of channels
         for index = 1:length(validSetIndices)
             sIndex = validSetIndices(index);
-            LocalToGlobal = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
-           MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+
+            % Delara 10/3/22 change: convert whichever maps have less
+            % channels
+            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
+            if AllEEG(sIndex).nbchan > ChosenTemplate.nbchan
+                MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+            else
+                TemplateMaps = ChosenTemplate.msinfo.MSMaps(n).Maps * GlobalToLocal';
+            end
         end
         % We sort out the stuff
-        [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
+        [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,TemplateMaps,~IgnorePolarity);
 
          for index = 1:length(SelectedSets)
             sIndex = SelectedSets(index);
@@ -379,6 +386,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
          end
     end
 
+    %% Command string generation
     SetsString = sprintf('%i ',SelectedSets);
     SetsString(end) = [];
     if isstruct(TemplateSet)
@@ -415,13 +423,18 @@ function Answer = DoesItHaveChildren(in)
 end
 
 function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
+    containsChild = false;
     if isempty(SetsToSearch)
-        containsChild = false;
         return;
     end
     
     meanSetInfos = [AllEEG(SetsToSearch).msinfo];
-    containsChild = any(cellfun(@(x) matches(childSetName, x), {meanSetInfos.children}));
+    HasChildren = arrayfun(@(x) isfield(x, 'children'), meanSetInfos);
+    if ~any(HasChildren)
+        return;
+    end
+
+    containsChild = any(cellfun(@(x) matches(childSetName, x), {meanSetInfos(HasChildren).children}));
 
     % if the child cannot be found, search the children of the children
     if ~containsChild
