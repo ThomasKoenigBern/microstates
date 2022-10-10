@@ -95,10 +95,10 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
     newRef = eye(nChannels);
     newRef = newRef - 1/nChannels;
     for s=1:nSegments
-        TheEEGData(:, :, s) = newRef*squeeze(TheEEGData(s, :, :));
+        TheEEGData(:, :, s) = newRef*squeeze(TheEEGData(:, :, s));
     end
 
-    Maps = newRef*Maps;
+    Maps = Maps*newRef;
    
     if params.PeakFit == 1
         Fit = nan(nClasses,size(TheEEGData,2));
