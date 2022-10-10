@@ -45,10 +45,9 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [AllEEG,TheEEG,com, FigureHandle] = pop_ShowIndMSMaps(TheEEG,nclasses, DoEdit, AllEEG)
+function [TheEEG, CurrentSet, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, CurrentSet, nclasses, DoEdit, AllEEG)
     
     com = '';
-    
 
     if numel(TheEEG) > 1
         errordlg2('pop_findMSTemplates() currently supports only a single EEG as input');
@@ -443,15 +442,22 @@ function TemplateSort(fh,MeanIndex,IgnorePolarity)
         MeanIndex = res{1};
         IgnorePolarity = res{2};
     end
-    LocalToGlobal = MakeResampleMatrices(MSTEMPLATE(MeanIndex).chanlocs,UserData.chanlocs);
 
-    MapsToSort(1,:,:) = UserData.AllMaps(nClasses).Maps;
-            
     HasTemplates = ~cellfun(@isempty,{MSTEMPLATE(MeanIndex).msinfo.MSMaps.Maps});
     TemplateClassesToUse = find(HasTemplates == true);
 
+    % Delara 10/3/22 change: convert whichever maps have more
+    % channels
+    [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(UserData.chanlocs,MSTEMPLATE(MeanIndex).chanlocs);
+    if numel(UserData.chanlocs) > numel(MSTEMPLATE(MeanIndex).chanlocs)
+        MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+        TemplateMaps = MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps;
+    else
+        MapsToSort = AllEEG(sIndex).msinfo.MSMaps(n).Maps;
+        TemplateMaps = MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
+    end
         
-    [SortedMaps,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort, MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps * LocalToGlobal',~IgnorePolarity);
+    [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort, TemplateMaps, ~IgnorePolarity);
     %UserData.AllMaps(nClasses).Maps = squeeze(SortedMaps);
     UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps(SortOrder(1,:), :);
     UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps .* repmat(polarity',1,size(UserData.AllMaps(nClasses).Maps,2));

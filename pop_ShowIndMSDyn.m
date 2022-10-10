@@ -61,7 +61,7 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
     com = '';
     
     if numel(TheEEG) > 1
-        errordlg2('pop_findMSTemplates() currently supports only a single TheEEG as input');
+        errordlg2('pop_ShowIndMSDyn() currently supports only a single TheEEG as input');
         return;
     end
     
@@ -120,12 +120,18 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
     end
     TheEEG.msinfo.FitPar = FitPar;
     
-    % MSClass2 output added for debugging
     if UseMean == true
-        LocalToGlobal = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
-        [MSClass, MSClass2, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,AllEEG(MeanSet).msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+        % Delara 10/3/22 change: convert whichever maps have more
+        % channels
+        [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
+        if TheEEG.nbchan > AllEEG(MeanSet).nbchan
+            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+        else
+            Maps = Maps*GlobalToLocal';
+            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,ThEEG.msinfo.ClustPar.IgnorePolarity);
+        end
     else
-        [MSClass,MSClass2, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
+        [MSClass, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
     end
     
     if isempty(MSClass)
