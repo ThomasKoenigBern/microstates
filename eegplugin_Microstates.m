@@ -208,6 +208,3 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
         uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,   'position', 19,'Separator','on');
     end
 end
-end
->>>>>>> develop
-
