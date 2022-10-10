@@ -89,6 +89,16 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
     AllMVar2 = 0;
     IndGEVnum = zeros(1, nClasses);
     IndGEVdenom = 0;
+
+    % average reference data and maps
+    nChannels = size(TheEEGData, 1);
+    newRef = eye(nChannels);
+    newRef = newRef - 1/nChannels;
+    for s=1:nSegments
+        TheEEGData(:, :, s) = newRef*squeeze(TheEEGData(s, :, :));
+    end
+
+    Maps = newRef*Maps;
    
     if params.PeakFit == 1
         Fit = nan(nClasses,size(TheEEGData,2));
@@ -105,7 +115,7 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
             Cov = NormDimL2(Maps,2) * squeeze(TheEEGData(:,IsIn,s)) / size(Maps,2);
             % average referenced, normalized template maps * average
             % referenced measured maps
-            Cov2 = NormDimL2(Maps - mean(Maps, 2),2) * (TheEEGData(:,IsIn,s) - mean(TheEEGData(:, IsIn, s)));
+            Cov2 = NormDimL2(Maps,2) * TheEEGData(:,IsIn,s);
 
             if IgnorePolarity == true
                 Cov = abs(Cov);
@@ -125,7 +135,7 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
             % add sum of standard deviations 
             AllMVar = AllMVar +  squeeze(sum(std(TheEEGData(:,IsIn,s),1,1),2));
             % add squared L2 norms of all average referenced measured maps
-            AllMVar2 = AllMVar2 + sum(vecnorm(TheEEGData(:, IsIn, s) - mean(TheEEGData(:, IsIn, s))).^2);
+            AllMVar2 = AllMVar2 + sum(vecnorm(TheEEGData(:, IsIn, s)).^2);
            
             for c = 1:nClasses
                 PeakAssignment(c,GFPPClass == c) = 1;
@@ -142,9 +152,11 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
                 clustIndices = IsIn(GFPPClass == c);
                 clustMembers = TheEEGData(:, clustIndices, s);
                 if any(clustMembers)
-                    clustCorr = corr(clustMembers, Maps(c, :)');
-                    IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, clustIndices, s).*clustCorr').^2);
-                    IndGEVdenom = IndGEVdenom + sum(gfp(1, clustIndices, s).^2);
+%                     clustCorr = corr(clustMembers, Maps(c, :)');
+%                     IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, clustIndices, s).*clustCorr').^2);
+%                     IndGEVdenom = IndGEVdenom + sum(gfp(1, clustIndices, s).^2);
+                    IndGEVnum(c) = IndGEVnum(c) + sum((Maps(c,:)*clustMembers).^2);
+                    IndGEVdenom = IndGEVdenom + sum(vecnorm(clustMembers).^2)
                 end
             end
 
@@ -170,17 +182,16 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
             [Winner,ExpVar] = SmoothLabels(TheEEGData(:,:,s),Maps,params, eegdata.srate,IgnorePolarity);
 
             % Individual GEV calculations
+              % Individual GEV calculations
             for c = 1:nClasses
-                clustMembers = TheEEGData(:, Winner == c, s);
+                clustIndices = IsIn(GFPPClass == c);
+                clustMembers = TheEEGData(:, clustIndices, s);
                 if any(clustMembers)
-                    if (IgnorePolarity)
-                        clustCorr = abs(corr(clustMembers, Maps(c, :)'));
-                    else
-                        clustCorr = corr(clustMembers, Maps(c, :)');
-                    end
-    
-                    IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, Winner == c, s).*clustCorr').^2);
-                    IndGEVdenom = IndGEVdenom + sum(gfp(1, Winner == c, s).^2);
+    %                     clustCorr = corr(clustMembers, Maps(c, :)');
+    %                     IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, clustIndices, s).*clustCorr').^2);
+    %                     IndGEVdenom = IndGEVdenom + sum(gfp(1, clustIndices, s).^2);
+                    IndGEVnum(c) = IndGEVnum(c) + sum((Maps(c,:)*clustMembers).^2);
+                    IndGEVdenom = IndGEVdenom + sum(vecnorm(clustMembers).^2)
                 end
             end
 
