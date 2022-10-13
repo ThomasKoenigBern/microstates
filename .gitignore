@@ -35,3 +35,4 @@ octave-workspace
 
 # Matlab project folders
 resources/
+*.prj
