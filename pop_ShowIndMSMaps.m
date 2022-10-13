@@ -723,9 +723,6 @@ function PlotMSMaps(~, ~,fh)
     Y = cell2mat({UserData.chanlocs.Y});
     Z = cell2mat({UserData.chanlocs.Z});
     
-    tic()
-    
-    
 %    Montage = UserData.chanlocs;
 %    QMap = dspMapClass(Montage);
 %    HelperData = QMap.GetQuickMontage();
