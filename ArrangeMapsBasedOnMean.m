@@ -1,7 +1,11 @@
 function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBasedOnMean(in, MeanMap,RespectPolarity)
 
-    [nSubjects,nMaps,nChannels] = size(in);
-
+    if ndims(in) > 2
+        [nSubjects,nMaps,nChannels] = size(in);
+    else
+        nSubjects = 1;
+        [nMaps,nChannels] = size(in);
+    end
     SpatialCorrelation = nan(nSubjects,nMaps);
     Polarity    = ones(nSubjects,nMaps);
     %fprintf(1,'Sorting %i maps of %i subjects.\n',nMaps,nSubjects);
@@ -18,14 +22,14 @@ function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBased
     newRef = eye(nChannels);
     newRef = newRef - 1/nChannels;
     for i=1:nSubjects
-        in(i, :, :) = newRef*squeeze(in(i, :, :));
+        in(i, :, :) = squeeze(in(i, :, :)) * newRef;
     end
     in = NormDimL2(in, 3);
     SortedMaps = in;
 
     newRef = eye(nChannels);
     newRef = newRef - 1/nChannels;
-    MeanMap= newRef*MeanMap;
+    MeanMap= MeanMap * newRef;
     MeanMap = NormDimL2(MeanMap, 2);
 
     [nSubjects,nMapsToSort,nChannels] = size(in);

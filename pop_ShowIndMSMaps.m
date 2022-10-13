@@ -45,7 +45,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [TheEEG, CurrentSet, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, CurrentSet, nclasses, DoEdit, AllEEG)
+function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, nclasses, DoEdit, AllEEG)
     
     com = '';
 
@@ -200,6 +200,7 @@ function [TheEEG, CurrentSet, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, Cur
             ButtonName = questdlg2('Update dataset and try to clear depending sorting?', 'Microstate template edit', 'Yes', 'No', 'Yes');
             switch ButtonName
                 case 'Yes'
+                    dummy = ud.AllMaps(5)
                     TheEEG.msinfo.MSMaps = ud.AllMaps;
                                         
                     TheEEG.saved = 'no';
@@ -453,13 +454,13 @@ function TemplateSort(fh,MeanIndex,IgnorePolarity)
     % channels
     [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(UserData.chanlocs,MSTEMPLATE(MeanIndex).chanlocs);
     if numel(UserData.chanlocs) > numel(MSTEMPLATE(MeanIndex).chanlocs)
-        MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+        MapsToSort(1,:,:) = UserData.AllMaps(nClasses).Maps * LocalToGlobal';
         TemplateMaps = MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps;
     else
-        MapsToSort = AllEEG(sIndex).msinfo.MSMaps(n).Maps;
+        MapsToSort(1,:,:) = UserData.AllMaps(nClasses).Maps;
         TemplateMaps = MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
     end
-        
+    
     [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort, TemplateMaps, ~IgnorePolarity);
     %UserData.AllMaps(nClasses).Maps = squeeze(SortedMaps);
     UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps(SortOrder(1,:), :);
@@ -505,23 +506,23 @@ function SingleSort(fh, DoThemAll)
         UserData.AllMaps(nClasses).SortedBy = 'user';
 
     else
-        % Do the solutions with less classes
         for i = UserData.ClustPar.MinClasses:UserData.ClustPar.MaxClasses
             
             if i == nClasses
                 continue
             end
             [SortedMaps,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(UserData.AllMaps(i).Maps, UserData.AllMaps(nClasses).Maps,~UserData.IgnorePolarity.Value);
-            
-            UserData.AllMaps(i).Maps = UserData.AllMaps(i).Maps(SortOrder(1,:), :);
-            UserData.AllMaps(i).Maps = UserData.AllMaps(i).Maps .* repmat(polarity',1,size(UserData.AllMaps(i).Maps,2));
+            UserData.AllMaps(i).Maps = squeeze(SortedMaps) .* repmat(polarity',1,size(squeeze(SortedMaps),2));
+%            UserData.AllMaps(i).Maps = UserData.AllMaps(i).Maps(SortOrder(1:i,:), :);
+%            UserData.AllMaps(i).Maps = UserData.AllMaps(i).Maps .* repmat(polarity',1,size(UserData.AllMaps(i).Maps,2));
 
             [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(i).Labels,UserData.AllMaps(nClasses).Labels,SortOrder,UserData.AllMaps(i).ColorMap,UserData.AllMaps(nClasses).ColorMap);
-            UserData.AllMaps(i).Labels = Labels;
-            UserData.AllMaps(i).ColorMap = Colors;
+            UserData.AllMaps(i).Labels = Labels(1:i);
+            UserData.AllMaps(i).ColorMap = Colors(1:i,:);
 
             if i > nClasses+2
                 [SortedMaps,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(UserData.AllMaps(i).Maps((nClasses+1):end,:), UserData.AllMaps(i-1).Maps(nClasses+1:end,:),~UserData.IgnorePolarity.Value);
+                UserData.AllMaps(i).Maps((nClasses+1):end,:) = squeeze(SortedMaps) .* repmat(polarity',1,size(squeeze(SortedMaps),2));
                 [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(i).Labels(nClasses+1:end),UserData.AllMaps(i-1).Labels(nClasses+1:end),SortOrder,UserData.AllMaps(i).ColorMap(nClasses+1:end,:),UserData.AllMaps(i-1).ColorMap(nClasses+1:end,:));
                 UserData.AllMaps(i).Maps((nClasses+1):end,:) = squeeze(SortedMaps) .* repmat(polarity',1,size(UserData.AllMaps(i).Maps,2));
                 UserData.AllMaps(i).Labels((nClasses+1):end) = Labels;
@@ -529,10 +530,9 @@ function SingleSort(fh, DoThemAll)
 
             end
             
-            
             UserData.AllMaps(i).SortMode = 'Template';
             UserData.AllMaps(i).SpatialCorrelation = SpatialCorrelation;
-            UserData.AllMaps(i).SortedBy = sprintf("%s->This set (%i Classes)",UserData.AllMaps(i+1).SortedBy,nClasses);
+            UserData.AllMaps(i).SortedBy = sprintf("%s->This set (%i Classes)",UserData.AllMaps(nClasses).SortedBy,nClasses);
 
         end
     end
