@@ -33,5 +33,5 @@ codegen/
 octave-workspace
 =======
 
-*.asv
->>>>>>> Stashed changes
+# Matlab project folders
+resources/
