@@ -179,11 +179,9 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
         msinfo.MSMaps(n).Maps = BestMeanMap;
         msinfo.MSMaps(n).ExpVar = ExpVar;
         msinfo.MSMaps(n).ColorMap = lines(n);
-        msinfo.MSMaps(n).SortedBy = 'none';
         msinfo.MSMaps(n).SortMode = 'none';
+        msinfo.MSMaps(n).SortedBy = 'none';
         msinfo.MSMaps(n).SpatialCorrelation = [];
-        msinfo.MSMaps(n).Parents = [];
-        msinfo.MSMaps(n).Grandparents = [];
     end
     
     EEGOUT = eeg_emptyset();
@@ -204,7 +202,7 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
     EEGOUT.times       = 1:EEGOUT.pnts;
     EEGOUT.xmax        = EEGOUT.times(end);
     
-    [AllEEG, EEGOUT, CURRENTSET] = pop_newset(AllEEG, EEGOUT, CURRENTSET,'gui','off'); 
+%     [AllEEG, EEGOUT, CURRENTSET] = pop_newset(AllEEG, EEGOUT, CURRENTSET,'gui','off'); 
     
     % Sort 3-6 cluster solutions using 2002 normative maps and 7
     % cluster solution with Custo 2017 maps
@@ -226,8 +224,8 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
  
     % Compute spatial correlations between child maps and permuted mean
     % maps
-    for i = 1:length(SelectedSet)
-        for n = MinClasses:MaxClasses
+%     for i = 1:length(SelectedSet)
+%         for n = MinClasses:MaxClasses
             % Make sure the individual maps are sorted by published
             % template first
             
@@ -247,27 +245,27 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
 %   End of the changes by TK 26.9.2022
 % ---------------------------------------------------------------------
 
-            % compute and store spatial correlations between child and
-            % parent set in child EEG structure
-            spCorr = elementCorr(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Maps', EEGOUT.msinfo.MSMaps(n).Maps', IgnorePolarity);
-            ParentStruct.setname = MeanSetName;
-            ParentStruct.spCorr = spCorr;
-            AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Parents = [AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Parents, ParentStruct];
-
-            % compute and store spatial correlations between grandchildren and
-            % mean set in the child EEG structures
-            if (DoMeans)
-                childSetnames = AllEEG(SelectedSet(i)).msinfo.children;
-                for s=1:numel(childSetnames)
-                    ChildSet = find(matches({AllEEG.setname}, childSetnames{s}), 1);
-                    spCorr = elementCorr(AllEEG(ChildSet).msinfo.MSMaps(n).Maps', EEGOUT.msinfo.MSMaps(n).Maps', IgnorePolarity);
-                    GrandparentStruct.setname = MeanSetName;
-                    GrandparentStruct.spCorr = spCorr;
-                    AllEEG(ChildSet).msinfo.MSMaps(n).Grandparents = [AllEEG(ChildSet).msinfo.MSMaps(n).Grandparents, GrandparentStruct];
-                end
-            end
-        end
-    end
+%             % compute and store spatial correlations between child and
+%             % parent set in child EEG structure
+%             spCorr = elementCorr(AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Maps', EEGOUT.msinfo.MSMaps(n).Maps', IgnorePolarity);
+%             ParentStruct.setname = MeanSetName;
+%             ParentStruct.spCorr = spCorr;
+%             AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Parents = [AllEEG(SelectedSet(i)).msinfo.MSMaps(n).Parents, ParentStruct];
+% 
+%             % compute and store spatial correlations between grandchildren and
+%             % mean set in the child EEG structures
+%             if (DoMeans)
+%                 childSetnames = AllEEG(SelectedSet(i)).msinfo.children;
+%                 for s=1:numel(childSetnames)
+%                     ChildSet = find(matches({AllEEG.setname}, childSetnames{s}), 1);
+%                     spCorr = elementCorr(AllEEG(ChildSet).msinfo.MSMaps(n).Maps', EEGOUT.msinfo.MSMaps(n).Maps', IgnorePolarity);
+%                     GrandparentStruct.setname = MeanSetName;
+%                     GrandparentStruct.spCorr = spCorr;
+%                     AllEEG(ChildSet).msinfo.MSMaps(n).Grandparents = [AllEEG(ChildSet).msinfo.MSMaps(n).Grandparents, GrandparentStruct];
+%                 end
+%             end
+%         end
+%     end
 
     if ShowWhenDone == true
         pop_ShowIndMSMaps(EEGOUT);
@@ -275,7 +273,7 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
 
     % Remove the new mean set from ALLEEG so EEGLAB can create a new one
     % itself
-    AllEEG(CURRENTSET) = [];
+%     AllEEG(CURRENTSET) = [];
 
     txt = sprintf('%i ',SelectedSet);
     txt(end) = [];

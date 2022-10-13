@@ -14,8 +14,19 @@ function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBased
         flags = '';
     end
   
-    in = NormDim(in,3);
+    % Average reference and normalize input maps and template maps
+    newRef = eye(nChannels);
+    newRef = newRef - 1/nChannels;
+    for i=1:nSubjects
+        in(i, :, :) = newRef*squeeze(in(i, :, :));
+    end
+    in = NormDimL2(in, 3);
     SortedMaps = in;
+
+    newRef = eye(nChannels);
+    newRef = newRef - 1/nChannels;
+    MeanMap= newRef*MeanMap;
+    MeanMap = NormDimL2(MeanMap, 2);
 
     [nSubjects,nMapsToSort,nChannels] = size(in);
     nTemplateMaps = size(MeanMap,1);

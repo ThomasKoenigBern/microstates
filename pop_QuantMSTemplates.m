@@ -62,17 +62,21 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, SelectedSets, UseMeanTmpl, FitParameters, MeanSet, FileName)
+function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, SelectedSets, UseMeanTmpl, FitParameters, MeanSet, FileName)
     
     global MSTEMPLATE;
+    global EEG;
+    global CURRENTSET;
+
+    com = '';
+    EEGOUT = EEG;
+    CurrentSet = CURRENTSET;
 
     if nargin < 2,  SelectedSets    = [];     end   
     if nargin < 3,  UseMeanTmpl   =  0;     end
     if nargin < 4,  FitParameters = [];     end 
     if nargin < 5,  MeanSet       = [];     end 
 
-    com = '';
-    EEGout = AllEEG(SelectedSets);
     % select type of templates to use
     if nargin < 3
         ButtonName = questdlg('What type of templates do  you want to use?', ...
@@ -219,7 +223,7 @@ function [EEGout, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
             [MSClass,gfp,ExpVar, IndGEVs] = AssignMStates(AllEEG(sIdx),Maps,par,AllEEG(sIdx).msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
  %              MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, '<<own>>')];
-                [AllEEG, EEGout, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, [], ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
+                [AllEEG, EEGOUT, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, [], ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
             end
         else
             if isfield(TheChosenTemplate.msinfo.MSMaps(par.nClasses),'Labels')
@@ -237,7 +241,7 @@ function [EEGout, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
             if ~isempty(MSClass)
 %                MSStats = [MSStats; QuantifyMSDynamics(MSClass,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, TheChosenTemplate.setname)]; 
                 try
-                    [AllEEG, EEGout, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, TheChosenTemplate.setname, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
+                    [AllEEG, EEGOUT, MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,AllEEG(sIdx).msinfo,AllEEG(sIdx).srate, DataInfo, UseMeanTmpl, TheChosenTemplate.setname, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx);
                 catch ME
                     return;
                 end
@@ -286,6 +290,9 @@ function [EEGout, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
     end
     txt = sprintf('%i ',SelectedSets);
     txt(end) = [];
+
+    EEGOUT = AllEEG(SelectedSets);
+    CurrentSet = SelectedSets;
     
     if (isempty(MeanSet))
         com = sprintf('[ALLEEG EEG com] = pop_QuantMSTemplates(%s, [%s], %i, %s, [], ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), FileName);

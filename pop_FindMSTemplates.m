@@ -231,8 +231,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
                 msinfo.MSMaps(nClusters).SortMode = 'none';
                 msinfo.MSMaps(nClusters).SortedBy = '';
                 msinfo.MSMaps(nClusters).SpatialCorrelation= [];
-                msinfo.MSMaps(nClusters).Parents = [];
-                msinfo.MSMaps(nClusters).Grandparents = [];
             end
         else
             [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize);
@@ -244,8 +242,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
                 msinfo.MSMaps(nClusters).SortMode = 'none';
                 msinfo.MSMaps(nClusters).SortedBy = '';
                 msinfo.MSMaps(nClusters).SpatialCorrelation= [];
-                msinfo.MSMaps(nClusters).Parents = [];
-                msinfo.MSMaps(nClusters).Grandparents = [];
             end
         end
     

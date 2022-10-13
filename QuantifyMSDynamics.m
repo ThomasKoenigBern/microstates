@@ -84,7 +84,7 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
     eMeanOccurrence  = nan(1,nEpochs);
 
     eOrgTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
-    eExpTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
+%     eExpTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
     
     for e = 1: nEpochs      % e: from 1 to number of maps
 
@@ -133,10 +133,10 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
         
         for c1 = 1: info.FitPar.nClasses
             eMeanGFP(1,c1,e) = eMeanGFP(1,c1,e) ./ cnt(c1);
-            for c2 = 1: info.FitPar.nClasses
-                eExpTM(c1,c2,e) = eOccurrence(1,c1,e) / MeanOcc * eOccurrence(1,c2,e) / MeanOcc / (1 - eOccurrence(1,c1,e) / MeanOcc);
-            end
-            eExpTM(c1,c1,e) = 0;
+%             for c2 = 1: info.FitPar.nClasses
+%                 eExpTM(c1,c2,e) = eOccurrence(1,c1,e) / MeanOcc * eOccurrence(1,c2,e) / MeanOcc / (1 - eOccurrence(1,c1,e) / MeanOcc);
+%             end
+%             eExpTM(c1,c1,e) = 0;
         end
     end
     
@@ -181,7 +181,7 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
     res.OrgTM = mynanmean(eOrgTM,3);
     res.OrgTM = res.OrgTM / sum(res.OrgTM(:));
     
-    res.ExpTM = mynanmean(eExpTM,3);
+%     res.ExpTM = mynanmean(eExpTM,3);
     res.DeltaTM = res.OrgTM - res.ExpTM;
     
     EpochData.Duration     = squeeze(eDuration);
