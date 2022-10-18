@@ -133,6 +133,7 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
     else
         [MSClass, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
     end
+    fit = sum(fit);
     
     if isempty(MSClass)
         return;
