@@ -45,7 +45,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [TheEEG, CurrentSet, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, CurrentSet, nclasses, DoEdit, AllEEG)
+function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, nclasses, DoEdit, AllEEG)
     
     com = '';
 
@@ -450,16 +450,16 @@ function TemplateSort(fh,MeanIndex,IgnorePolarity)
     % channels
     [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(UserData.chanlocs,MSTEMPLATE(MeanIndex).chanlocs);
     if numel(UserData.chanlocs) > numel(MSTEMPLATE(MeanIndex).chanlocs)
-        MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+        MapsToSort(1,:,:) = UserData.AllMaps(nClasses).Maps * LocalToGlobal';
         TemplateMaps = MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps;
     else
-        MapsToSort = AllEEG(sIndex).msinfo.MSMaps(n).Maps;
+        MapsToSort(1,:,:) = UserData.AllMaps(nClasses).Maps;
         TemplateMaps = MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
     end
         
     [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort, TemplateMaps, ~IgnorePolarity);
     %UserData.AllMaps(nClasses).Maps = squeeze(SortedMaps);
-    UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps(SortOrder(1,:), :);
+    UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps(SortOrder(SortOrder <= nClasses), :);
     UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps .* repmat(polarity',1,size(UserData.AllMaps(nClasses).Maps,2));
        
     [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(nClasses).Labels,MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,UserData.AllMaps(nClasses).ColorMap,MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).ColorMap);
@@ -467,7 +467,7 @@ function TemplateSort(fh,MeanIndex,IgnorePolarity)
     UserData.AllMaps(nClasses).ColorMap = Colors;
     
     UserData.AllMaps(nClasses).SortedBy = MSTEMPLATE(MeanIndex).setname;
-    UserData.AllMaps(nClasses).SortMode = "Published Template";
+    UserData.AllMaps(nClasses).SortMode = "published template";
     UserData.AllMaps(nClasses).SpatialCorrelation = SpatialCorrelation;
     UserData.wasSorted = true;
     fh.UserData = UserData;
