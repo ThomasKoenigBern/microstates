@@ -1,7 +1,7 @@
 %pop_FindMSTemplates() interactively identify microstate topographies
 %
 % Usage:
-%   >> [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar,ShowMaps,ShowDyn, SortMaps)
+%   >> [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar,ShowMaps,ShowDyn, TemplateName)
 %
 % EEG lab specific:
 %
@@ -48,9 +48,9 @@
 %   "Show dynamics when done" / ShowDyn
 %   -> Show dynamics when done
 %
-%   Added by Delara 8/16/22
-%   "Sort maps when done" / SortMaps
-%   -> Sort maps according to published templates when done
+%   Added by Delara 10/12/22
+%   "Sort maps by published template when done" / TemplateName
+%   -> Sort maps according to the specified published template when done
 %
 % Output:
 %
@@ -82,8 +82,9 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar, ShowMaps, ShowDyn, SortMaps)
+function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar, ShowMaps, ShowDyn, TemplateName)
 
+    %% Set default values for outputs and input parameters
     global EEG;
     global CURRENTSET;
     global MSTEMPLATE;
@@ -94,10 +95,13 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
     if nargin < 4
         ClustPar = [];
     end
-    if nargin < 5;  ShowMaps       = false; end
-    if nargin < 6;  ShowDyn        = false; end
-    if nargin < 7;  SortMaps       = false; end
+    if nargin < 5;  ShowMaps            = false; end
+    if nargin < 6;  ShowDyn             = false; end
+    if nargin < 7;  TemplateName    = [];    end
 
+    SortMaps = ~isempty(TemplateName);
+
+    %% Select sets to cluster
     if isempty(SelectedSets)
         % if multiple datasets have not already been selected, prompt the
         % user to select them
@@ -117,9 +121,23 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
         ValidSets = AllSets(~HasChildren);
         SelectedSets = ValidSets(res{1});
     end
-    
-    FieldNames = {'MinClasses','MaxClasses','GFPPeaks','IgnorePolarity','MaxMaps','Restarts', 'UseAAHC','Normalize'};
 
+    %% Validate TemplateName
+    TemplateNames = {MSTEMPLATE.setname};
+    TemplateIndex = 1;
+    if SortMaps
+        if (~any(matches(TemplateNames, TemplateName)))
+            errorMessage = sprintf('The specified template %s could not be found in the microstates/Templates' + ...
+            'folder. Please add the template to the folder before sorting.', TemplateName);
+            errordlg2([errorMessage],'Identify microstate classes');
+            return;
+        else
+            TemplateIndex = find(matches(TemplateNames, TemplateName));
+        end
+    end
+
+    %% Check clustering parameters and prompt user to update if needed
+    FieldNames = {'MinClasses','MaxClasses','GFPPeaks','IgnorePolarity','MaxMaps','Restarts', 'UseAAHC','Normalize'};
     iscomplete = all(isfield(ClustPar,FieldNames));
 
     % Update clustering parameters
@@ -130,8 +148,14 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
         if islogical(ClustPar.UseAAHC)
             ClustPar.UseAAHC = floor(ClustPar.UseAAHC) + 1;
         end
+
+        if numel(SelectedSets) > 1
+            EnableShowMaps = 'off';
+        else
+            EnableShowMaps = 'on';
+        end
         
-        [res,~,~,structout] = inputgui( 'geometry', {1 [1 1] [1 1] [1 1] [1 1] [1 1] 1 1 1 1 1 1 1},  'uilist', { ...
+        [res,~,~,structout] = inputgui( 'geometry', {1 [1 1] [1 1] [1 1] [1 1] [1 1] 1 1 1 1 1 1 1 1},  'uilist', { ...
              { 'Style', 'text', 'string', 'Clustering parameters', 'fontweight', 'bold'  } ...  
              { 'Style', 'text', 'string', 'Algorithm', 'fontweight', 'normal'  } ...
              { 'Style', 'popupmenu', 'string',{'k-means','AAHC'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC}  ... 
@@ -147,8 +171,9 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
              { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', ClustPar.IgnorePolarity }  ...
              { 'Style', 'checkbox', 'string', 'Normalize EEG before clustering','tag','Normalize' ,'Value', ClustPar.Normalize }  ...
              { 'Style', 'text', 'string', 'Display options', 'fontweight', 'bold'  } ...
-             { 'Style', 'checkbox', 'string', 'Sort maps according to published template when done', 'tag', 'Sort_Maps', 'Value', SortMaps } ...
-             { 'Style', 'checkbox', 'string','Show maps when done','tag','Show_Maps'    ,'Value', ShowMaps }  ...
+             { 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'Sort_Maps', 'Value', SortMaps } ...
+             { 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', TemplateIndex} ...
+             { 'Style', 'checkbox', 'string','Show maps when done','tag','Show_Maps'    ,'Value', ShowMaps, 'Enable', EnableShowMaps }  ...
              { 'Style', 'checkbox', 'string','Show dynamics when done','tag','Show_Dyn' ,'Value', ShowDyn } } ...
              ,'title','Microstate clustering parameters');
         
@@ -165,6 +190,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
         ShowMaps                = structout.Show_Maps;
         ShowDyn                 = structout.Show_Dyn;
         SortMaps                = structout.Sort_Maps;
+
+        if SortMaps
+            TemplateIndex = structout.TemplateIndex;
+            TemplateName = TemplateNames(TemplateIndex);
+        end
     end
 
     if ClustPar.UseAAHC == true && ClustPar.Normalize == true
@@ -176,6 +206,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
         ClustPar.UseEMD = false;
     end
     
+    %% Clustering
     for i=1:length(SelectedSets)
         fprintf("Clustering dataset %i of %i\n", i, length(SelectedSets));
 
@@ -228,6 +259,10 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
                 msinfo.MSMaps(nClusters).Maps = b_model;
                 msinfo.MSMaps(nClusters).ExpVar = double(exp_var);
                 msinfo.MSMaps(nClusters).ColorMap = lines(nClusters);
+                % Delara 10/14/22: add map labels
+                for j = 1:nClusters
+                    msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
+                end
                 msinfo.MSMaps(nClusters).SortMode = 'none';
                 msinfo.MSMaps(nClusters).SortedBy = '';
                 msinfo.MSMaps(nClusters).SpatialCorrelation= [];
@@ -239,9 +274,13 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
                 msinfo.MSMaps(nClusters).Maps = b_model{nClusters-ClustPar.MinClasses+1};
                 msinfo.MSMaps(nClusters).ExpVar = exp_var(nClusters-ClustPar.MinClasses+1);
                 msinfo.MSMaps(nClusters).ColorMap = lines(nClusters);
+                % Delara 10/14/22: add map labels
+                for j = 1:nClusters
+                    msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
+                end
                 msinfo.MSMaps(nClusters).SortMode = 'none';
                 msinfo.MSMaps(nClusters).SortedBy = '';
-                msinfo.MSMaps(nClusters).SpatialCorrelation= [];
+                msinfo.MSMaps(nClusters).SpatialCorrelation= [];               
             end
         end
     
@@ -249,31 +288,28 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
         AllEEG(sIndex).msinfo = msinfo;
         AllEEG(sIndex).saved = 'no';
 
-        if SortMaps == true
-            % Sort 3-6 cluster solutions using 2002 normative maps and 7
-            % cluster solution with Custo 2017 maps
-            if (ClustPar.MinClasses < 3 && ClustPar.MaxClasses > 2) || (ClustPar.MinClasses > 2)
-                [AllEEG(sIndex), ~, ~] = pop_SortMSTemplates(AllEEG, sIndex, 0, -1, "Norms NI2002", 1);
-            end
-            if (ClustPar.MinClasses <= 7 && ClustPar.MaxClasses >= 7)
-                [AllEEG(sIndex), ~, ~] = pop_SortMSTemplates(AllEEG, sIndex, 0, -1, "Custo2017", 1);
-            end
-        end
-        if ShowMaps == true
-            pop_ShowIndMSMaps(AllEEG(sIndex));
-        end
         if ShowDyn == true
             pop_ShowIndMSDyn([],AllEEG(sIndex),0);
         end
     
     end
 
-    EEGout = AllEEG(SelectedSets);
-    CurrentSet = SelectedSets;
+    %% Sorting
+    if SortMaps
+        [EEGout, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, 0, -1, TemplateName, 1);
+    else
+        EEGout = AllEEG(SelectedSets);
+        CurrentSet = SelectedSets;
+    end
+
+    if ShowMaps == true
+        pop_ShowIndMSMaps(EEGout, nan, 0, AllEEG);
+    end
     
+    %% Command string generation
     structInfo = sprintf('struct(''MinClasses'', %i, ''MaxClasses'', %i, ''GFPPeaks'', %i, ''IgnorePolarity'', %i, ''MaxMaps'', %i, ''Restarts'', %i, ''UseAAHC'', %i, ''Normalize'', %i)',ClustPar.MinClasses, ClustPar.MaxClasses, ClustPar.GFPPeaks, ClustPar.IgnorePolarity, ClustPar.MaxMaps, ClustPar.Restarts, ClustPar.UseAAHC, ClustPar.Normalize);
 
-    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(ALLEEG, %s, %s, %i, %i, %i, %i);', mat2str(SelectedSets),structInfo,ShowMaps,ShowDyn,SortMaps);
+    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, %s, %i, %i, %s);', inputname(1), mat2str(SelectedSets), structInfo,ShowMaps,ShowDyn,string(TemplateName));
 end
 
 function Answer = DoesItHaveChildren(in)
