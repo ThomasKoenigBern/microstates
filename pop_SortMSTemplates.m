@@ -262,19 +262,13 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
 
     %% Verify compatibility between selected sets to sort and template set
 
-    % Check if template set is a parent set of all the selected sets
-    if isempty(TemplateSet) || TemplateSet ~= -1
+    % Check if template set is a parent set of all the selected sets (only
+    % for mean sets)
+    isPublishedTemplate = matches(TemplateName, {MSTEMPLATE.setname});    
+    if ~isPublishedTemplate
         warningSetnames = {};
         for index = 1:length(SelectedSets)
             sIndex = SelectedSets(index);
-%             minClasses = max(AllEEG(sIndex).msinfo.ClustPar.MinClasses, TemplateMinClasses);
-%             maxClasses = min(AllEEG(sIndex).msinfo.ClustPar.MaxClasses, TemplateMaxClasses);
-%     
-%             containsParent = checkSetForParent(AllEEG(sIndex), minClasses, maxClasses, TemplateName);
-%             if ~containsParent
-%                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
-%             end
-
             containsChild = checkSetForChild(AllEEG, nonemptyMean(TemplateIndex), AllEEG(sIndex).setname);
             if ~containsChild
                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
@@ -337,10 +331,15 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
                 continue
             end
 
+            % find the number of template classes to use
             if TemplateSet == -1
+                % published templates should only have 1 cluster solution
                 HasTemplates = ~cellfun(@isempty,{ChosenTemplate.msinfo.MSMaps.Maps});
                 TemplateClassesToUse = find(HasTemplates == true);
             else
+                % for mean sets, use min cluster solution if class number
+                % is less than min, max cluster solution if greater than
+                % max, same number otherwise
                 if n < ChosenTemplate.msinfo.ClustPar.MinClasses
                     TemplateClassesToUse = ChosenTemplate.msinfo.ClustPar.MinClasses;
                 elseif n > ChosenTemplate.msinfo.ClustPar.MaxClasses
@@ -353,35 +352,34 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             % compare number of channels in selected set and template set -
             % convert whichever set has more channels to the channel
             % locations of the other
+            MapsToSort = zeros(1, n, min(AllEEG(sIndex).nbchan, ChosenTemplate.nbchan));
             [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
             if AllEEG(sIndex).nbchan > ChosenTemplate.nbchan
-                MapsToSort = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
+                MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
                 TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps;
             else
-                MapsToSort = AllEEG(sIndex).msinfo.MSMaps(n).Maps;
+                MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps;
                 TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
             end
 
             % Sort
             [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,TemplateMaps,~IgnorePolarity);
-
-            AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder,:);
+            AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder(SortOrder <= n),:);
             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity',1,numel(AllEEG(sIndex).chanlocs));
-            
-            [Labels,Colors] = UpdateMicrostateLabels(AllEEG(sIndex).msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(n).Labels,SortOrder,AllEEG(sIndex).msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
+
+            % Update map labels and colors
+            [Labels,Colors] = UpdateMicrostateLabels(AllEEG(sIndex).msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,AllEEG(sIndex).msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
             AllEEG(sIndex).msinfo.MSMaps(n).Labels = Labels;
             AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = Colors;
 
-            % AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
-            % AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
             % Delara 8/17/22 change
             if (TemplateSet == -1)
-                AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
+                AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'published template';
             else
                 if (DoMeans)
-                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'grand mean map based';
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'grand mean map';
                 else
-                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map based';
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map';
                 end
             end
             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
@@ -391,67 +389,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
 
     end
 
-    % previous: outer loop = classes, inner loops = sets
-%     for n = MinClasses:MaxClasses
-% 
-%         % find valid set indices (sets that contain the current number of
-%         % classes)
-%         validSetIndices = [];
-%         for index = 1:length(SelectedSets)
-%             sIndex = SelectedSets(index);
-%             if n > numel(AllEEG(sIndex).msinfo.MSMaps)
-%                 continue
-%             elseif isempty(AllEEG(sIndex).msinfo.MSMaps(n).Maps)
-%                 continue
-%             else
-%                 validSetIndices = [validSetIndices sIndex];
-%             end
-%         end
-% 
-%         MapsToSort = nan(numel(validSetIndices),n,numel(ChosenTemplate.chanlocs));
-%         HasTemplates = ~cellfun(@isempty,{MSTEMPLATE(MeanIndex).msinfo.MSMaps.Maps});
-%         TemplateClassesToUse = find(HasTemplates == true);
-% 
-%         % Here we go to the common set of channels
-%         for index = 1:length(validSetIndices)
-%             sIndex = validSetIndices(index);
-%             LocalToGlobal = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
-%             MapsToSort(index,:,:) = AllEEG(sIndex).msinfo.MSMaps(TemplateClassesToUse).Maps * LocalToGlobal';
-%         end
-% 
-%         % We sort out the stuff
-%         [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,ChosenTemplate.msinfo.MSMaps(n).Maps,~IgnorePolarity);
-% 
-%          for index = 1:length(SelectedSets)
-%             sIndex = SelectedSets(index);
-%             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps(SortOrder(index,:),:);
-%             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity(index,:)',1,numel(AllEEG(sIndex).chanlocs));
-%             
-%             [Labels,Colors] = UpdateMicrostateLabels(AllEEG(sIndex).msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(n).Labels,SortOrder(index,:),AllEEG(sIndex).msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
-%             AllEEG(sIndex).msinfo.MSMaps(n).Labels = Labels;
-%             AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = Colors;
-% 
-%             % AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
-%             % AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
-%             % Delara 8/17/22 change
-%             if (TemplateSet == -1)
-%                 AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'template based';
-%             else
-%                 if (DoMeans)
-%                     AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'grand mean map based';
-%                 else
-%                     AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map based';
-%                 end
-%             end
-%             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
-%             AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation(index,:);
-%             AllEEG(sIndex).saved = 'no';
-%          end
-%     end
-
     %% Command string generation
-    SetsString = sprintf('%i ',SelectedSets);
-    SetsString(end) = [];
     if isstruct(TemplateSet)
         TemplateSetString = inputname(4);
         if isempty(TemplateSetString)
@@ -469,7 +407,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
     EEGOUT = AllEEG(SelectedSets);
     CurrentSet = SelectedSets;
     
-    com = sprintf('[EEG CURRENTSET com] = pop_SortMSTemplates(%s, [%s], %i, %s, "%s", %i, 1, %s);', inputname(1), SetsString, DoMeans, TemplateSetString, string(TemplateName), IgnorePolarity, NClassesString);
+    com = sprintf('[EEG CURRENTSET com] = pop_SortMSTemplates(%s, %s, %i, %s, "%s", %i, %s);', inputname(1), mat2str(SelectedSets), DoMeans, TemplateSetString, string(TemplateName), IgnorePolarity, NClassesString);
 end
 
 function Answer = DoesItHaveChildren(in)
@@ -505,35 +443,4 @@ function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
         containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
     end
 
-end
-
-function containsParent = checkSetForParent(TheEEG, MinClasses, MaxClasses, TemplateName)
-
-    parentSetNames = arrayfun(@getParentSetNames, MinClasses:MaxClasses, 'UniformOutput', false);
-    containsParent = any(cellfun(@(x) matches(TemplateName, x), parentSetNames));
-
-    function ParentSetNames = getParentSetNames(x)
-    
-        if ~isfield(TheEEG.msinfo.MSMaps(x), 'Parents')
-            ParentSetNames = {};
-        elseif ~isempty(TheEEG.msinfo.MSMaps(x).Parents)
-            ParentSetNames = {TheEEG.msinfo.MSMaps(x).Parents.setname};
-            nonEmptyInd = ~cellfun(@isempty, ParentSetNames);
-            ParentSetNames = ParentSetNames(nonEmptyInd);
-        else
-            ParentSetNames = {};
-        end
-    
-        if ~isfield(TheEEG.msinfo.MSMaps(x), 'Grandparents')
-            GrandparentSetNames = {};
-        elseif ~isempty(TheEEG.msinfo.MSMaps(x).Grandparents)
-            GrandparentSetNames = {TheEEG.msinfo.MSMaps(x).Grandparents.setname};
-            nonEmptyInd = ~cellfun(@isempty, GrandparentSetNames);
-            GrandparentSetNames = GrandparentSetNames(nonEmptyInd);
-        else
-            GrandparentSetNames = {};
-        end
-    
-        ParentSetNames = [ParentSetNames, GrandparentSetNames];
-    end
 end
