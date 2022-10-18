@@ -297,6 +297,14 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
 
         end
     end
+    
+    
+    MinClasses     = ChosenTemplate.msinfo.ClustPar.MinClasses;
+    MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+   
+    IsSingularSet = MinClasses == MaxClasses;
+   
+    strcnt = fprintf(1,'pop_SortMSTemplates: Permuting %i of %i subjects ',1,length(SelectedSets));
 
     %% Sorting
 

@@ -33,6 +33,7 @@ function [c,imap,xm,ym,chandle] = dspCMap(map,ChanPos,varargin)
 % 'Linewidth'       Sets linewidth
 % 'NoExtrapolation' Prevents maps to be etrapolated)
 
+
 map = double(map);
 if isstruct(ChanPos)
     if isfield(ChanPos,'urchan')
@@ -233,7 +234,7 @@ if vararginmatch(varargin,'Gradient')
                 xpgrad = xpgrad+1;
                 xposgrad(xpgrad) = (xa(j)+Delta/2*res);
             
-                if ~isnan(Grad1(i,j)) && ~isnan(Grad2(i,j));
+                if ~isnan(Grad1(i,j)) && ~isnan(Grad2(i,j))
                     GradMap(ypgrad,xpgrad) = sqrt((Grad1(i,j)- Grad2(i,j)).^2 + (Grad1(i,j)+Grad2(i,j)).^2);
                 else
                     GradMap(ypgrad,xpgrad) = 0;
@@ -272,6 +273,7 @@ else
 end
 
 %ContourLevel = (nNegLevels:(nPosLevels-1)) * CStep;
+
 [c,h] = contourf(xm,ym,imap, ContourLevel);
 chandle.c = c;
 chandle.h = h;
@@ -290,7 +292,6 @@ if vararginmatch(varargin,'Background')
     BckCol = varargin{vararginmatch(varargin,'Background')+1};
     set(gca,'Color',BckCol);
 end
-
 
 switch cmap
     case 'bw'
@@ -330,32 +331,8 @@ switch cmap
         colormap(gca,cm);
         
     case 'br'
-        if verLessThan('matlab','8.0')
-            for i = 1:numel(hc)
-                l = get(hc(i),'CData');
-                    if l < 0
-                        % find the next smallest contour level
-                        nNegContours = sum(ContourLevel < 0);
-                        idx = find(ContourLevel <= l,1,'last')-1;
-                        colc = idx / nNegContours;
-                        col = [colc colc 1];
-                    else
-                        % find the next larger contour level
-                        nPosContours = sum(ContourLevel > 0);
-                        idx = find(ContourLevel > l,1,'first');
-                        idx = idx - sum(ContourLevel <= 0);
-                        colc = idx / nPosContours;
-                        col = [1 1-colc 1-colc];
-                    end
-                set(hc(i),'FaceColor',col);
-            end
-        else
-            caxis([-8*CStep 8*CStep]);
-%            dummy = colormap(bluered)
-           % contourcmap('bluered',ll)
-
-            colormap(gca,bluered);
-        end
+        caxis([-8*CStep 8*CStep]);
+        colormap(gca,bluered);
         LabBkG = 1;
     case 'rr'
         for i = 1:numel(ll)
@@ -378,8 +355,6 @@ switch cmap
         error('Colormap not defined');
 end
 
-%contour(xm,ym,~isnan(imap),[1 1],'LineWidth',MapLineWidth*2,'LineColor',[0 0 0]);
-
 EndContourLevel = ContourLevel(numel(ll));
 
 if EndContourLevel <= ContourLevel(1)
@@ -391,7 +366,7 @@ if vararginmatch(varargin,'Gradient')
     if (gScale > 0)
         for i = 1:Delta:(sx-Delta)
             for j = 1:Delta:(sy-Delta)
-                if ~isnan(Grad1(i,j)) && ~isnan(Grad2(i,j));
+                if ~isnan(Grad1(i,j)) && ~isnan(Grad2(i,j))
                     pos = [(xa(j)+Delta/2*res) (ya(i)+Delta/2*res)];
                     Grad = [Grad1(i,j)- Grad2(i,j) Grad1(i,j)+Grad2(i,j) ];
                     Arrow(pos,-Grad*gScale);
@@ -399,10 +374,6 @@ if vararginmatch(varargin,'Gradient')
             end
         end
     end
-end
-
-if verLessThan('matlab','8.0')
-    set(gca,'CLimMode','Manual','CLim',[ContourLevel(1) EndContourLevel]);
 end
 
 % colorbar
@@ -435,21 +406,6 @@ if vararginmatch(varargin,'Label')
             PlotElectrode(pxe(LabelIndex(i)),pye(LabelIndex(i)),LabelSize,[],LabBkG,EndContourLevel +100);
         end
     end
-end
-if ShowScale == 1
-    
-%     dspCMapColorbar(CStep,'br');
-%     cbh = colorbar(gca);
-%     vl = get(cbh,'YLim');
-%     dltvl = vl(2) - vl(1);
-%     
-%     ll = [ll ll(numel(ll))+ll(2)-ll(1)];
-%     dltll =  ll( numel(ll)) - ll(1);
-%     
-%     nsp = (ll-ll(1)) / dltll * dltvl + vl(1);
-%     
-%     set(cbh,'YTick',nsp);
-%     set(cbh,'YTickLabel',num2str(ll'));
 end
 
 if vararginmatch(varargin,'Extrema')
@@ -501,12 +457,7 @@ if NoseRadius > 0
     
 end
 
-
-
-axis([-xmx-15 xmx+15 -ymx-15 ymx+15+NoseRadius]);
-hold off
-axis equal
-
+set(gca,'XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'NextPlot','replace','DataAspectRatio',[1 1 1]);
 
 if vararginmatch(varargin,'Background')
     set(gca,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[]);
@@ -515,5 +466,5 @@ else
 end
 
 
-freezeColors;
+%freezeColors;
 %drawnow

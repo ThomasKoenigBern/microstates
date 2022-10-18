@@ -38,6 +38,8 @@ else
     rd.GroupLabels = cellfun(@(x) sprintf('Group %i',x),num2cell(unique(Grouping)), 'UniformOutput',false);
     rd.IndFeature = Grouping;
 end
+
+
 rd.Design = [(1:nMaps)' ones(nMaps,1)];
 rd.strF1  = 'Class';
 rd.TwoFactors = 0;
