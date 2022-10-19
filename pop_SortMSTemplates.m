@@ -30,11 +30,10 @@
 %   array is passed in, the user will be prompted to select a template set.
 % 
 %   "TemplateName" (added by Delara 8/16/22)
-%   -> Name of published template (currently either Norms NI2002 or
-%   Custo2017) or mean map setname that should be used for sorting. Can
-%   also be used to specify the setname of the mean set used to sort. Will
-%   be used if TemplateSet is empty or -1. If "TemplateSet" is not empty or
-%   equal to -1, this will be ignored.
+%   -> Name of published template or mean map setname that should be used 
+%   for sorting. Can also be used to specify the setname of the mean set 
+%   used to sort. Will be used if TemplateSet is empty or -1. If 
+%   "TemplateSet" is not empty or equal to -1, this will be ignored.
 %
 %   "IgnorePolarity"
 %   -> Ignore the polarity of the maps to be sorted. Default = 1.  
@@ -287,7 +286,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
                 { 'Style', 'text', 'string', warningMessage} ...
                 { 'Style', 'radiobutton', 'string', 'Yes', 'Value', 0} ...
                 { 'Style', 'radiobutton', 'string', 'No', 'Value', 0} ...
-                { 'Style', 'checkbox', 'string', 'Do not show this message again', 'Value', 0} });
+                { 'Style', 'checkbox', 'string', 'Do not ask me again', 'Value', 0} });
     
             if isempty(res); return; end 
             if (res{2}); return; end
@@ -304,7 +303,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
    
     IsSingularSet = MinClasses == MaxClasses;
    
-    strcnt = fprintf(1,'pop_SortMSTemplates: Permuting %i of %i subjects ',1,length(SelectedSets));
+    %strcnt = fprintf(1,'pop_SortMSTemplates: Permuting %i of %i subjects ',1,length(SelectedSets));
 
     %% Sorting
 
@@ -327,6 +326,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
     % Delara 10/7/22 change: make outer loop go through selected sets,
     % inner loop go through classes
     for index = 1:length(SelectedSets)
+        fprintf('Sorting dataset %i of %i\n', index, numel(SelectedSets));
         sIndex = SelectedSets(index);
 
         for n = MinClasses:MaxClasses

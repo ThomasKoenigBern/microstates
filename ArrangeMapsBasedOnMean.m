@@ -76,10 +76,12 @@ function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBased
             Polarity(n,:) = pol(MapsToKeep);
             if ~isempty(SwappedMaps)
                 SortedMaps(n,:,:) = SwappedMaps(MapsToKeep,:);
+            else
+                SwappedMaps = MapsToSort;
             end
             SortOrder(n,:) = Assignment;
             
-            d = diag(MyCorr(SwappedMaps',squeeze(ExtMeanMap)'))';
+            d = diag(MyCorr(squeeze(SwappedMaps)',squeeze(ExtMeanMap)'))';
             SpatialCorrelation(n,:) = d(MapsToKeep);
         else    % TK tested the code below 10.2.2022, seems to be ok
             pol(isnan(pol)) = 1;
