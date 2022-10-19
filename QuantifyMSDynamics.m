@@ -1,29 +1,28 @@
 %QuantifyMSDynamics() Quantify microstate parameters
 %
 % Usage:
-%   >> res = QuantifyMSDynamics(MSClass,info, SamplingRate, DataInfo, TemplateName)
+%   >> res = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateName, IndGEVs)
 %
 % Where: - MSClass is a N timepoints x N Segments matrix of momentary labels
+%        - gfp is a N timepoints x N Segments matrix of momentary GFP
+%        values
 %        - info is the structure with the microstate information
-%        - Samplingrate is the sampling rate
+%        - SamplingRate is the sampling rate
 %        - DataInfo contains info about the dataset analyzed
 %        - (added by Delara) TemplateType is the type of templates used to
 %        quantify (0 = own, 1 = mean, 2 = published)
-%        - TemplateName is the name of the microstate map template used
-%        - ExpVar is the explained variance
-%        - (added by Delara) IndGEVs are the individual explained variance values for each
-%        microstate map
-%          The last three parameters are only for the documentation of the
+%        - TemplateName is the name of the microstate map template used for
+%        quantifying
+%        - IndGEVs is a vector with Global Explained Variance values for
+%        each microstate map
+%          The last parameter is only for the documentation of the
 %          results.
-%        - (added by Delara) the entire ALLEEG and sIdx (current set
-%        number) are used to sort the maps and produce spatial correlation
-%        values
 %
 % Output: 
-%         - res: A Matlab table with the results, including the observed 
-%           transition matrix, the transition matrix expected if
-%           transitions were only determined by the occurrence, and the
-%           difference between the two.
+%         - res: A Matlab table with the results, including the individual 
+%           and total global explained variances, template labels and 
+%           spatial correlations between individual and template maps, and
+%           the observed transition matrix
 %
 % Author: Thomas Koenig, University of Bern, Switzerland, 2016
 %
@@ -44,7 +43,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, SamplingRate, DataInfo, TemplateType, TemplateName, ExpVar, IndGEVs, SingleEpochFileTemplate, AllEEG, sIdx)
+function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate)
     if nargin < 9
         SingleEpochFileTemplate = [];
     end
@@ -52,29 +51,41 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
     nEpochs = size(MSClass,2);
     TimeAxis = (0:(size(MSClass,1)-1)) / SamplingRate;
 
+    % Extract dataset information
     res.DataSet      = DataInfo.setname;
     res.Subject      = DataInfo.subject;
     res.Group        = DataInfo.group;
     res.Condition    = DataInfo.condition;
     
+    % Set template and sorting information
     if isempty(TemplateName)
         res.Template = '<<own>>';
-        if isfield(info,'MSMaps')
-            res.SortInfo     = info.MSMaps(info.FitPar.nClasses).SortedBy;
-        else
-            res.SortInfo = 'NA';
-        end
     else
-        res.Template     = TemplateName;
-        res.SortInfo     = 'NA';
+        res.Template = TemplateName;
+    end
+
+    if isfield(info,'MSMaps')
+        res.SortInfo = info.MSMaps(info.FitPar.nClasses).SortedBy;
+    else
+        res.SortInfo = 'NA';
     end
     
-    % (TEMPORARY) include both the old explained variance value (ExpVar)
-    % and the new value (ExpVarTotal)
-    res.IndExpVar = mynanmean(IndGEVs, 3);
-    res.ExpVarTotal = sum(IndGEVs);
-    res.ExpVar       = ExpVar;
+    % Get individual and total GEV values
+    res.IndGEVs = IndGEVs;
+    res.TotalGEV = sum(IndGEVs);
 
+    % if quantifying by own maps, include spatial correlations between
+    % individual maps and the template maps they were sorted by
+    if isempty(TemplateName)
+        for i=1:info.FitPar.nClasses
+            templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
+            res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
+            spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
+            res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
+        end
+    end  
+
+    % Compute temporal dynamics
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
     eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
     eContribution    = zeros(1,info.FitPar.nClasses,nEpochs);
@@ -139,37 +150,11 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
 %             eExpTM(c1,c1,e) = 0;
         end
     end
-    
-    % Sort according to chosen template if this has not already been done
-    % by the user to get spatial correlation values
-    if (TemplateType == 1)
-        ParentSetName = info.MSMaps(info.FitPar.nClasses).ParentSet;
-        if ~strcmp(ParentSetName, TemplateName)
-            errordlg2(sprintf(['The mean set %s is not the parent set of the individual set %s.\n' ...
-                'Did you mean to quantify using %s?'], TemplateName, DataInfo.setname, ParentSetName), ...
-                'Quantify microstate dynamics');
-            error("Wrong mean set chosen for quantifying");
-        else
-            eSpCorrelation = info.MSMaps(info.FitPar.nClasses).ParentSpatialCorrelation;
-            EEGout = AllEEG(sIdx);
-        end
-        eSpCorrelation = mynanmean(eSpCorrelation,3);
-        res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
 
-    elseif (TemplateType == 2)
-        if ~strcmp(info.MSMaps(info.FitPar.nClasses).SortedBy, TemplateName)
-            [AllEEG, EEGout, ~] = pop_SortMSTemplates(AllEEG, sIdx, 0, -1, TemplateName, info.ClustPar.IgnorePolarity, info.FitPar.nClasses);
-        end
-        eSpCorrelation = AllEEG(sIdx).msinfo.MSMaps(info.FitPar.nClasses).SpatialCorrelation;
-        res.SpatialCorrelation = mynanmean(eSpCorrelation,3);
-    else
-        EEGout = AllEEG(sIdx);
-    end
-
+    % Add temporal dynamics to result
     res.TotalTime = sum(eTotalTime);
     res.Duration     = mynanmean(eDuration,3);
     res.MeanDuration = mynanmean(eMeanDuration,2);
- 
     
     res.Occurrence     = mynanmean(eOccurrence,3);
     res.MeanOccurrence = mynanmean(eMeanOccurrence,2);
@@ -182,16 +167,11 @@ function [AllEEG, EEGout, res,EpochData] = QuantifyMSDynamics(MSClass,gfp,info, 
     res.OrgTM = res.OrgTM / sum(res.OrgTM(:));
     
 %     res.ExpTM = mynanmean(eExpTM,3);
-    res.DeltaTM = res.OrgTM - res.ExpTM;
+%     res.DeltaTM = res.OrgTM - res.ExpTM;
     
     EpochData.Duration     = squeeze(eDuration);
     EpochData.Occurrence   = squeeze(eOccurrence);
     EpochData.Contribution = squeeze(eContribution);
-    
-    disp("printing DataInfo.setname to csv:");
-    disp(DataInfo.setname);
-    disp("printing SingleEpochFileTemplate to csv:");
-    disp(class(SingleEpochFileTemplate));
 
     if ~isempty(SingleEpochFileTemplate)
         OutputFileName = sprintf(SingleEpochFileTemplate,DataInfo.setname);        
