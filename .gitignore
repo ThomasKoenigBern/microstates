@@ -29,3 +29,7 @@ codegen/
 
 # Octave session info
 octave-workspace
+
+# Matlab project folders
+resources/
+*.prj

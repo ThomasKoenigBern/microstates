@@ -142,11 +142,23 @@ function [AllEEG, TheEEG, com] = pop_GetMSDynamics(AllEEG,TheEEG,UseMean,FitPar,
     
     if UseMean == true
         if MeanSet == -1
-            LocalToGlobal = MakeResampleMatrices(TheEEG.chanlocs,MSTEMPLATE(SelectedMeanSet).chanlocs);
-            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+            % Delara 10/3/22 change: convert whichever maps have more
+            % channels
+            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(TheEEG.chanlocs,MSTEMPLATE(SelectedMeanSet).chanlocs);
+            if TheEEG.nbchan > MSTEMPLATE(SelectedMeanSet).nbchan
+                [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+            else
+                Maps = Maps*GlobalToLocal';
+                [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,msinfo.ClustPar.IgnorePolarity);
+            end
         else
-            LocalToGlobal = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
-            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
+            if TheEEG.nbchan > AllEEG(MeanSet).nbchan
+                [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+            else
+                Maps = Maps*GlobalToLocal';
+                [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,msinfo.ClustPar.IgnorePolarity);
+            end
         end
     else
         [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,msinfo.ClustPar.IgnorePolarity);
@@ -183,7 +195,7 @@ function [AllEEG, TheEEG, com] = pop_GetMSDynamics(AllEEG,TheEEG,UseMean,FitPar,
     TheEEG.chanlocs = chanlocs;
     TheEEG.data = newEEG;
 
-    if UseMean < 2
+    if ~UseMean
         com = sprintf('[AllEEG EEG com] = pop_GetMSDynamics(%s, %s, 0, %s);'    , inputname(1), inputname(2),struct2String(FitPar));
     else
         com = sprintf('[AllEEG EEG com] = pop_GetMSDynamics(%s, %s, 1, %s, %i);', inputname(1), inputname(2), struct2String(FitPar), MeanSet);

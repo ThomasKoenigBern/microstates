@@ -61,7 +61,7 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
     com = '';
     
     if numel(TheEEG) > 1
-        errordlg2('pop_findMSTemplates() currently supports only a single TheEEG as input');
+        errordlg2('pop_ShowIndMSDyn() currently supports only a single TheEEG as input');
         return;
     end
     
@@ -121,11 +121,19 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
     TheEEG.msinfo.FitPar = FitPar;
     
     if UseMean == true
-        LocalToGlobal = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
-        [MSClass, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,AllEEG(MeanSet).msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+        % Delara 10/3/22 change: convert whichever maps have more
+        % channels
+        [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
+        if TheEEG.nbchan > AllEEG(MeanSet).nbchan
+            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
+        else
+            Maps = Maps*GlobalToLocal';
+            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,ThEEG.msinfo.ClustPar.IgnorePolarity);
+        end
     else
         [MSClass, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
     end
+    fit = sum(fit);
     
     if isempty(MSClass)
         return;
@@ -268,7 +276,7 @@ function PlotMSDyn(obj, ~,fh, varargin)
     if (xtick{2} - xtick{1}) >= 1
         labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f',floor(x/3600),floor(rem(x/60,60)),rem(x,60)),xtick, 'UniformOutput',false);
     else
-        labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f:%03.0f',floor(x/3600),floor(rem(x/60,60)),rem(x,60),rem(x*1000,1000)),xtick, 'UniformOutput',false);
+        labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f:%03.0f',floor(x/3600),floor(rem(x/60,60)),floor(rem(x,60)),rem(x*1000,1000)),xtick, 'UniformOutput',false);
     end
     set(ax,'XTickLabel',labels,'FontSize',7);
     

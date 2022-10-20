@@ -14,9 +14,14 @@ for i = 1:numel(EEGs)
 end
 
 for n = 1:nMaps
-    rd.conds{n,1} = sprintf('Class_%i',n);
     rd.DLabels1(1,n).Level = n;
-    rd.DLabels1(1,n).Label= sprintf('Class_%i',n);
+    if IsFieldWithInformation(EEGs(1).msinfo.MSMaps(nMaps),'Labels')
+        rd.conds{n,1} = EEGs(1).msinfo.MSMaps(nMaps).Labels{n};
+        rd.DLabels1(1,n).Label  = EEGs(1).msinfo.MSMaps(nMaps).Labels{n};
+    else
+        rd.conds{n,1} = sprintf('Class_%i',n);
+        rd.DLabels1(1,n).Label= sprintf('Class_%i',n);
+    end
 end
 if isempty(Grouping) % We go for the EEG lab groups
     IndividualGroupLabels = cellfun(@(x) EEGs(x).group,num2cell(1:numel(EEGs)), 'UniformOutput',false);
@@ -33,6 +38,8 @@ else
     rd.GroupLabels = cellfun(@(x) sprintf('Group %i',x),num2cell(unique(Grouping)), 'UniformOutput',false);
     rd.IndFeature = Grouping;
 end
+
+
 rd.Design = [(1:nMaps)' ones(nMaps,1)];
 rd.strF1  = 'Class';
 rd.TwoFactors = 0;

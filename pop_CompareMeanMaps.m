@@ -30,14 +30,14 @@
 %
 % added by Delara 8/23/22
 
-function [AllEEG,EEGout,com] = pop_CompareMeanMaps(AllEEG, SelectedSets, NClasses, IgnorePolarity, FileName)
+function com = pop_CompareMeanMaps(AllEEG, SelectedSets, NClasses, IgnorePolarity, FileName)
     
     com = '';
 
-    if nargin < 2   SelectedSets = [];          end
-    if nargin < 3   NClasses = [];              end
-    if nargin < 4   IgnorePolarity = true;      end
-    if nargin < 5   FileName = '';              end
+    if nargin < 2;   SelectedSets = [];          end
+    if nargin < 3;   NClasses = [];              end
+    if nargin < 4;   IgnorePolarity = true;      end
+    if nargin < 5;   FileName = '';              end
 
     % identify valid datasets to compare (with children, containing msinfo)
     nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
@@ -108,13 +108,7 @@ function [AllEEG,EEGout,com] = pop_CompareMeanMaps(AllEEG, SelectedSets, NClasse
         IgnorePolarity = res{2};
     end
     
-    % sort the first mean set according to the second mean set if it has
-    % not already been sorted
-    if (~strcmp(AllEEG(SelectedSets(1)).msinfo.MSMaps(NClasses).SortedBy,AllEEG(SelectedSets(2)).setname))
-        [AllEEG, ~, ~] = pop_SortMSTemplates(AllEEG, SelectedSets(1), 0, SelectedSets(2), "", IgnorePolarity, NClasses);
-    end
-
-    spCorr = AllEEG(SelectedSets(1)).msinfo.MSMaps(NClasses).Communality;
+    spCorr = elementCorr(AllEEG(SelectedSets(1)).msinfo.MSMaps(NClasses).Maps', AllEEG(SelectedSets(2)).msinfo.MSMaps(NClasses).Maps', IgnorePolarity);
     
     if FileName == ""
         [FName,PName] = uiputfile({'*.csv','Comma separated file';'*.txt','Tab delimited file'; ...
@@ -133,8 +127,6 @@ function [AllEEG,EEGout,com] = pop_CompareMeanMaps(AllEEG, SelectedSets, NClasse
             SaveStructToR(struct('SpCorr', spCorr));
         end
     end
-
-    EEGout = AllEEG(SelectedSets(1));
 
     com = sprintf('[%s EEG com] = pop_CompareMeanMaps(%s, [%s], %i, %i, ''%s'');', inputname(1), inputname(1), sprintf('%d, %d', SelectedSets(1), SelectedSets(2)), ...
         NClasses, IgnorePolarity, FileName);
@@ -163,5 +155,22 @@ function x = GetClusterField(in,fieldname)
     end
     if isfield(in.msinfo.ClustPar,fieldname)
         x = in.msinfo.ClustPar.(fieldname);
+    end
+end
+
+% Performs element-wise computation of abs(spatial correlation) or 
+% spatial correlation between matrices A and B
+function corr = elementCorr(A,B, IgnorePolarity)
+    % average reference
+    A = A - mean(A, 1);
+    B = B - mean(B, 1);
+
+    % get correlation
+    A = A./sqrt(sum(A.^2, 1));
+    B = B./sqrt(sum(B.^2, 1));           
+    if (IgnorePolarity) 
+        corr = abs(sum(A.*B, 1));
+    else 
+        corr = sum(A.*B, 1);
     end
 end

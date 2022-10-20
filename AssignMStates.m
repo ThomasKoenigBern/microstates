@@ -1,7 +1,7 @@
 %AssignMStates() Assigns EEG data to microstate clusters
 %
 % Usage:
-%   >> [MSClass,gfp, fit] = AssignMStates(eegdata, Maps, params, IgnorePolarity, chanlocs)
+%   >> [MSClass,gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePolarity, chanlocs)
 %
 % Where: - eegdata is an eeglab EEG structure
 %        - Maps is a Nu x Ne matrix containing microstate template maps
@@ -18,7 +18,7 @@
 % Output: 
 %        - MSClass: N timepoints x N Segments matrix of momentary labels
 %        - gfp: N timepoints x N Segments matrix of momentary gFP values
-%        - fit: Relative variance explained by the model
+%        - IndGEVs: Global explained variance for each microstate map
 %
 % Author: Thomas Koenig, University of Bern, Switzerland, 2016
 %
@@ -39,11 +39,17 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
+function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePolarity, InterpolationMatrix)
 
+    if ischar(eegdata.data)
+        eegdata = pop_loadset('eeg',eegdata);
+    end    
     
+    % if no interpolation matrix is passed in, do not modify the EEG data
     if nargin < 5
         TheEEGData = eegdata.data;
+    % if an interpolation matrix is provided, convert the input data to the
+    % channel count and locations of the provided microstate maps
     else
         TheEEGData = zeros(size(Maps,2),size(eegdata.data,2),size(eegdata.data,3));
         for s = 1:size(eegdata.data,3)
@@ -68,30 +74,31 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
         if strcmp(eegdata.event(e).type,'boundary')
             BoundaryPoint = [BoundaryPoint,eegdata.event(e).latency];
             if isfield(eegdata.event(e),'epoch')
-                % should this be eegdata.event(e).epoch, not event?
                 BoundaryEpoch = [BoundaryEpoch, eegdata.event(e).event];
             else
                 BoundaryEpoch = [BoundaryEpoch, 1];
             end
         end
     end
+
     nClasses = size(Maps,1);
     nSegments = size(TheEEGData,3);
     MSClass = zeros(size(TheEEGData,2),nSegments);
 
     gfp = std(TheEEGData,1,1);
 
-    GEV_classes = zeros(nClasses, 1);
-    GEV_classes_numerator = zeros(nClasses, 1);
-    GEV_classes_denominator = zeros(nClasses, 1);
-    clustLabelRatios = zeros(nClasses, 1);
-
-%     Fit_GEV = zeros(nClasses, 1);
-%     Var_GEV = zeros(nClasses, 1);
-    AllMFit = 0;
-    AllMVar = 0;
+    % Initialize GEV variables
     IndGEVnum = zeros(1, nClasses);
     IndGEVdenom = 0;
+
+    % average reference data and maps
+    nChannels = size(TheEEGData, 1);
+    newRef = eye(nChannels);
+    newRef = newRef - 1/nChannels;
+    for s=1:nSegments
+        TheEEGData(:, :, s) = newRef*squeeze(TheEEGData(:, :, s));
+    end
+    Maps = Maps*newRef;
    
     if params.PeakFit == 1
         Fit = nan(nClasses,size(TheEEGData,2));
@@ -103,19 +110,19 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
                 MSClass = [];
                 return;
             end
-            % Compute covariance between maps and timepoints
-            Cov = NormDimL2(Maps,2) * squeeze(TheEEGData(:,IsIn,s)) / size(Maps,2);
+
+            % Normalized maps * voltage vectors at GFP peaks
+            Cov = NormDimL2(Maps,2) * TheEEGData(:,IsIn,s);
             if IgnorePolarity == true
                 Cov = abs(Cov);
             end
-            % mfit = max covariance, GFPPClass = microstate label
-            [mfit,GFPPClass] = max(Cov);
-            
-            AllMFit = AllMFit + squeeze(sum(mfit,2));
+
+            % mfit = max fit value, GFPPClass = microstate label
+            [mfit, GFPPClass] = max(Cov);
+
             PeakAssignment = zeros(nClasses,numel(IsIn));
-            % add sum of standard deviations 
-            AllMVar = AllMVar +  squeeze(sum(std(TheEEGData(:,IsIn,s),1,1),2));
            
+            % Interpolate to assign labels in between GFP peaks
             for c = 1:nClasses
                 PeakAssignment(c,GFPPClass == c) = 1;
                 Fit(c,:) = interp1(IsIn,PeakAssignment(c,:),1:size(TheEEGData,2),'linear');
@@ -128,16 +135,13 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
             
             % Individual GEV calculations
             for c = 1:nClasses
-                clustMembers = TheEEGData(:, Winner == c, s);
+                clustMembers = (GFPPClass == c);
                 if any(clustMembers)
-                    if (IgnorePolarity)
-                        clustCorr = abs(corr(clustMembers, Maps(c, :)'));
-                    else
-                        clustCorr = corr(clustMembers, Maps(c, :)');
-                    end
-    
-                    IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, Winner == c, s).*clustCorr').^2);
-                    IndGEVdenom = IndGEVdenom + sum(gfp(1, Winner == c, s).^2);
+                    %  sum of squared max fits
+                    IndGEVnum(c) = IndGEVnum(c) + sum(mfit(clustMembers).^2);
+                    % sum of squared L2 norms of all voltage vectors in
+                    % this cluster
+                    IndGEVdenom = IndGEVdenom + sum(vecnorm(TheEEGData(:, IsIn(clustMembers), s)).^2);
                 end
             end
 
@@ -160,20 +164,18 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
     else
         MSClass = zeros(size(TheEEGData,2),nSegments);
         for s = 1:nSegments
-            [Winner,ExpVar] = SmoothLabels(TheEEGData(:,:,s),Maps,params, eegdata.srate,IgnorePolarity);
+            [Winner,~] = SmoothLabels(TheEEGData(:,:,s),Maps,params, eegdata.srate,IgnorePolarity);
 
             % Individual GEV calculations
             for c = 1:nClasses
-                clustMembers = TheEEGData(:, Winner == c, s);
+                clustMembers = (Winner == c);
                 if any(clustMembers)
-                    if (IgnorePolarity)
-                        clustCorr = abs(corr(clustMembers, Maps(c, :)'));
-                    else
-                        clustCorr = corr(clustMembers, Maps(c, :)');
-                    end
-    
-                    IndGEVnum(c) = IndGEVnum(c) + sum((gfp(1, Winner == c, s).*clustCorr').^2);
-                    IndGEVdenom = IndGEVdenom + sum(gfp(1, Winner == c, s).^2);
+                    %  sum of squared max fits
+                    mfit = NormDimL2(Maps(c,:),2) * TheEEGData(:,clustMembers,s);
+                    IndGEVnum(c) = IndGEVnum(c) + sum(mfit.^2);
+                    % sum of squared L2 norms of all voltage vectors in
+                    % this cluster
+                    IndGEVdenom = IndGEVdenom + sum(vecnorm(TheEEGData(:, clustMembers, s)).^2);
                 end
             end
 
@@ -192,27 +194,15 @@ function [MSClass, gfp, fit, IndGEVs] = AssignMStates(eegdata, Maps, params, Ign
                 Winner = fill1D(Winner,1           ,0);
                 Winner = fill1D(Winner,numel(Winner),0);
             end
-%             GEVs(1,s) = sum(ExpVar(1,Winner > 0),2) / sum(Winner > 0);    % (Anjali) added this to extract individual GEVs
-            for c = 1:nClasses
-                for t = 1:size(Winner, 2)
-                    gfp_c_t = std(TheEEGData(:,t,s));
-                    if Winner ~= 0      % gamma = 1
-                        GEV_classes(c) = GEV_classes(c) + ((gfp_c_t * Hit(t))^2 / (gfp_c_t^2));
-                    end
-                end
-            end
-
-            AllMFit = AllMFit + sum(ExpVar(1,Winner > 0),2);
-            AllMVar = AllMVar + sum(Winner > 0);
+        
+%             AllMFit = AllMFit + sum(ExpVar(1,Winner > 0),2);
+%             AllMVar = AllMVar + sum(Winner > 0);
             MSClass(:,s) = Winner;
 
         end
 
     end
-    fit = AllMFit / AllMVar;
-
     IndGEVs = IndGEVnum/IndGEVdenom;
-    TotalGEV = sum(IndGEVs);
 end
 
 

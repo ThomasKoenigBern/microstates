@@ -14,7 +14,7 @@ function[b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,fl
 % b_ind = cluster assignment for each moment of time
 % b_loading = Amplitude of the assigned cluster at each moment in time
 % exp_var = explained variance of the model
-% cross_val = cross validation
+
 
 if (size(n_mod,1) ~= 1)
 	error('Second argument must be a scalar')
@@ -37,6 +37,7 @@ end
 if isempty(max_n)
     max_n = n_frame;
 end
+
 
 if (max_n > n_frame)
     max_n = n_frame;
@@ -185,7 +186,6 @@ for run = 1:reruns
         b_loading = loading; %/sqrt(n_chan);
         best_fit  = tot_fit;
         exp_var = sum(b_loading)/TotVar/sqrt(n_chan);
-        
     end    
 end % for run = 1:reruns
 

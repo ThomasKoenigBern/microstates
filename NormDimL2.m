@@ -5,7 +5,8 @@ function out = NormDimL2(in,dim)
 
 rep = ones(numel(size(in)),1);
 rep(dim) = size(in,dim);
-d = sqrt(mean(in.*in,dim));
+%d = sqrt(mean(in.*in,dim));
 %d = std(in,1,dim);
+d = vecnorm(in, 2, dim);
 d(d == 0) = 1;
 out = in./repmat(d,rep(:)');
