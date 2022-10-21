@@ -100,11 +100,13 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
     end
     Maps = Maps*newRef;
    
+    nGFPPeaks = 0;
     if params.PeakFit == 1
         Fit = nan(nClasses,size(TheEEGData,2));
         for s = 1:nSegments
             % Identify GFP Peaks
             IsIn = find([false (gfp(1,1:end-2,s) < gfp(1,2:end-1,s) & gfp(1,2:end-1,s) > gfp(1,3:end,s)) false]);
+            nGFPPeaks = nGFPPeaks + numel(IsIn);
             if isempty(IsIn)
                 errordlg2('No GFP peaks found','Microstate fitting');
                 MSClass = [];
