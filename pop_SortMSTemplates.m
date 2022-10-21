@@ -322,7 +322,6 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             MaxClasses = max(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
         end
     end
-    end
 
     % Delara 10/7/22 change: make outer loop go through selected sets,
     % inner loop go through classes
