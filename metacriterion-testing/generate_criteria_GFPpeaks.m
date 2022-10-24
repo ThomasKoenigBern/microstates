@@ -1,41 +1,66 @@
-function criteria = generate_criteria_GFPpeaks(TheEEG, nSamples)
+function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
 
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses+1:TheEEG.msinfo.ClustPar.MaxClasses-1;
     maxClusters = size(ClusterNumbers, 2);
     numClustSolutions = numel(ClusterNumbers);
 
+    % Initialize criteria vectors
+%     criteriaVectors.G     = nan(1, numClustSolutions);
+    criteriaVectors.S     = nan(1, numClustSolutions);
+    criteriaVectors.DB    = nan(1, numClustSolutions);
+    criteriaVectors.PB    = nan(1, numClustSolutions);
+    criteriaVectors.D     = nan(1, numClustSolutions);
+    criteriaVectors.KL    = nan(1, numClustSolutions);
+    criteriaVectors.KLnrm = nan(1, numClustSolutions);
+    criteriaVectors.CV    = nan(1, numClustSolutions);
+    criteriaVectors.FVG   = nan(1, numClustSolutions);
+    % CV version 2 testing
+    criteriaVectors.CV2    = nan(1, numClustSolutions);    
+    criteriaVectors.CH    = nan(1, numClustSolutions);
+
     % Initialize criteria struct
-    criteria.G      = nan( 1, maxClusters);     % Gamma
-    criteria.S      = nan( 1, maxClusters);     % Silhouette
-    criteria.DB     = nan( 1, maxClusters);     % Davies-Bouldin
-    criteria.PB     = nan( 1, maxClusters);     % Point-Biserial
-    criteria.D      = nan( 1, maxClusters);     % Dunn
-    criteria.KL     = nan( 1, maxClusters);     % Krzanowski-Lai
-    criteria.CV     = nan( 1, maxClusters);     % Cross-Validation (second derivative)
-    criteria.FVG    = nan( 1, maxClusters);     % Frey and Van Groenewoud
-    criteria.H      = nan( 1, maxClusters);     % Hartigan (first derivative)
-    criteria.TW     = nan( 1, maxClusters);     % Trace(W) (second derivative)
-    criteria.CH     = nan( 1, maxClusters);     % Calinski-Harabasz
+%     criteria(1).criterionName   = 'G';          % Gamma
+    criteria(1).criterionName   = 'S';          % Silhouette
+    criteria(2).criterionName   = 'DB';         % Davies-Bouldin
+    criteria(3).criterionName   = 'PB';         % Point-Biserial
+    criteria(4).criterionName   = 'D';          % Dunn
+    criteria(5).criterionName   = 'KL';         % Krzanowski-Lai
+    criteria(6).criterionName   = 'KLnrm';      % Normalized Krzanowski-Lai
+    criteria(7).criterionName  = 'CV';         % Cross-Validation
+    % CV version 2 testing
+    criteria(8).criterionName  = 'CV2';         % Cross-Validation
+    criteria(9).criterionName  = 'FVG';        % Frey and Van Groenewoud
+    criteria(10).criterionName  = 'CH';         % Calinski-Harabasz
 
     % Check for segmented data and reshape if necessary
     IndSamples = TheEEG.data;
+    nChannels = size(IndSamples, 1);    
     if (numel(size(IndSamples)) == 3)
-        nChannels = size(IndSamples, 1);
         % reshape IndSamples
         IndSamples = reshape(IndSamples, nChannels, []);
     end
     
     % Find GFP peaks
-    gfp = std(TheEEG.data);
+    gfp = std(IndSamples);
     GFPPeakIndices = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
     numGFPPeaks = numel(GFPPeakIndices);
 
-    % Extract random subset of nSamples as input data
-    idx = randperm(numGFPPeaks);
-    SubsetIndices = GFPPeakIndices(idx(1:nSamples));
-    IndSamples = IndSamples(:, SubsetIndices);
+    % Extract an nSamples random subset of the GFP peaks as input data
+    if nSamples ~= inf
+        if nSamples < numGFPPeaks
+            idx = randperm(numGFPPeaks);
+            SubsetIndices = GFPPeakIndices(idx(1:nSamples));
+            IndSamples = IndSamples(:, SubsetIndices);
+        else
+            criteria = [];
+            return;
+        end
+    else
+        IndSamples = IndSamples(:, GFPPeakIndices);
+        nSamples = numGFPPeaks;
+    end
 
-    % Average reference input data
+    % Average reference input data (?)
 %     newRef = eye(nChannels);
 %     newRef = newRef - 1/nChannels;
 %     IndSamples = newRef*IndSamples;
@@ -53,94 +78,268 @@ function criteria = generate_criteria_GFPpeaks(TheEEG, nSamples)
         DistMat = 1 - DistMat;
     end
 
+    % Find sum of all pairwise distances in the input data, the total
+    % number of pairs, and the standard deviation of all pairwise distances
+    % (for PB)
+    sumAllDists = sum(sum(triu(DistMat,1)));
+    nAll = nSamples*(nSamples-1)/2;
+    meanDist = sumAllDists/nAll;
+    stdev = sqrt((sumAllDists - nAll*meanDist^2)/(nAll-1));
+
+    % Data mean (for CH)
+    DataMean = mean(IndSamples, 2);
+
     % Initialize mean distance vectors to hold mean distances for all
-    % cluster solutions
+    % cluster solutions (for FVG)
     meanWithinDists = nan(1, numClustSolutions+1);
     meanBetweenDists = nan(1, numClustSolutions+1);
 
+    % Initialize W and M vectors (for KL)
+    W = nan(1, numClustSolutions+2);            % dispersion for each cluster solution
+    M = nan(1, numClustSolutions+2);            % scaled dispersion values
+
+    %% Get maps and cluster labels for one less than min cluster solution
+    nc = ClusterNumbers(1)-1;
+    [Maps, ClustLabels] = getClusters(TheEEG, nc, IndSamples);
+
+    % Extract all within-cluster distances for one less than min solution
+    [WithinDistances, ~, WithinPairLabels] = getWithinAndBetweenDistances(ClustLabels, DistMat);
+
+    % Get W and M for one less than min cluster solution (for KL)
+    sumD = nan(1, nc);                          % sum of pairwise distances for each cluster
+    nMembers = zeros(1, nc);                    % number of members of each cluster
+
+    for c=1:nc
+        sumD(c) = sum(WithinDistances(WithinPairLabels == c));
+        nMembers(c) = sum(ClustLabels == c);       
+    end
+
+    W(1) = sum(sumD./(2*nMembers));
+    M(1) = W(1)*nc^(2/nChannels);
+
     for i=1:maxClusters
         nc = ClusterNumbers(i);                 % number of clusters
-        
-        % Get maps for the current cluster solution, average reference and
-        % normalize
-        Maps = TheEEG.msinfo.MSMaps(nc).Maps;
-        Maps = Maps*newRef;
-        Maps = NormDimL2(Maps,2);
+        [Maps, ClustLabels] = getClusters(TheEEG, nc, IndSamples);
 
-        % Assign labels to the input voltage vectors
-        Cov = Maps*IndSamples;
-        if TheEEG.msinfo.ClustPar.IgnorePolarity
-            Cov = abs(Cov);
+        %% Extract all within- and between- cluster distances and other measures
+        [WithinDistances, BetweenDistances, WithinPairLabels, IsWithinPair, BetweenPairLabels] = getWithinAndBetweenDistances(ClustLabels, DistMat);
+
+        sumD = nan(1, nc);                      % sum of pairwise distances for each cluster
+        nMembers= zeros(1, nc);                 % number of members of each cluster
+
+        sumMemberCentroidDists = nan(1, nc);    % sum of distances between cluster members and centroid (microstate map)
+        clustDiameters = nan(1,nc);        % cluster diameters (maximum within-cluster distance for each cluster )
+
+        for c=1:nc
+            sumD(c) = sum(WithinDistances(WithinPairLabels == c));
+            nMembers(c) = sum(ClustLabels == c);
+
+            % Extract distances between cluster members and microstate maps
+            Map = Maps(:, c);
+            ClustMembers = IndSamples(:, ClustLabels == c);
+            memberCentroidDists = elementCorrDist(ClustMembers,Map,TheEEG.msinfo.ClustPar.IgnorePolarity);
+            sumMemberCentroidDists(c) = sum(memberCentroidDists);
+
+            clustDiameters(c) = max(WithinDistances(WithinPairLabels == c));
         end
-        [mCov, ClustLabels] = max(Cov);
+    
+        %% Get W and M (for KL)
+        W(i+1) = sum(sumD./(2*nMembers));
+        M(i+1) = W(i+1)*nc^(2/nChannels);
 
-        %% Extract all within- and between- cluster distances
-        IsWithinPair = repmat(ClustLabels(:),1,nTimePoints) == repmat(ClustLabels(:)',nTimePoints,1);
-        IsBetweenPair = ~IsWithinPair;
-        
-        % Remove duplicates and diagonal
-        IsWithinPair = triu(IsWithinPair,1);
-        IsBetweenPair = triu(IsBetweenPair,1);
-        
-        DistMat = DistMat(:);
-        WithinDistances = DistMat(IsWithinPair(:));
-        BetweenDistances = DistMat(IsBetweenPair(:));
-
+        %% POINT-BISERIAL
         nWithin = numel(WithinDistances);
         nBetween = numel(BetweenDistances);
 
-        %% POINT-BISERIAL
         sumWithin = sum(WithinDistances);
         sumBetween = sum(BetweenDistances);
-        sumAll = sumWithin + sumBetween;
-        nAll = nSamples*(nSamples-1)/2;
 
         meanWithinDists(i) = sumWithin/nWithin;
         meanBetweenDists(i) = sumBetween/nBetween;
-        meanDist = (sumWithin + sumBetween)/nAll;
 
-        std = sqrt((sumAll - nAll*meanDist^2)/(nAll-1));
-
-        criteria.PB(i) = (meanBetweenDist - meanWithinDist)*sqrt(nWithin*nBetween / nAll^2)/std;
+        criteriaVectors.PB(i) = (meanBetweenDists(i) - meanWithinDists(i))*sqrt(nWithin*nBetween / nAll^2)/stdev;
 
         %% GAMMA
-        % Sort distances
-        WithinDistances = sort(WithinDistances,'ascend');
-        BetweenDistances = sort(BetweenDistances,'descend');
+%         % Sort distances
+%         WithinDistances = sort(WithinDistances,'ascend');
+%         BetweenDistances = sort(BetweenDistances,'descend');
+% 
+%         SmallestBetween = BetweenDistances(end);
+%         LastGoodWithinIdx = find(WithinDistances < SmallestBetween, 1,'last');
+%         
+%         SPlus = LastGoodWithinIdx * nBetween;
+%         SMinus = 0;
+%         
+%         % Catch the perfect case:
+%         if LastGoodWithinIdx == nWithin
+% 	        return;
+%         end
+%         
+%         % Iterate through the more controversial within distances
+%         tic
+%         for j = LastGoodWithinIdx + 1:nWithin
+% 	        % Where does the problem start in the sorted between distances? 
+% 	        LastGoodBetweenIdx = find(BetweenDistances > WithinDistances(j), 1,'last');
+% 	        % Up to there, we’re good
+%             SPlus = SPlus + LastGoodBetweenIdx;
+%             % From then on, all is bad
+% 	        SMinus = SMinus + (nBetween - (LastGoodBetweenIdx + 1));
+%         end
+%         toc
+%     
+%         criteriaVectors.G(i) = (SPlus - SMinus)/(SPlus + SMinus);
 
-        SmallestBetween = BetweenDistances(end);
-        LastGoodWithinIdx = find(WithinDistances < SmallestBetween, 1,'last');
-        
-        SPlus = LastGoodWithinIdx * nBetween;
-        SMinus = 0;
-        
-        % Catch the perfect case:
-        if LastGoodWithinIdx == nWithin
-	        return;
+        %% CALINSKI-HARABASZ
+        WithinClustVar = sum(sumMemberCentroidDists);
+        BetweenClustVar = elementCorrDist(Maps, DataMean, TheEEG.msinfo.ClustPar.IgnorePolarity);
+        BetweenClustVar = sum(nMembers.*BetweenClustVar);
+        criteriaVectors.CH(i) = (BetweenClustVar/WithinClustVar)*((nSamples-nc)/(nc-1));
+
+        %% DAVIES-BOULDIN
+        MeanMemberCentroidDists = sumMemberCentroidDists./nMembers;
+
+        % Create matrix of cluster centroid distances
+        CentroidDistMat = corr(Maps);
+        if TheEEG.msinfo.ClustPar.IgnorePolarity
+            CentroidDistMat = 1 - abs(CentroidDistMat);
+        else
+            CentroidDistMat = 1 - CentroidDistMat;
         end
-        
-        % Iterate through the more controversial within distances
-        for j = LastGoodWithinIdx + 1:nWithin
-	        % Where does the problem start in the sorted between distances? 
-	        LastGoodBetweenIdx = find(BetweenDistances > WithinDistances(j), 1,'last');
-	        % Up to there, we’re good
-            SPlus = SPlus + LastGoodBetweenIdx;
-            % From then on, all is bad
-	        SMinus = SMinus + (nBetween - (LastGoodBetweenIdx + 1));
+
+        % Get within-to-between cluster distance ratios for all cluster
+        % pairs
+        R = zeros(nc);
+        for j=1:nc
+            for k=j+1:nc
+                R(j,k) = (MeanMemberCentroidDists(j) + MeanMemberCentroidDists(k))/CentroidDistMat(j,k);
+            end
         end
-    
-        criteria.G(i) = (SPlus - SMinus)/(SPlus + SMinus);
+        R = R+R';
 
+        RI = max(R, [], 1);
+        criteriaVectors.DB(i) = mean(RI);
 
+        %% SILHOUETTE
+        % Average distance from each input vector to all other members
+        % in its cluster
+        AvgWithinDists = nan(1,nSamples);
+        % Average distance from each input vector to members in other
+        % clusters
+        AvgBetweenDists = nan(nc,nSamples);
 
+        for n=1:nSamples
+            AvgWithinDists(n) = mean(DistMat(n, IsWithinPair(n,:)));
+            for clust=1:nc
+                AvgBetweenDists(nc, n) = mean(DistMat(n, ~IsWithinPair(n,:)));
+            end
+        end
+
+        minAvgBetweenDist = min(AvgBetweenDists, [], 1);
+        criteriaVectors.S(i) = mean((minAvgBetweenDist - AvgWithinDists)./max(minAvgBetweenDist, AvgWithinDists));
+
+        %% DUNN
+        minInterClustDists = [];
+        % Get minimum distance between each pair of clusters
+        for j=1:nc
+            for k=j+1:nc
+                BetweenClustIndices = logical(matches(BetweenPairLabels, string(j) + string(k)) + matches(BetweenPairLabels, string(k) + string(j)));
+                minInterClustDists = [minInterClustDists min(BetweenDistances(BetweenClustIndices))];
+            end
+        end
+
+        criteriaVectors.D(i) = min(minInterClustDists)/max(clustDiameters);
+
+        %% CROSS-VALIDATION
+        % modified to use 1 - spatial correlation or 1 - abs(spatial
+        % correlation) rather than squared Euclidean distance to allow for
+        % both respecting and ignoring polarity
+        sigma = sum(sumMemberCentroidDists)/(nSamples*(nChannels-1));
+        criteriaVectors.CV(i) = sigma*((nChannels-1)/(nChannels-1-nc))^2;
+
+        % CV version 2 testing
+        sigma2 = sum(sum(IndSamples.^2) -  sum(Maps(:, ClustLabels).*IndSamples).^2);
+        criteriaVectors.CV2(i) = sigma2*((nChannels-1)/(nChannels-1-nc))^2;
     end
 
-    %% FREY AND VAN GROENEWOUD
+    %% Get maps and cluster labels for one greater than max cluster solution
     nc = ClusterNumbers(end)+1;
-        
-    % Get maps for the cluster solution one larger than the max, average
-    % reference and normalize
+    [Maps, ClustLabels] = getClusters(TheEEG, nc, IndSamples);
+
+    % Extract all within- and between-cluster distances for one larger than
+    % max cluster solution
+    [WithinDistances, BetweenDistances, WithinPairLabels] = getWithinAndBetweenDistances(ClustLabels, DistMat);
+
+    %% FREY AND VAN GROENEWOUD
+    % Compute mean within- and between- distance for one greater than max
+    % cluster solution
+    meanWithinDists(end) = mean(WithinDistances);
+    meanBetweenDists(end) = mean(BetweenDistances);
+
+    criteriaVectors.FVG = (meanBetweenDists(2:end) - meanBetweenDists(1:end-1)) ./ (meanWithinDists(2:end) - meanWithinDists(1:end-1));
+
+    %% KRZANOWSKI-LAI/NORMALIZED KRZANOWSKI-LAI
+    % Get W and M for one greater than max cluster solution
+    sumD = nan(1, nc);                          % sum of pairwise distances for each cluster
+    nMembers = zeros(1, nc);                    % number of members of each cluster
+
+    for c=1:nc
+        sumD(c) = sum(WithinDistances(WithinPairLabels == c));
+        nMembers(c) = sum(ClustLabels == c);
+    end
+
+    W(end) = sum(sumD./(2*nMembers));
+    M(end) = W(end)*nc^(2/nChannels);
+    
+    d = M(1:end-1) - M(2:end);
+
+    % KL
+    criteriaVectors.KL = abs(d(1:end-1)./d(2:end));
+
+    % KLnrm
+    KLnrm = (d(1:end-1) - d(2:end)) ./ M(1:end-2);
+    KLnrm((d < 0)) = 0;
+    KLnrm((d(1:end-1) < d(2:end))) = 0;
+    criteriaVectors.KLnrm = KLnrm;
+
+    % Normalize criteria and update struct to output
+    criterionNames = fieldnames(criteriaVectors);
+    for i=1:numel(criterionNames)
+        c = criteriaVectors.(criterionNames{i});
+
+        if strcmp(criterionNames{i}, 'DB') || strcmp(criterionNames{i}, 'CV') || strcmp(criterionNames{i}, 'CV2')
+            c = (c - min(c))/(max(c)-min(c));
+            c = 1 - c;
+            criteriaVectors.(criterionNames{i}) = c;
+        elseif strcmp(criterionNames{i}, 'FVG')
+            c = abs(1-c);
+            c = (c - min(c))/(max(c) - min(c));
+            c = 1 - c;
+            criteriaVectors.(criterionNames{i}) = c;
+        else
+            % Normalize
+            c = (c - min(c))/(max(c) - min(c));
+            criteriaVectors.(criterionNames{i}) = c;
+        end
+
+        % Add to output struct
+        idx = matches({criteria.criterionName}, criterionNames{i});
+        for j=1:maxClusters
+            nc = ClusterNumbers(j);
+            clustName = ['clust' int2str(nc)];
+            criteria(idx).(clustName) = c(j);
+        end
+    end
+
+end
+
+function [Maps, ClustLabels] = getClusters(TheEEG, nc, IndSamples)       
+    % Get maps for the specified cluster solution, average reference and
+    % normalize
     Maps = TheEEG.msinfo.MSMaps(nc).Maps;
+    nChannels = size(Maps,2);
+    newRef = eye(nChannels);
+    newRef = newRef - 1/nChannels;
+    IndSamples = newRef*IndSamples;
     Maps = Maps*newRef;
     Maps = NormDimL2(Maps,2);
 
@@ -150,25 +349,57 @@ function criteria = generate_criteria_GFPpeaks(TheEEG, nSamples)
         Cov = abs(Cov);
     end
     [mCov, ClustLabels] = max(Cov);
+     Maps = Maps';
+end
 
-    % Extract all within- and between-cluster distances for one larger than
-    % max cluster solution
-    IsWithinPair = repmat(ClustLabels(:),1,nTimePoints) == repmat(ClustLabels(:)',nTimePoints,1);
-    IsBetweenPair = ~IsWithinPair;
-    
-    % Remove duplicates and diagonal
-    IsWithinPair = triu(IsWithinPair,1);
-    IsBetweenPair = triu(IsBetweenPair,1);
-    
-    DistMat = DistMat(:);
-    WithinDistances = DistMat(IsWithinPair(:));
-    BetweenDistances = DistMat(IsBetweenPair(:));
+function [WithinDistances, BetweenDistances, WithinPairLabels, IsWithinPairOut, BetweenClustLabels] = getWithinAndBetweenDistances(ClustLabels, DistMat)
+        % Find (i,j) indices of within- and between- cluster pairs
+        PairLabels = repmat(ClustLabels,size(DistMat, 1),1);
+        IsWithinPair = PairLabels == PairLabels';
+        IsBetweenPair = ~IsWithinPair;
 
-    % Compute mean within- and between- distance for one greater than max
-    % cluster solution
-    meanWithinDists(end) = mean(WithinDistances);
-    meanBetweenDists(end) = mean(BetweenDistances);
+        IsWithinPairOut = IsWithinPair;
+        
+        % Remove duplicates and diagonal
+        IsWithinPair = triu(IsWithinPair,1);
+        IsBetweenPair = triu(IsBetweenPair,1);
+        
+        % Extract within- and between-cluster distances
+        WithinDistances = DistMat(IsWithinPair);
+        BetweenDistances = DistMat(IsBetweenPair);
 
-    criteria.FVG = (meanBetweenDists(2:end) - meanBetweenDists(1:end-1)) / (meanWithinDists(2:end) - meanWithinDists(1:end-1));
+        % Get cluster labels that each within-cluster distance belongs to
+        WithinPairLabels = PairLabels(IsWithinPair);
 
+        % Create string labels to denote which 2 clusters the
+        % between-cluster distances are from
+        stringPairLabels1 = string(PairLabels);
+        stringPairLabels2 = stringPairLabels1';
+        BetweenClustLabels = stringPairLabels1(IsBetweenPair) + stringPairLabels2(IsBetweenPair);
+end
+
+% Performs element-wise computation of 1 - abs(spatial correlation) or 
+% 1 - (spatial correlation) between matrices A and B or matrix A and vector
+% B
+function corrDist = elementCorrDist(A,B,IgnorePolarity)
+    % average reference
+    nChannels = size(A, 1);
+    newRef = eye(nChannels);
+    newRef = newRef - 1/nChannels;
+    A = newRef*A;
+    B = newRef*B;
+
+    % normalize
+    A = NormDimL2(A, 1);
+    B = NormDimL2(B, 1);
+
+    % get correlation
+    corr = sum(A.*B, 1);           
+
+    % corr dist
+    if (IgnorePolarity) 
+        corrDist = 1 - abs(corr);
+    else 
+        corrDist = 1 - corr; 
+    end
 end
