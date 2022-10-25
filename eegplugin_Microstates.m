@@ -137,8 +137,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     showMessage = 1;
     
     comFindMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_FindMSTemplates(ALLEEG,[]);'                         catch_strings.store_and_hist]; % ok
-    comCombineMSTemplates  = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,false);'           catch_strings.new_and_hist];
-    comCombineMSMeans      = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,true );'           catch_strings.new_and_hist];
+    comCombineMSTemplates  = [try_strings.no_check '[EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,false);'                      catch_strings.new_and_hist];
+    comCombineMSMeans      = [try_strings.no_check '[EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,true );'                      catch_strings.new_and_hist];
     comSortMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],false);'                   catch_strings.store_and_hist];
     comSortMSMeans         = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],true) ;'                   catch_strings.store_and_hist];
     comSortMSTemplatesT    = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],false,-1);'                catch_strings.store_and_hist];

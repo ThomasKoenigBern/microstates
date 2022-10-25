@@ -56,7 +56,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, IgnorePolarity, TemplateName)
+function [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, IgnorePolarity, TemplateName)
 
     %% Set default values for outputs and input parameters
     com = '';
@@ -121,7 +121,7 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
             TemplateName = TemplateNames(TemplateIndex);
         end
     else
-        if nargin < 5 || isempty(TemplateName)
+        if nargin < 5 || isempty(MeanSetName)
             [res,~,~,structout] = inputgui('title','Average microstate maps across recordings',...
                 'geometry', {1 1 1 1 1 1}, 'geomvert', [1 1 1 1 1 1], 'uilist', { ...
                 { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
@@ -245,41 +245,43 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
 
 
     %% Sorting
-    ChosenTemplate = MSTEMPLATE(TemplateIndex);
-    for n = MinClasses:MaxClasses
-
-        % find the number of template classes to use
-        HasTemplates = ~cellfun(@isempty,{ChosenTemplate.msinfo.MSMaps.Maps});
-        TemplateClassesToUse = find(HasTemplates == true);
-
-        % compare number of channels in mean set and template set -
-        % convert whichever set has more channels to the channel
-        % locations of the other
-        MapsToSort = zeros(1, n, min(EEGOUT.nbchan, ChosenTemplate.nbchan));
-        [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(EEGOUT.chanlocs,ChosenTemplate.chanlocs);
-        if EEGOUT.nbchan > ChosenTemplate.nbchan
-            MapsToSort(1,:,:) = EEGOUT.msinfo.MSMaps(n).Maps * LocalToGlobal';
-            TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps;
-        else
-            MapsToSort(1,:,:) = EEGOUT.msinfo.MSMaps(n).Maps;
-            TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
+    if SortMaps
+        ChosenTemplate = MSTEMPLATE(TemplateIndex);
+        for n = MinClasses:MaxClasses
+    
+            % find the number of template classes to use
+            HasTemplates = ~cellfun(@isempty,{ChosenTemplate.msinfo.MSMaps.Maps});
+            TemplateClassesToUse = find(HasTemplates == true);
+    
+            % compare number of channels in mean set and template set -
+            % convert whichever set has more channels to the channel
+            % locations of the other
+            MapsToSort = zeros(1, n, min(EEGOUT.nbchan, ChosenTemplate.nbchan));
+            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(EEGOUT.chanlocs,ChosenTemplate.chanlocs);
+            if EEGOUT.nbchan > ChosenTemplate.nbchan
+                MapsToSort(1,:,:) = EEGOUT.msinfo.MSMaps(n).Maps * LocalToGlobal';
+                TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps;
+            else
+                MapsToSort(1,:,:) = EEGOUT.msinfo.MSMaps(n).Maps;
+                TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
+            end
+    
+            % Sort
+            [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,TemplateMaps,~IgnorePolarity);
+            EEGOUT.msinfo.MSMaps(n).Maps = EEGOUT.msinfo.MSMaps(n).Maps(SortOrder(SortOrder <= n),:);
+            EEGOUT.msinfo.MSMaps(n).Maps = EEGOUT.msinfo.MSMaps(n).Maps .* repmat(polarity',1,numel(EEGOUT.chanlocs));
+    
+            % Update map labels and colors
+            [Labels,Colors] = UpdateMicrostateLabels(EEGOUT.msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,EEGOUT.msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
+            EEGOUT.msinfo.MSMaps(n).Labels = Labels;
+            EEGOUT.msinfo.MSMaps(n).ColorMap = Colors;
+    
+            % Delara 8/17/22 change
+            EEGOUT.msinfo.MSMaps(n).SortMode = 'template based';
+            EEGOUT.msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
+            EEGOUT.msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation;
+            EEGOUT.saved = 'no';
         end
-
-        % Sort
-        [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,TemplateMaps,~IgnorePolarity);
-        EEGOUT.msinfo.MSMaps(n).Maps = EEGOUT.msinfo.MSMaps(n).Maps(SortOrder(SortOrder <= n),:);
-        EEGOUT.msinfo.MSMaps(n).Maps = EEGOUT.msinfo.MSMaps(n).Maps .* repmat(polarity',1,numel(EEGOUT.chanlocs));
-
-        % Update map labels and colors
-        [Labels,Colors] = UpdateMicrostateLabels(EEGOUT.msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,EEGOUT.msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
-        EEGOUT.msinfo.MSMaps(n).Labels = Labels;
-        EEGOUT.msinfo.MSMaps(n).ColorMap = Colors;
-
-        % Delara 8/17/22 change
-        EEGOUT.msinfo.MSMaps(n).SortMode = 'template based';
-        EEGOUT.msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
-        EEGOUT.msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation;
-        EEGOUT.saved = 'no';
     end
 
     if ShowWhenDone == true
