@@ -437,17 +437,20 @@ function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
         return;
     end
     
-    meanSetInfos = [AllEEG(SetsToSearch).msinfo];
-    HasChildren = arrayfun(@(x) isfield(x, 'children'), meanSetInfos);
+    % find which sets have children
+    HasChildren = arrayfun(@(x) isfield(AllEEG(x).msinfo, 'children'), SetsToSearch);
+    % if none of the sets to search have children, the child set could not
+    % be found
     if ~any(HasChildren)
         return;
     end
 
-    containsChild = any(cellfun(@(x) matches(childSetName, x), {meanSetInfos(HasChildren).children}));
+    % search the children of all the mean sets for the child set name
+    containsChild = any(arrayfun(@(x) matches(childSetName, AllEEG(x).msinfo.children), SetsToSearch(HasChildren)));
 
     % if the child cannot be found, search the children of the children
     if ~containsChild
-        childSetIndices = cell2mat(cellfun(@(x) find(matches({AllEEG.setname}, x)), {meanSetInfos.children}, 'UniformOutput', false));
+        childSetIndices = unique(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false));
         containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
     end
 
