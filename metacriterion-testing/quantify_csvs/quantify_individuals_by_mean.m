@@ -20,7 +20,7 @@ EEG = pop_loadset('filename', 'ECMean_1020channels.set', 'filepath', 'TD_EC_EO_M
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
 EEG = pop_loadset('filename', 'EOMean_1020channels.set', 'filepath', 'TD_EC_EO_Mean_Sets');
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
-
+   
 FitPar.PeakFit = 1;
 FitPar.b = 0;
 FitPar.lambda = 0;
