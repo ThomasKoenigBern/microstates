@@ -102,12 +102,17 @@ avgCorrs_1000samples = avgCorrs_1000samples/(n1000samples*nRuns);
 avgCorrs_2000samples = avgCorrs_2000samples/(n2000samples*nRuns);
 
 % make bar graph for average correlation per criterion
+fontSize = 20;
 figureName = sprintf('Average Correlation Between Downsampled and True Criterion - %s', dataName);
 figure('Name', figureName);
 names = categorical(includedCriteria);
 names = reordercats(names, includedCriteria);
 bar(names, [avgCorrs_1000samples avgCorrs_2000samples]);
-legend({'1000 samples', '2000 samples'});
-title('Average Correlation Between Downsampled and True Criterion');
+ax = gca;
+gca.FontSize = 18;
+ylabel('Average Correlation: Downsampled vs. All Peaks', 'FontSize', 17);
+xlabel('Criteria', 'FontSize', 17);
+legend({'1000 samples', '2000 samples'}, 'FontSize', 14);
+title('Average Correlation Between Downsampled and True Criterion', 'FontSize', fontSize);
 filename = sprintf('Average Correlation Between Downsampled and True Criterion_%s', dataName);
 if saveFig; saveas(gcf, filename); end

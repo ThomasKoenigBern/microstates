@@ -69,11 +69,12 @@ end
 figureName = sprintf('Criteria Scatterplots - %s', dataName);
 figure('Name', figureName);
 tiledlayout(3,3);
+fontSize = 20;
 
 for i=1:numel(criteria)
     nexttile;
     scatter(ClusterNumbers, criteria(i).values', 10, 'filled');
-    title(criteria(i).fullname);
+    title(criteria(i).fullname, 'fontsize', fontSize);
 end
 filename = sprintf('Criteria Scatterplots_%s.fig', dataName);
 saveas(gcf, filename);
@@ -89,7 +90,7 @@ for i=1:numel(criteria)
     [M, ind] = max(criteria(i).values, [], 2);
 
     histogram(ClusterNumbers(ind), edges);
-    title(criteria(i).fullname);
+    title(criteria(i).fullname, 'fontsize', fontSize);
 end
 filename = sprintf('criteria histograms scatterplots/Criteria Histograms_%s.fig', dataName);
 saveas(gcf, filename);
