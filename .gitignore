@@ -36,3 +36,4 @@ octave-workspace
 # Matlab project folders
 resources/
 *.prj
+.DS_Store
