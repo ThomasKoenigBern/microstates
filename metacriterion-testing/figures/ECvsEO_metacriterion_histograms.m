@@ -1,15 +1,15 @@
 clear variables
 
 % CHANGE DATA TYPE HERE %
-dataName = 'ECEO Mean 10-20 channels';
+dataName = '10-20 channels';
 % CHANGE DIRECTORY HERE %
-folderName = fullfile('../criteria csvs', 'meanmap_csvs_1020channels');
+folderName = fullfile('../criteria csvs', 'individual_csvs_1020channels');
 
 % MODIFY INCLUDED AND EXCLUDED CRITERIA HERE %
 replaceCV = 0;
 saveFig = 1;
-includedCriteria = {'DB', 'D', 'FVG', 'KL', 'KLnrm'};
-excludedCriteria = {'CV', 'CH', 'PB', 'S'};
+includedCriteria = {'CV', 'DB', 'D', 'FVG', 'KL', 'KLnrm', 'PB'};
+excludedCriteria = {'CH', 'S'};
 numCriteria = numel(includedCriteria);
 includedCriteriaString = sprintf('%s ', string(includedCriteria));
 includedCriteriaString(end) = [];
@@ -120,15 +120,16 @@ end
 edges = ClusterNumbers(1)-0.5:1:ClusterNumbers(end)+0.5;
 figureName = sprintf('EC IQM/SNR Metacriterion Vote Histogram - %s', dataName);
 figure('Name', figureName);
+fontSize = 20;
 histogram(EC_IQMSNRmcvotes, edges);
-title('Eyes Closed Optimal Cluster Numbers (IQM/SNR Metacriterion)');
+title('Eyes Closed Optimal Cluster Numbers (IQM*SNR Metacriterion)', 'FontSize', fontSize);
 filename = sprintf('EC vs EO metacriterion histograms/EC IQMSNR Metacriterion Vote Histogram_%s_%s', dataName, includedCriteriaString);
 if saveFig; saveas(gcf, filename); end
 
 figureName = sprintf('EO IQM/SNR Metacriterion Vote Histogram - %s', dataName);
 figure('Name', figureName);
 histogram(EO_IQMSNRmcvotes, edges);
-title('Eyes Open Optimal Cluster Numbers (IQM/SNR Metacriterion)');
+title('Eyes Open Optimal Cluster Numbers (IQM*SNR Metacriterion)', 'FontSize', fontSize);
 filename = sprintf('EC vs EO metacriterion histograms/EO IQMSNR Metacriterion Vote Histogram_%s_%s', dataName, includedCriteriaString);
 if saveFig; saveas(gcf, filename); end
 
@@ -159,14 +160,14 @@ subjECEOdiff = EOmedianvotes - ECmedianvotes;
 figureName = sprintf('EC Median Vote Histogram - %s', dataName);
 figure('Name', figureName);
 histogram(ECmedianvotes, edges);
-title('Eyes Closed Optimal Cluster Numbers (Median Vote Across Criteria)');
+title('Eyes Closed Optimal Cluster Numbers (Median Vote Across Criteria)', 'FontSize', fontSize);
 filename = sprintf('EC vs EO metacriterion histograms/EC Median Vote Histogram_%s_%s', dataName, includedCriteriaString);
 if saveFig; saveas(gcf, filename); end
 
 figureName = sprintf('EO Median Vote Histogram - %s', dataName);
 figure('Name', figureName);
 histogram(EOmedianvotes, edges);
-title('Eyes Open Optimal Cluster Numbers (Median Vote Across Criteria)');
+title('Eyes Open Optimal Cluster Numbers (Median Vote Across Criteria)', 'FontSize', fontSize);
 filename = sprintf('EC vs EO metacriterion histograms/EO Median Vote Histogram_%s_%s', dataName, includedCriteriaString);
 if saveFig; saveas(gcf, filename); end
 

@@ -1,9 +1,9 @@
 clear variables
 
 % CHANGE DATA TYPE HERE %
-dataName = 'ECEO Mean 71 channels';
+dataName = '10-20 channels';
 % CHANGE DIRECTORY HERE %
-folderName = fullfile('../criteria csvs', 'meanmap_csvs');
+folderName = fullfile('../criteria csvs', 'individual_csvs_1020channels');
 
 files = dir(folderName);        
 filenames = {files(3:end).name};
@@ -90,13 +90,14 @@ figureName = sprintf('EC Criteria Histograms - %s', dataName);
 edges = ClusterNumbers(1)-0.5:1:ClusterNumbers(end)+0.5;
 figure('Name', figureName);
 tiledlayout(3,3);
+fontSize = 20;
 
 for i=1:numel(criteria)
     nexttile;
     [M, ind] = max(criteria(i).ECvalues, [], 2);
 
     histogram(ClusterNumbers(ind), edges);
-    title(criteria(i).fullname);
+    title(criteria(i).fullname, 'FontSize', fontSize);
 end
 filename = sprintf('EC vs EO criteria histograms/EC Criteria Histograms_%s.fig', dataName);
 saveas(gcf, filename);
@@ -111,7 +112,7 @@ for i=1:numel(criteria)
     [M, ind] = max(criteria(i).EOvalues, [], 2);
 
     histogram(ClusterNumbers(ind), edges);
-    title(criteria(i).fullname);
+    title(criteria(i).fullname, 'FontSize', fontSize);
 end
 filename = sprintf('EC vs EO criteria histograms/EO Criteria Histograms_%s.fig', dataName);
 saveas(gcf, filename);
