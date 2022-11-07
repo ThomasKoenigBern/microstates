@@ -1,9 +1,9 @@
 clear variables
 
 % CHANGE DATA TYPE HERE %
-dataName = '71 channels';
+dataName = '10-20 channels';
 % CHANGE DIRECTORY HERE %
-folderName = fullfile('../criteria csvs', 'individual_csvs');
+folderName = fullfile('../criteria csvs', 'individual_csvs_1020channels');
 
 files = dir(folderName);        
 filenames = {files(3:end).name};
@@ -12,25 +12,25 @@ ClusterNumbers = 4:10;
 numClustSolutions = numel(ClusterNumbers);
 
 % COMMENT OUT EXCLUDED CRITERIA HERE %
-criteria(1).name   = 'S';          % Silhouette
-criteria(2).name   = 'DB';         % Davies-Bouldin
-criteria(3).name   = 'PB';         % Point-Biserial
-criteria(4).name   = 'D';          % Dunn
-criteria(5).name   = 'KL';         % Krzanowski-Lai
-criteria(6).name   = 'KLnrm';      % Normalized Krzanowski-Lai
-criteria(7).name   = 'CV';        % Cross-Validation
-criteria(8).name   = 'FVG';        % Frey and Van Groenewoud
-criteria(9).name   = 'CH';         % Calinski-Harabasz
+% criteria(1).name   = 'S';          % Silhouette
+criteria(1).name   = 'DB';         % Davies-Bouldin
+criteria(2).name   = 'PB';         % Point-Biserial
+criteria(3).name   = 'D';          % Dunn
+criteria(4).name   = 'KL';         % Krzanowski-Lai
+criteria(5).name   = 'KLnrm';      % Normalized Krzanowski-Lai
+criteria(6).name   = 'CV';        % Cross-Validation
+criteria(7).name   = 'FVG';        % Frey and Van Groenewoud
+% criteria(9).name   = 'CH';         % Calinski-Harabasz
 
-criteria(1).fullname   = 'Silhouette';
-criteria(2).fullname   = 'Davies-Bouldin';
-criteria(3).fullname   = 'Point-Biserial';
-criteria(4).fullname   = 'Dunn';
-criteria(5).fullname   = 'Krzanowski-Lai';
-criteria(6).fullname   = 'Normalized Krzanowski-Lai';
-criteria(7).fullname   = 'Cross-Validation';
-criteria(8).fullname   = 'Frey and Van Groenewoud';
-criteria(9).fullname   = 'Calinski-Harabasz';
+% criteria(1).fullname   = 'Silhouette';
+criteria(1).fullname   = 'Davies-Bouldin';
+criteria(2).fullname   = 'Point-Biserial';
+criteria(3).fullname   = 'Dunn';
+criteria(4).fullname   = 'Krzanowski-Lai';
+criteria(5).fullname   = 'Normalized Krzanowski-Lai';
+criteria(6).fullname   = 'Cross-Validation';
+criteria(7).fullname   = 'Frey and Van Groenewoud';
+% criteria(9).fullname   = 'Calinski-Harabasz';
 
 criteria(1).values = nan(nSubjects, numClustSolutions);
 criteria(2).values = nan(nSubjects, numClustSolutions);
@@ -39,8 +39,8 @@ criteria(4).values = nan(nSubjects, numClustSolutions);
 criteria(5).values = nan(nSubjects, numClustSolutions);
 criteria(6).values = nan(nSubjects, numClustSolutions);
 criteria(7).values = nan(nSubjects, numClustSolutions);
-criteria(8).values = nan(nSubjects, numClustSolutions);
-criteria(9).values = nan(nSubjects, numClustSolutions);
+% criteria(8).values = nan(nSubjects, numClustSolutions);
+% criteria(9).values = nan(nSubjects, numClustSolutions);
 
 % sort names
 [criterionNames, sortIdx] = sort({criteria.name});
