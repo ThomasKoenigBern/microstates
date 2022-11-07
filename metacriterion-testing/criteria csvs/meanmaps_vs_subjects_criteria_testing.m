@@ -1,20 +1,26 @@
+clear variables
+
+scriptPath = fileparts(mfilename('fullpath'));
+
 [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
 
-clusteredSetsPath = 'TD_EC_EO_3-11microstates_1020channels\';
+% CHANGE OUTPUT DIRECTORY HERE %
+outputFolderPath = fullfile(scriptPath, 'meanmap_csvs_1020channels');
+% CHANGE INPUT DIRECTORY HERE %
+inputFolderPath = fullfile(scriptPath, '../EEGLAB sets', 'TD_EC_EO_3-11microstates_1020channels');
+meanInputFolderPath = fullfile(scriptPath, '../EEGLAB sets, TD_EC_EO_Mean_Sets');
 
 % Load the selected datasets
-files = dir(clusteredSetsPath);
+files = dir(inputFolderPath);
 filenames = {files(3:end).name};
 
-EOindices = find(contains(filenames, 'EO'));
-
-EEG = pop_loadset('filename', filenames(EOindices), 'filepath', clusteredSetsPath);
+EEG = pop_loadset('filename', filenames, 'filepath', inputFolderPath);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
 
-% Load mean sets
-% EEG = pop_loadset('filename', 'ECMean_1020channels.set', 'filepath', 'TD_EC_EO_Mean_Sets');
-% [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
-EEG = pop_loadset('filename', 'EOMean_1020channels.set', 'filepath', 'TD_EC_EO_Mean_Sets');
+% Load mean sets - CHANGE MEAN SET NAMES HERE
+EEG = pop_loadset('filename', 'ECMean_1020channels.set', 'filepath', meanInputFolderPath);
+[ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
+EEG = pop_loadset('filename', 'EOMean_1020channels.set', 'filepath', meanInputFolderPath);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
 
 % Generate metacriteria
@@ -39,7 +45,7 @@ for i=1:numel(ALLEEG)-1
         criteria(j).sample_size = numGFPPeaks;
     end
 
-    fprintf("Generating csv for dataset %i", i);
+    fprintf("Generating csv for dataset %i\n", i);
 
     % Reorder struct
     criteria = orderfields(criteria, [9, 10, 1:8]);
@@ -51,5 +57,5 @@ for i=1:numel(ALLEEG)-1
     oldNames = arrayfun(@(x) sprintf("clust%i", x), 4:10);
     outputTable = renamevars(outputTable, oldNames, string(4:10));
 
-    writetable(outputTable, ['meanmap_csvs_1020channels/' EEG.setname '_mean_criteria_results.csv']);
+    writetable(outputTable, fullfile(outputFolderPath, [EEG.setname '_mean_criteria_results.csv']));
 end

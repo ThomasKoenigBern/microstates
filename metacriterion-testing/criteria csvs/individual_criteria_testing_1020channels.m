@@ -1,36 +1,42 @@
+clear variables
+
+scriptPath = fileparts(mfilename('fullpath'));
+
 [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
 
-clusteredSetsPath = 'TD_EC_EO_3-11microstates\';
+% CHANGE OUTPUT DIRECTORY HERE %
+outputFolderPath = fullfile(scriptPath, 'individual_csvs_1020channels');
+% CHANGE INPUT DIRECTORY HERE %
+inputFolderPath = fullfile('../EEGLAB sets', 'TD_EC_EO_3-11microstates_1020channels');
 
 % Load the selected datasets
-filepath = '..\..\..\sample_data\test_files\';
-files = dir(clusteredSetsPath);
+files = dir(inputFolderPath);
 filenames = {files(3:end).name};
 
-EEG = pop_loadset('filename', filenames, 'filepath', filepath);
+EEG = pop_loadset('filename', filenames, 'filepath', inputFolderPath);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
 
-% Select only 10-20 channels
-[EEG ALLEEG CURRENTSET] = eeg_retrieve(ALLEEG, 1:numel(ALLEEG));
-EEG = pop_select(EEG, 'channel',{'E9','E11','E22','E24','E33','E36','E45','E52','E58','E62','E70','E75','E83','E92','E96','E104','E108','E122','E124','Cz'});
-EEG = eeg_checkset( EEG );
-[ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);    
-
-% Clustering
-MinClust = 3;
-MaxClust = 11;
-NumRestarts = 10;
-ClustType = 0; %k-means = 0, AAHC = 1
-ClustPars = struct('MinClasses',MinClust,'MaxClasses',MaxClust,'GFPPeaks',true,'IgnorePolarity',true,'MaxMaps',inf,'Restarts',NumRestarts, 'UseAAHC', ClustType,'Normalize',true);
-
-[EEG,CURRENTSET] = pop_FindMSTemplates(ALLEEG, 1:numel(ALLEEG), ClustPars, 0, 0);
-[ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
-
-% Save clustered datasets
-for i=1:numel(ALLEEG)
-    [EEG ALLEEG CURRENTSET] = eeg_retrieve(ALLEEG, i);
-    EEG = pop_saveset(EEG, 'filename', EEG.setname, 'savemode', 'onefile');
-end
+% % Select only 10-20 channels
+% [EEG ALLEEG CURRENTSET] = eeg_retrieve(ALLEEG, 1:numel(ALLEEG));
+% EEG = pop_select(EEG, 'channel',{'E9','E11','E22','E24','E33','E36','E45','E52','E58','E62','E70','E75','E83','E92','E96','E104','E108','E122','E124','Cz'});
+% EEG = eeg_checkset( EEG );
+% [ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);    
+% 
+% % Clustering
+% MinClust = 3;
+% MaxClust = 11;
+% NumRestarts = 10;
+% ClustType = 0; %k-means = 0, AAHC = 1
+% ClustPars = struct('MinClasses',MinClust,'MaxClasses',MaxClust,'GFPPeaks',true,'IgnorePolarity',true,'MaxMaps',inf,'Restarts',NumRestarts, 'UseAAHC', ClustType,'Normalize',true);
+% 
+% [EEG,CURRENTSET] = pop_FindMSTemplates(ALLEEG, 1:numel(ALLEEG), ClustPars, 0, 0);
+% [ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
+% 
+% % Save clustered datasets
+% for i=1:numel(ALLEEG)
+%     [EEG ALLEEG CURRENTSET] = eeg_retrieve(ALLEEG, i);
+%     EEG = pop_saveset(EEG, 'filename', EEG.setname, 'savemode', 'onefile');
+% end
 
 % Generate metacriteria (only all GFP peaks)
 for i=1:numel(ALLEEG)
@@ -59,5 +65,5 @@ for i=1:numel(ALLEEG)
     oldNames = arrayfun(@(x) sprintf("clust%i", x), 4:10);
     outputTable = renamevars(outputTable, oldNames, string(4:10));
 
-    writetable(outputTable, ['individual_csvs_1020channels/' EEG.setname '_1020_criteria_results.csv']);
+    writetable(outputTable, fullfile(outputTable, EEG.setname '_1020_criteria_results.csv']));
 end

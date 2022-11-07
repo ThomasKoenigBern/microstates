@@ -1,9 +1,11 @@
 clear variables
 
+scriptPath = fileparts(mfilename('fullpath'));
+
 % CHANGE DATA TYPE HERE %
 dataName = '71 channels';
 % CHANGE DIRECTORY HERE %
-folderName = fullfile('../criteria csvs', 'individual_csvs');
+folderName = fullfile(scriptPath, '../criteria csvs', 'individual_csvs');
 
 % MODIFY INCLUDED AND EXCLUDED CRITERIA HERE %
 replaceCV = 1;

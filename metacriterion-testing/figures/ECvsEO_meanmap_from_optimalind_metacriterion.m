@@ -1,6 +1,8 @@
 clear variables
 
-files = dir('meanmaps_from_indmaps_csvs');
+scriptPath = fileparts(mfilename('fullpath'));
+
+files = dir(fullfile(scriptPath, '../criteria csvs', 'meanmaps_from_indmaps_csvs'));
 files = files(~[files.isdir]);
 filenames = {files.name};
 ClusterNumbers = 4:10;

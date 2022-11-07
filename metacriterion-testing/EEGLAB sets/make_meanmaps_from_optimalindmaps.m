@@ -1,18 +1,25 @@
 clear variables
 
+scriptPath = fileparts(mfilename('fullpath'));
+
 % CHANGE DATA TYPE HERE %
-dataName = '10-20 channels';
+dataName = '71 channels';
 % CHANGE DIRECTORIES HERE %
-csvsPath = fullfile('criteria csvs', 'individual_csvs_1020channels');
-clusteredSetsPath = fullfile('EEGLAB sets', 'TD_EC_EO_3-11microstates_1020channels');
+csvsPath = fullfile(scriptPath, '../criteria csvs', 'individual_csvs');
+clusteredSetsPath = fullfile(scriptPath, 'TD_EC_EO_3-11microstates');
 
 % MODIFY INCLUDED AND EXCLUDED CRITERIA HERE %
-replaceCV = 0;
+replaceCV = 1;
 includedCriteria = {'CV', 'DB', 'D', 'FVG', 'KL', 'KLnrm', 'PB'};
-excludedCriteria = {'CH', 'PB'};
+excludedCriteria = {'CH', 'S'};
 
 % SET METACRITERION TYPE TO USE HERE %
 useIQMSNR = 1;      % 1 = use IQM/SNR metacriterion, 0 = use median vote metacriterion
+if useIQMSNR
+    metacriterionName = 'IQMSNR';
+else
+    metacriterionName = 'Median Vote';
+end
 
 numCriteria = numel(includedCriteria);
 includedCriteriaString = sprintf('%s ', string(includedCriteria));
@@ -179,7 +186,7 @@ EC_EEG = eeg_emptyset();
 EC_EEG.chanlocs     = chanlocs;
 EC_EEG.data         = EC_optimalIndMaps';
 EC_EEG.msinfo       = EC_msinfo;
-EC_EEG.setname      = sprintf('EC Mean From Optimal Ind Maps_%s', dataName);
+EC_EEG.setname      = sprintf('EC Mean From Optimal Ind Maps_%s_%s', dataName, metacriterionName);
 EC_EEG.nbchan       = size(EC_EEG.data,1);
 EC_EEG.trials       = size(EC_EEG.data,3);
 EC_EEG.pnts         = size(EC_EEG.data,2);
@@ -188,14 +195,14 @@ EC_EEG.xmin         = 1;
 EC_EEG.times        = 1:EC_EEG.pnts;
 EC_EEG.xmax         = EC_EEG.times(end);
 
-pop_saveset(EC_EEG, 'filename', EC_EEG.setname, 'savemode', 'onefile');
+pop_saveset(EC_EEG, 'filename', EC_EEG.setname, 'filepath', fullfile(scriptPath, 'TD_EC_EO_Mean_Sets'), 'savemode', 'onefile');
 
 % EO
 EO_EEG = eeg_emptyset();
 EO_EEG.chanlocs     = chanlocs;
 EO_EEG.data         = EO_optimalIndMaps';
 EO_EEG.msinfo       = EO_msinfo;
-EO_EEG.setname      = sprintf('EO Mean From Optimal Ind Maps_%s', dataName);
+EO_EEG.setname      = sprintf('EO Mean From Optimal Ind Maps_%s_%s', dataName, metacriterionName);
 EO_EEG.nbchan       = size(EO_EEG.data,1);
 EO_EEG.trials       = size(EO_EEG.data,3);
 EO_EEG.pnts         = size(EO_EEG.data,2);
@@ -204,4 +211,4 @@ EO_EEG.xmin         = 1;
 EO_EEG.times        = 1:EO_EEG.pnts;
 EO_EEG.xmax         = EO_EEG.times(end);
 
-pop_saveset(EO_EEG, 'filename', EO_EEG.setname, 'savemode', 'onefile');
+pop_saveset(EO_EEG, 'filename', EO_EEG.setname, 'filepath', fullfile(scriptPath, 'TD_EC_EO_Mean_Sets'), 'savemode', 'onefile');

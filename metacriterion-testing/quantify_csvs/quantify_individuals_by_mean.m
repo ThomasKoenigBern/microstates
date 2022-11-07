@@ -1,8 +1,13 @@
+clear variables
+
 ClusterNumbers = 4:10;
+
+scriptPath = fileparts(mfilename('fullpath'));
 
 [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
 
-clusteredSetsPath = 'TD_EC_EO_3-11microstates_1020channels\';
+clusteredSetsPath = fullfile(scriptPath, '../EEGLAB sets', 'TD_EC_EO_3-11microstates_1020channels');
+meanClusteredSetsPath = fullfile(scriptPath, '../EEGLAB sets', 'TD_EC_EO_Mean_Sets');
 
 % Load the selected datasets
 files = dir(clusteredSetsPath);
@@ -16,9 +21,9 @@ ECindices = find(contains({ALLEEG.setname}, 'EC'));
 EOindices = find(contains({ALLEEG.setname}, 'EO'));
 
 % Load mean sets
-EEG = pop_loadset('filename', 'ECMean_1020channels.set', 'filepath', 'TD_EC_EO_Mean_Sets');
+EEG = pop_loadset('filename', 'ECMean_1020channels.set', 'filepath', meanClusteredSetsPath);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
-EEG = pop_loadset('filename', 'EOMean_1020channels.set', 'filepath', 'TD_EC_EO_Mean_Sets');
+EEG = pop_loadset('filename', 'EOMean_1020channels.set', 'filepath', meanClusteredSetsPath);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
    
 FitPar.PeakFit = 1;

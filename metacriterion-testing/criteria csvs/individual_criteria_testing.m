@@ -1,18 +1,22 @@
-function criteria_testing(SetIndices)
-    [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
+clear variables
 
-    clusteredSetsPath = 'TD_EC_EO_3-11microstates\';
+scriptPath = fileparts(mfilename('fullpath'));
 
-    % Load the selected datasets
-%     filepath = '..\..\..\sample_data\test_files\';
-    files = dir(clusteredSetsPath);
-    filenames = {files(3:end).name};
-    filenames = filenames(SetIndices);
+[ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
 
-    EEG = pop_loadset('filename', filenames, 'filepath', clusteredSetsPath);
-    [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
+% CHANGE OUTPUT DIRECTORY HERE %
+outputFolderPath = fullfile(scriptPath, 'individual_csvs');
+% CHANGE INPUT DIRECTORY HERE %
+inputFolderPath = fullfile(scriptPath, '../EEGLAB sets', 'TD_EC_EO_3-11microstates');
 
-    % Clustering
+% Load the selected datasets
+files = dir(inputFolderPath);
+filenames = {files(3:end).name};
+
+EEG = pop_loadset('filename', filenames, 'filepath', inputFolderPath);
+[ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET);
+
+% Clustering
 %     MinClust = 3;
 %     MaxClust = 11;
 %     NumRestarts = 10;
@@ -28,68 +32,66 @@ function criteria_testing(SetIndices)
 %         EEG = pop_saveset(EEG, 'filename', EEG.setname, 'savemode', 'onefile');
 %     end
 
-    % Generate metacriteria
-    sampleSizes = [1000 2000 4000];
-    nRuns = 5;
+% Generate metacriteria
+sampleSizes = [1000 2000 4000];
+nRuns = 5;
 
-    for i=1:numel(ALLEEG)
+for i=1:numel(ALLEEG)
 
-        [EEG ALLEEG CURRENTSET] = eeg_retrieve(ALLEEG, i);
-        criteria = [];
-        break2 = false;
+    [EEG ALLEEG CURRENTSET] = eeg_retrieve(ALLEEG, i);
+    criteria = [];
+    break2 = false;
 
-        fprintf("~~~~Beginning criterion computations for dataset %i~~~~~\n", i);
+    fprintf("~~~~Beginning criterion computations for dataset %i~~~~~\n", i);
 
-        for s=1:numel(sampleSizes)
+    for s=1:numel(sampleSizes)
 
-            nSamples = sampleSizes(s);
+        nSamples = sampleSizes(s);
 
-            for run=1:nRuns
-                fprintf("Samples: %i, Run no: %i/%i\n", nSamples, run, nRuns);
-                tic
-                newCriteria = generate_criteria_GFPpeaks(EEG, nSamples);
-                toc
-                if isempty(newCriteria)
-                    break2 = true;
-                    break;
-                end
-                for j=1:numel(newCriteria)
-                    newCriteria(j).run_no = run;
-                    newCriteria(j).sample_size = nSamples;
-                end
-
-                criteria = [criteria newCriteria];
-            end
-
-            if break2
+        for run=1:nRuns
+            fprintf("Samples: %i, Run no: %i/%i\n", nSamples, run, nRuns);
+            tic
+            newCriteria = generate_criteria_GFPpeaks(EEG, nSamples);
+            toc
+            if isempty(newCriteria)
+                break2 = true;
                 break;
             end
+            for j=1:numel(newCriteria)
+                newCriteria(j).run_no = run;
+                newCriteria(j).sample_size = nSamples;
+            end
+
+            criteria = [criteria newCriteria];
         end
 
-        % Run with all GFP peaks
-        fprintf("Running with all samples\n");
-        tic
-        [newCriteria, numGFPPeaks] = generate_criteria_GFPpeaks(EEG, inf);
-        toc
-        for j=1:numel(newCriteria)
-            newCriteria(j).run_no = 1;
-            newCriteria(j).sample_size = numGFPPeaks;
+        if break2
+            break;
         end
-        criteria = [criteria newCriteria];
-
-        fprintf("Generating csv for dataset %i\n", i);
-
-        % Reorder struct
-        criteria = orderfields(criteria, [9, 10, 1:8]);
-    
-        % make table
-        outputTable = struct2table(criteria);
-    
-        % Rename cluster columns
-        oldNames = arrayfun(@(x) sprintf("clust%i", x), 4:10);
-        outputTable = renamevars(outputTable, oldNames, string(4:10));
-    
-        writetable(outputTable, ['individual_csvs/' EEG.setname '_criteria_results.csv']);
     end
 
+    % Run with all GFP peaks
+    fprintf("Running with all samples\n");
+    tic
+    [newCriteria, numGFPPeaks] = generate_criteria_GFPpeaks(EEG, inf);
+    toc
+    for j=1:numel(newCriteria)
+        newCriteria(j).run_no = 1;
+        newCriteria(j).sample_size = numGFPPeaks;
+    end
+    criteria = [criteria newCriteria];
+
+    fprintf("Generating csv for dataset %i\n", i);
+
+    % Reorder struct
+    criteria = orderfields(criteria, [9, 10, 1:8]);
+
+    % make table
+    outputTable = struct2table(criteria);
+
+    % Rename cluster columns
+    oldNames = arrayfun(@(x) sprintf("clust%i", x), 4:10);
+    outputTable = renamevars(outputTable, oldNames, string(4:10));
+
+    writetable(outputTable, fullfile(outputFolderPath, [EEG.setname '_criteria_results.csv']));
 end

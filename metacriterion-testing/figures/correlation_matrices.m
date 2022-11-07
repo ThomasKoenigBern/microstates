@@ -1,9 +1,11 @@
 clear variables
 
+scriptPath = fileparts(mfilename('fullpath'));
+
 % CHANGE DATA TYPE HERE %
 dataName = 'ECEO Mean 71 channels';
 % CHANGE DIRECTORY HERE %
-folderName = fullfile('../criteria csvs', 'meanmap_csvs');
+folderName = fullfile(scriptPath, '../criteria csvs', 'meanmap_csvs');
 
 % MODIFY INCLUDED AND EXCLUDED CRITERIA HERE %
 replaceCV = 1;
