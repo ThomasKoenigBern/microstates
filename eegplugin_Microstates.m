@@ -128,9 +128,10 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     templatepath = fullfile(pluginpath,'Templates');
 
     Templates = dir(fullfile(templatepath,'*.set'));
-       
+    MSTemplate = [];   
     for t = 1: numel(Templates)
-        MSTemplate(t) = pop_loadset('filename',Templates(t).name,'filepath',templatepath);
+        MSTemplate = eeg_store(MSTemplate,pop_loadset('filename',Templates(t).name,'filepath',templatepath));
+%        MSTemplate(t) = pop_loadset('filename',Templates(t).name,'filepath',templatepath);
     end
     
     MSTEMPLATE = MSTemplate;
@@ -163,10 +164,14 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
 
+    editmenu = findobj(fig,'Text','Edit','Type','uimenu');
+    uimenu( editmenu, 'label', 'Edit & sort microstate maps'                   ,'CallBack',comEditIndMSMaps,'Separator','on');
+
+    
+    
     plotmenu = findobj(fig, 'tag', 'plot');
 %    uimenu( plotmenu, 'label', 'Plot microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
     uimenu( plotmenu, 'label', 'Display microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','off');
-    uimenu( plotmenu, 'label', 'Edit & sort microstate maps'                   ,'CallBack',comEditIndMSMaps,'Separator','off');
     uimenu( plotmenu, 'label', 'Plot microstate dynamics (Own template'                   ,'CallBack',comShowIndMSDyn,'Separator','on');
     uimenu( plotmenu, 'label', 'Plot microstate dynamics (Mean template)'   ,'CallBack',comShowIndMSDynM);
 

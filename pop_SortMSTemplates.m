@@ -194,7 +194,6 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
     else
         TemplateIndex = [];
     end
-
     %% Prompt user to select sets to sort and template sets if needed in pop-up windows
     if isempty(SelectedSets)
         AvailableSetnames = {AllEEG(AvailableSets).setname};
@@ -258,7 +257,7 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             ChosenTemplate = AllEEG(1,nonemptyMean(TemplateIndex));
         end
     end
-
+    
     %% Verify compatibility between selected sets to sort and template set
 
     % Check if template set is a parent set of all the selected sets (only
@@ -296,7 +295,6 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
 
         end
     end
-    
     
     MinClasses     = ChosenTemplate.msinfo.ClustPar.MinClasses;
     MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;

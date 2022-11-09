@@ -308,8 +308,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
     
     %% Command string generation
     structInfo = sprintf('struct(''MinClasses'', %i, ''MaxClasses'', %i, ''GFPPeaks'', %i, ''IgnorePolarity'', %i, ''MaxMaps'', %i, ''Restarts'', %i, ''UseAAHC'', %i, ''Normalize'', %i)',ClustPar.MinClasses, ClustPar.MaxClasses, ClustPar.GFPPeaks, ClustPar.IgnorePolarity, ClustPar.MaxMaps, ClustPar.Restarts, ClustPar.UseAAHC, ClustPar.Normalize);
-
-    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, %s, %i, %i, %s);', inputname(1), mat2str(SelectedSets), structInfo,ShowMaps,ShowDyn,string(TemplateName));
+    if SortMaps == true
+        com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, %s, %i, %i, %s);', inputname(1), mat2str(SelectedSets), structInfo,ShowMaps,ShowDyn,string(TemplateName));
+    else
+        com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, %s, %i, %i);', inputname(1), mat2str(SelectedSets), structInfo,ShowMaps,ShowDyn);
+    end
 end
 
 function Answer = DoesItHaveChildren(in)

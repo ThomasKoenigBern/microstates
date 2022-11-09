@@ -49,6 +49,7 @@ function [MeanMap,SortedMaps,OldMapFit] = PermutedMeanMaps(in,RespectPolarity, M
         OldOldOrder = OldOrder;
             
         while WorkToBeDone
+            MeanMap = NormDim(MeanMap,3);
             cnt = cnt + 1;
             fprintf(1,'\b%s',progStrArray(mod(cnt-1, 4)+1));
             % See how the prototype fits
