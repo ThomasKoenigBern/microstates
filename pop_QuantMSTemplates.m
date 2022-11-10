@@ -545,7 +545,7 @@ function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
 
     % if the child cannot be found, search the children of the children
     if ~containsChild
-        childSetIndices = unique(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false));
+        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
         containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
     end
 
