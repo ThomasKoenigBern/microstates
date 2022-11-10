@@ -74,7 +74,7 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
         if strcmp(eegdata.event(e).type,'boundary')
             BoundaryPoint = [BoundaryPoint,eegdata.event(e).latency];
             if isfield(eegdata.event(e),'epoch')
-                BoundaryEpoch = [BoundaryEpoch, eegdata.event(e).event];
+                BoundaryEpoch = [BoundaryEpoch, eegdata.event(e).epoch];
             else
                 BoundaryEpoch = [BoundaryEpoch, 1];
             end
