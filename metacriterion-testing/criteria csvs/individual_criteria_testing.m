@@ -5,7 +5,7 @@ scriptPath = fileparts(mfilename('fullpath'));
 [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
 
 % CHANGE OUTPUT DIRECTORY HERE %
-outputFolderPath = fullfile(scriptPath, 'individual_csvs');
+outputFolderPath = fullfile(scriptPath, 'individual_csvs_71channnels');
 % CHANGE INPUT DIRECTORY HERE %
 inputFolderPath = fullfile(scriptPath, '../EEGLAB sets', 'TD_EC_EO_3-11microstates');
 
