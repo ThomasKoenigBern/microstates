@@ -113,9 +113,9 @@ function fig = interactive_criteria_explorer(criterionName, dataType)
         cla(ax1);
         cla(ax2);
         
-        plot(ax1, ClusterNumbers, ECcriterion(selectedSubjects, :));
+        plot(ax1, ClusterNumbers, ECcriterion(selectedSubjects, :)');
         legend(ax1, subjects(selectedSubjects));
-        plot(ax2, ClusterNumbers, EOcriterion(selectedSubjects, :));
+        plot(ax2, ClusterNumbers, EOcriterion(selectedSubjects, :)');
         legend(ax2, subjects(selectedSubjects));
     
         title(ax1, sprintf('Normalized %s Values: EC', criterionName));
