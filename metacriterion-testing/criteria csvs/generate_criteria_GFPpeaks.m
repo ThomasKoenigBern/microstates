@@ -1,35 +1,32 @@
 function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
 
     ClusterNumbers = TheEEG.msinfo.ClustPar.MinClasses+1:TheEEG.msinfo.ClustPar.MaxClasses-1;
-    maxClusters = size(ClusterNumbers, 2);
     numClustSolutions = numel(ClusterNumbers);
 
-    % Initialize criteria vectors
-    criteriaVectors.G     = nan(1, numClustSolutions);
-    criteriaVectors.S     = nan(1, numClustSolutions);
-    criteriaVectors.DB    = nan(1, numClustSolutions);
-    criteriaVectors.PB    = nan(1, numClustSolutions);
-    criteriaVectors.D     = nan(1, numClustSolutions);
-    criteriaVectors.KL    = nan(1, numClustSolutions);
-    criteriaVectors.KLnrm = nan(1, numClustSolutions);
-    criteriaVectors.CV    = nan(1, numClustSolutions);
-    criteriaVectors.CV2   = nan(1, numClustSolutions);    
-    criteriaVectors.FVG   = nan(1, numClustSolutions);
-    criteriaVectors.CH    = nan(1, numClustSolutions);
+    % Initialize criteria struct array
+    criteria(1).name   = 'G';          % Gamma
+    criteria(2).name   = 'S';          % Silhouette
+    criteria(3).name   = 'DB';         % Davies-Bouldin
+    criteria(4).name   = 'PB';         % Point-Biserial
+    criteria(5).name   = 'D';          % Dunn
+    criteria(6).name   = 'KL';         % Krzanowski-Lai
+    criteria(7).name   = 'KLnrm';      % Normalized Krzanowski-Lai
+    criteria(8).name   = 'CV';         % Cross-Validation
+    criteria(9).name   = 'CV2';        % Cross-Validation v2
+    criteria(10).name  = 'FVG';        % Frey and Van Groenewoud
+    criteria(11).name  = 'CH';         % Calinski-Harabasz
 
-    % Initialize criteria struct
-    criteria(1).criterionName   = 'G';          % Gamma
-    criteria(2).criterionName   = 'S';          % Silhouette
-    criteria(3).criterionName   = 'DB';         % Davies-Bouldin
-    criteria(4).criterionName   = 'PB';         % Point-Biserial
-    criteria(5).criterionName   = 'D';          % Dunn
-    criteria(6).criterionName   = 'KL';         % Krzanowski-Lai
-    criteria(7).criterionName   = 'KLnrm';      % Normalized Krzanowski-Lai
-    criteria(8).criterionName  = 'CV';         % Cross-Validation
-    % CV version 2 testing
-    criteria(9).criterionName  = 'CV2';         % Cross-Validation
-    criteria(10).criterionName  = 'FVG';        % Frey and Van Groenewoud
-    criteria(11).criterionName  = 'CH';         % Calinski-Harabasz
+    criteria(1).values  = nan(1, numClustSolutions);
+    criteria(2).values  = nan(1, numClustSolutions);
+    criteria(3).values  = nan(1, numClustSolutions);
+    criteria(4).values  = nan(1, numClustSolutions);
+    criteria(5).values  = nan(1, numClustSolutions);
+    criteria(6).values  = nan(1, numClustSolutions);
+    criteria(7).values  = nan(1, numClustSolutions);
+    criteria(8).values  = nan(1, numClustSolutions);
+    criteria(9).values  = nan(1, numClustSolutions);
+    criteria(10).values = nan(1, numClustSolutions);
+    criteria(11).values = nan(1, numClustSolutions);
 
     % Check for segmented data and reshape if necessary
     IndSamples = TheEEG.data;
@@ -117,7 +114,7 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
     W(1) = sum(sumD./(2*nMembers));
     M(1) = W(1)*nc^(2/nChannels);
 
-    for i=1:maxClusters
+    for i=1:numClustSolutions
         nc = ClusterNumbers(i);                 % number of clusters
         [Maps, ClustLabels] = getClusters(TheEEG, nc, IndSamples);
 
@@ -157,7 +154,7 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
         meanWithinDists(i) = sumWithin/nWithin;
         meanBetweenDists(i) = sumBetween/nBetween;
 
-        criteriaVectors.PB(i) = (meanBetweenDists(i) - meanWithinDists(i))*sqrt(nWithin*nBetween / nAll^2)/stdev;
+        criteria(matches({criteria.name}, 'PB')).values(i) = (meanBetweenDists(i) - meanWithinDists(i))*sqrt(nWithin*nBetween / nAll^2)/stdev;
 
         %% GAMMA
         % Sort distances
@@ -187,13 +184,13 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
         end
         toc
     
-        criteriaVectors.G(i) = (SPlus - SMinus)/(SPlus + SMinus);
+        criteria(matches({criteria.name}, 'G')).values(i) = (SPlus - SMinus)/(SPlus + SMinus);
 
         %% CALINSKI-HARABASZ
         WithinClustVar = sum(sumMemberCentroidDists);
         BetweenClustVar = elementCorrDist(Maps, DataMean, TheEEG.msinfo.ClustPar.IgnorePolarity);
         BetweenClustVar = sum(nMembers.*BetweenClustVar);
-        criteriaVectors.CH(i) = (BetweenClustVar/WithinClustVar)*((nSamples-nc)/(nc-1));
+        criteria(matches({criteria.name}, 'CH')).values(i) =  (BetweenClustVar/WithinClustVar)*((nSamples-nc)/(nc-1));
 
         %% DAVIES-BOULDIN
         MeanMemberCentroidDists = sumMemberCentroidDists./nMembers;
@@ -217,7 +214,7 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
         R = R+R';
 
         RI = max(R, [], 1);
-        criteriaVectors.DB(i) = mean(RI);
+        criteria(matches({criteria.name}, 'DB')).values(i) = mean(RI);
 
         %% SILHOUETTE
         % Average distance from each input vector to all other members
@@ -235,7 +232,7 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
         end
 
         minAvgBetweenDist = min(AvgBetweenDists, [], 1);
-        criteriaVectors.S(i) = mean((minAvgBetweenDist - AvgWithinDists)./max(minAvgBetweenDist, AvgWithinDists));
+        criteria(matches({criteria.name}, 'S')).values(i) =  mean((minAvgBetweenDist - AvgWithinDists)./max(minAvgBetweenDist, AvgWithinDists));
 
         %% DUNN
         minInterClustDists = [];
@@ -247,18 +244,19 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
             end
         end
 
-        criteriaVectors.D(i) = min(minInterClustDists)/max(clustDiameters);
+        criteria(matches({criteria.name}, 'D')).values(i) =  min(minInterClustDists)/max(clustDiameters);
 
         %% CROSS-VALIDATION
+        % original definition in Pascual-Marqui 1995
+        sigma2 = sum(sum(IndSamples.^2) -  sum(Maps(:, ClustLabels).*IndSamples).^2);
+        criteria(matches({criteria.name}, 'CV')).values(i) =  sigma2*((nChannels-1)/(nChannels-1-nc))^2;
+
+        % CV version 2 testing
         % modified to use 1 - spatial correlation or 1 - abs(spatial
         % correlation) rather than squared Euclidean distance to allow for
         % both respecting and ignoring polarity
         sigma = sum(sumMemberCentroidDists)/(nSamples*(nChannels-1));
-        criteriaVectors.CV(i) = sigma*((nChannels-1)/(nChannels-1-nc))^2;
-
-        % CV version 2 testing (original definition in Pascual-Marqui 1995)
-        sigma2 = sum(sum(IndSamples.^2) -  sum(Maps(:, ClustLabels).*IndSamples).^2);
-        criteriaVectors.CV2(i) = sigma2*((nChannels-1)/(nChannels-1-nc))^2;
+        criteria(matches({criteria.name}, 'CV2')).values(i) =  sigma*((nChannels-1)/(nChannels-1-nc))^2;
     end
 
     %% Get maps and cluster labels for one greater than max cluster solution
@@ -275,7 +273,7 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
     meanWithinDists(end) = mean(WithinDistances);
     meanBetweenDists(end) = mean(BetweenDistances);
 
-    criteriaVectors.FVG = (meanBetweenDists(2:end) - meanBetweenDists(1:end-1)) ./ (meanWithinDists(2:end) - meanWithinDists(1:end-1));
+    criteria(matches({criteria.name}, 'FVG')) = (meanBetweenDists(2:end) - meanBetweenDists(1:end-1)) ./ (meanWithinDists(2:end) - meanWithinDists(1:end-1));
 
     %% KRZANOWSKI-LAI/NORMALIZED KRZANOWSKI-LAI
     % Get W and M for one greater than max cluster solution
@@ -293,41 +291,31 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
     d = M(1:end-1) - M(2:end);
 
     % KL
-    criteriaVectors.KL = abs(d(1:end-1)./d(2:end));
+    criteria(matches({criteria.name}, 'KL')) = abs(d(1:end-1)./d(2:end));
 
     % KLnrm
     KLnrm = (d(1:end-1) - d(2:end)) ./ M(1:end-2);
     KLnrm((d < 0)) = 0;
     KLnrm((d(1:end-1) < d(2:end))) = 0;
-    criteriaVectors.KLnrm = KLnrm;
+    criteria(matches({criteria.name}, 'KLnrm')) = KLnrm;
 
-    % Normalize criteria and update struct to output
-    criterionNames = fieldnames(criteriaVectors);
-    for i=1:numel(criterionNames)
-        c = criteriaVectors.(criterionNames{i});
+    % Normalize criteria
+    for i=1:numel(criteria)
+        c = criteria(i).values;
 
-        if strcmp(criterionNames{i}, 'DB') || strcmp(criterionNames{i}, 'CV') || strcmp(criterionNames{i}, 'CV2')
+        if strcmp(criteria(i).name, 'DB') || strcmp(criteria(i).name, 'CV') || strcmp(criteria(i).name, 'CV2')
             c = (c - min(c))/(max(c)-min(c));
             c = 1 - c;
-            criteriaVectors.(criterionNames{i}) = c;
-        elseif strcmp(criterionNames{i}, 'FVG')
+        elseif strcmp(criteria(i).name, 'FVG')
             c = abs(1-c);
             c = (c - min(c))/(max(c) - min(c));
             c = 1 - c;
-            criteriaVectors.(criterionNames{i}) = c;
         else
             % Normalize
             c = (c - min(c))/(max(c) - min(c));
-            criteriaVectors.(criterionNames{i}) = c;
         end
 
-        % Add to output struct
-        idx = matches({criteria.criterionName}, criterionNames{i});
-        for j=1:maxClusters
-            nc = ClusterNumbers(j);
-            clustName = ['clust' int2str(nc)];
-            criteria(idx).(clustName) = c(j);
-        end
+        criteria(i).normValues = c;
     end
 
 end
