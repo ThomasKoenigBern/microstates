@@ -3,8 +3,8 @@ function [LocalToGlobal,GlobalToLocal] = MakeResampleMatrices(chanlocs_local,cha
     [xyz_local ,nelec_local]  = ChanPos2XYZ(chanlocs_local);
     [xyz_global,nelec_global] = ChanPos2XYZ(chanlocs_global);
     warning('off','all');
-    LocalToGlobal = splint(xyz_local ,eye(nelec_local) ,xyz_global);
-    GlobalToLocal = splint(xyz_global,eye(nelec_global),xyz_local );
+    LocalToGlobal = splint2(xyz_local ,eye(nelec_local) ,xyz_global);
+    GlobalToLocal = splint2(xyz_global,eye(nelec_global),xyz_local );
     warning('on','all');
 end
 
