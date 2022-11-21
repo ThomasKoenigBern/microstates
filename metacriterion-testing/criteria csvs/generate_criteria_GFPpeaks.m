@@ -119,7 +119,8 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
         [Maps, ClustLabels] = getClusters(TheEEG, nc, IndSamples);
 
         %% Extract all within- and between- cluster distances and other measures
-        [WithinDistances, BetweenDistances, WithinPairLabels, IsWithinPair, BetweenPairLabels] = getWithinAndBetweenDistances(ClustLabels, DistMat);
+        [WithinDistances, BetweenDistances, WithinPairLabels, IsWithinPair, BetweenClustLabelsVector, ClustLabelsMat] = ...
+        getWithinAndBetweenDistances(ClustLabels, DistMat);
 
         sumD = nan(1, nc);                      % sum of pairwise distances for each cluster
         nMembers= zeros(1, nc);                 % number of members of each cluster
@@ -227,7 +228,9 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
         for n=1:nSamples
             AvgWithinDists(n) = mean(DistMat(n, IsWithinPair(n,:)));
             for clust=1:nc
-                AvgBetweenDists(nc, n) = mean(DistMat(n, ~IsWithinPair(n,:)));
+                BetweenClustIndices = logical(matches(ClustLabelsMat(n, :), string(ClustLabels(n)) + string(clust)) + ...
+                    matches(ClustLabelsMat(n, :), string(clust) + string(ClustLabels(n))));
+                AvgBetweenDists(nc, n) = mean(DistMat(n, BetweenClustIndices));
             end
         end
 
@@ -239,7 +242,7 @@ function [criteria, numGFPPeaks] = generate_criteria_GFPpeaks(TheEEG, nSamples)
         % Get minimum distance between each pair of clusters
         for j=1:nc
             for k=j+1:nc
-                BetweenClustIndices = logical(matches(BetweenPairLabels, string(j) + string(k)) + matches(BetweenPairLabels, string(k) + string(j)));
+                BetweenClustIndices = logical(matches(BetweenClustLabelsVector, string(j) + string(k)) + matches(BetweenClustLabelsVector, string(k) + string(j)));
                 minInterClustDists = [minInterClustDists min(BetweenDistances(BetweenClustIndices))];
             end
         end
@@ -340,7 +343,8 @@ function [Maps, ClustLabels] = getClusters(TheEEG, nc, IndSamples)
      Maps = Maps';
 end
 
-function [WithinDistances, BetweenDistances, WithinPairLabels, IsWithinPairOut, BetweenClustLabels] = getWithinAndBetweenDistances(ClustLabels, DistMat)
+function [WithinDistances, BetweenDistances, WithinPairLabels, IsWithinPairOut, BetweenClustLabelsVector, ClustLabelsMat] ...
+            = getWithinAndBetweenDistances(ClustLabels, DistMat)
         % Find (i,j) indices of within- and between- cluster pairs
         PairLabels = repmat(ClustLabels,size(DistMat, 1),1);
         IsWithinPair = PairLabels == PairLabels';
@@ -363,7 +367,9 @@ function [WithinDistances, BetweenDistances, WithinPairLabels, IsWithinPairOut, 
         % between-cluster distances are from
         stringPairLabels1 = string(PairLabels);
         stringPairLabels2 = stringPairLabels1';
-        BetweenClustLabels = stringPairLabels1(IsBetweenPair) + stringPairLabels2(IsBetweenPair);
+        BetweenClustLabelsVector = stringPairLabels1(IsBetweenPair) + stringPairLabels2(IsBetweenPair);
+
+        ClustLabelsMat = string(PairLabels) + string(PairLabels');
 end
 
 % Performs element-wise computation of 1 - abs(spatial correlation) or 
