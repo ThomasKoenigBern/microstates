@@ -5,11 +5,11 @@
 %   criterionName: CH, CV, DB, D, FVG, KL, KLnrm, PB, S
 %
 %   dataType:
-%       "71 channels": criteria derived from comparing the subject-level
-%        maps to the subject-level data, using all 71 channels 
+%       " Subject-level 71 channels": criteria derived from comparing the 
+%        subject-level maps to the subject-level data, using all 71 channels 
 %
-%       "10-20 channels": criteria derived from comparing the subject-level
-%        maps to the subject-level data, using only 10-20 channels
+%       "Subject-level 10-20 channels": criteria derived from comparing the
+%        subject-level maps to the subject-level data, using only 10-20 channels
 %
 %       "ECEO Mean 71 channels": criteria derived from comparing the
 %        mean-level EC or EO maps to the subject-level data, using all 71
@@ -20,13 +20,13 @@
 %        10-20 channels
 
 
-function fig = interactive_criteria_explorer(criterionName, dataType)
+function interactive_criteria_explorer(criterionName, dataType)
    
     scriptPath = fileparts(mfilename('fullpath'));
     
-    if strcmp(dataType, '71 channels')
+    if strcmp(dataType, 'Subject-level 71 channels')
         folderName = fullfile(scriptPath, '../criteria csvs', 'individual_csvs_71channels');
-    elseif strcmp(dataType, '10-20 channels')
+    elseif strcmp(dataType, 'Subject-level 10-20 channels')
         folderName = fullfile(scriptPath, '../criteria csvs', 'individual_csvs_1020channels');
     elseif strcmp(dataType, 'ECEO Mean 71 channels')
         folderName = fullfile(scriptPath, '../criteria csvs', 'meanmap_csvs_71channels');
