@@ -529,3 +529,28 @@ function x = GetClusterField(in,fieldname)
         x = in.msinfo.ClustPar.(fieldname);
     end
 end
+
+function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
+    containsChild = false;
+    if isempty(SetsToSearch)
+        return;
+    end
+    
+    % find which sets have children
+    HasChildren = arrayfun(@(x) isfield(AllEEG(x).msinfo, 'children'), SetsToSearch);
+    % if none of the sets to search have children, the child set could not
+    % be found
+    if ~any(HasChildren)
+        return;
+    end
+
+    % search the children of all the mean sets for the child set name
+    containsChild = any(arrayfun(@(x) matches(childSetName, AllEEG(x).msinfo.children), SetsToSearch(HasChildren)));
+
+    % if the child cannot be found, search the children of the children
+    if ~containsChild
+        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
+        containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
+    end
+
+end
