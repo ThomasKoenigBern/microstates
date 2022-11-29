@@ -264,8 +264,8 @@ function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
         if isempty(res); return; end
         TemplateIndex = res{1};
         TemplateName = TemplateNames{TemplateIndex};
-    else
-        TemplateName = TemplateNames{TemplateIndex};
+    elseif (UseMeanTmpl > 0)
+        TemplateName = TemplateNames   {TemplateIndex};
     end
 
     if numel(SelectedSets) < 1
