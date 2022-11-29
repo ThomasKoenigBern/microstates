@@ -120,8 +120,13 @@ for run = 1:reruns
     end
         
     
-    while any(o_ind - ind)
+    % TODO TEMP COUNT LIMIT
+    conv_limit = 10000;
+    while count < conv_limit && any(o_ind - ind)
         count   = count+1;
+        if count == conv_limit
+            warning("K-Means Didn't converge in 10000 iterations");
+        end
         o_ind   = ind;
 %        if pmode
 %            covm    = eeg * model';						% Get the unsigned covariance matrix
