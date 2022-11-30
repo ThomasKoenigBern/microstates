@@ -108,7 +108,11 @@ function [CellArray, success,err] = SaveStructToTable(dat,FileName, Delimiter,La
             else
                 fprintf(fid,'%s',Delimiter);
             end
-            fprintf(fid,'%s',outfields{c,n});
+            field = outfields{c, n};
+            if class(field) == "cell"
+                field = field{1};
+            end
+            fprintf(fid,'%s',field);
         end
     end
     fclose(fid);

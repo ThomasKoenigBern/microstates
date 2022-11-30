@@ -101,9 +101,9 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
     if nargin < 3   % TK 29.11.2022; was 4, so the function ended up clearing the given parameters
         ClustPar = [];
     end
-    if nargin < 5;  ShowMaps            = false; end
-    if nargin < 6;  ShowDyn             = false; end
-    if nargin < 7;  TemplateName    = [];    end
+    if nargin < 4;  ShowMaps            = false; end
+    if nargin < 5;  ShowDyn             = false; end
+    if nargin < 6;  TemplateName        = [];    end
 
     SortMaps = ~isempty(TemplateName);
 
@@ -133,8 +133,8 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, C
     TemplateIndex = 1;
     if SortMaps
         if (~any(matches(TemplateNames, TemplateName)))
-            errorMessage = sprintf('The specified template %s could not be found in the microstates/Templates' + ...
-            'folder. Please add the template to the folder before sorting.', TemplateName);
+            errorMessage = sprintf(['The specified template %s could not be found in the microstates/Templates ' ...
+                'folder. Please add the template to the folder before sorting.'], TemplateName);
             errordlg2([errorMessage],'Identify microstate classes');
             return;
         else
