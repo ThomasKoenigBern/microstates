@@ -43,10 +43,10 @@ ReadVision = true;
 FilterTheData = true;
 
 % These are the paramters for the fitting based on GFP peaks only
-FitPars = struct('nClasses',4,'lambda',1,'b',20,'PeakFit',true, 'BControl',true,'Rectify',false,'Normalize',false);
+FitPars = struct('nClasses',7,'lambda',1,'b',20,'PeakFit',true, 'BControl',true,'Rectify',false,'Normalize',false);
 
 % Define the parameters for clustering
-ClustPars = struct('MinClasses',4,'MaxClasses',6,'GFPPeaks',true,'IgnorePolarity',true,'MaxMaps',inf,'Restarts',20', 'UseAAHC',false,'Normalize',false);
+ClustPars = struct('MinClasses',4,'MaxClasses',7,'GFPPeaks',true,'IgnorePolarity',true,'MaxMaps',500,'Restarts',20', 'UseAAHC',false,'Normalize',false);
 
 % This is the path were all the output will go
 SavePath   = uigetdir([],'Path to store the results');
@@ -70,7 +70,7 @@ end
 %% Read the data
 
 eeglabpath = fileparts(which('eeglab.m'));
-DipFitPath = fullfile(eeglabpath,'plugins','dipfit2.3');
+DipFitPath = fullfile(eeglabpath,'plugins','dipfit');
 
 eeglab
 
@@ -92,7 +92,7 @@ for Group = 1:nGroups
     % Read the data from the group 
     for f = 1:numel(FileNamesGroup)
         if ReadVision == true
-            tmpEEG = pop_fileio(fullfile(GroupDir,FileNamesGroup{f}));   % Basic file read
+            tmpEEG = pop_loadbv(GroupDir,FileNamesGroup{f});   % Basic file read
             tmpEEG = eeg_RejectBABadIntervals(tmpEEG);   % Get rid of bad intervals
             setname = strrep(FileNamesGroup{f},'.vhdr',''); % Set a useful name of the dataset
             [ALLEEG, tmpEEG, CURRENTSET] = pop_newset(ALLEEG, tmpEEG, 0,'setname',FileNamesGroup{f},'gui','off'); % And make this a new set
@@ -118,13 +118,8 @@ eeglab redraw
    
 %% Cluster the stuff
 
-% Loop across all subjects to identify the individual clusters
-for i = 1:numel(AllSubjects ) 
-    EEG = eeg_retrieve(ALLEEG,AllSubjects(i)); % the EEG we want to work with
-    fprintf(1,'Clustering dataset %s (%i/%i)\n',EEG.setname,i,numel(AllSubjects )); % Some info for the impatient user
-    EEG = pop_FindMSTemplates(EEG, ClustPars); % This is the actual clustering within subjects
-    [ALLEEG, EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, AllSubjects (i)); % Done, we just need to store this
-end
+[EEG,ClusteredSets] = pop_FindMSTemplates(ALLEEG,AllSubjects, ClustPars); % This is the actual clustering within subjects
+[ALLEEG, EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, ClusteredSets); % Done, we just need to store this
 
 eeglab redraw
 
@@ -145,16 +140,15 @@ drawnow;
 % Now we go into averaging within each group
 for Group = 1:nGroups
     % The mean of group X
-    EEG = pop_CombMSTemplates(ALLEEG, GroupIndex{Group}, 0, 0, sprintf('GrandMean Group %i',Group));
+    [~,EEG] = pop_CombMSTemplates(ALLEEG, GroupIndex{Group}, 0, 0, sprintf('GrandMean Group %i',Group));
     [ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, numel(ALLEEG)+1,'gui','off'); % Make a new set
-    [ALLEEG,EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET); % and store it
     GrandMeanIndex(Group) = CURRENTSET; % And keep track of it
 end
 
 % Now we want the grand-grand mean, based on the group means, if there is
 % more than one group
 if nGroups > 1
-    EEG = pop_CombMSTemplates(ALLEEG, GrandMeanIndex, 1, 0, 'GrandGrandMean');
+    [~,EEG] = pop_CombMSTemplates(ALLEEG, GrandMeanIndex, 1, 0, 'GrandGrandMean');
     [ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, numel(ALLEEG)+1,'gui','off'); % Make a new set
     GrandGrandMeanIndex = CURRENTSET; % and keep track of it
 else
@@ -162,8 +156,8 @@ else
 end
 
 % We automatically sort the grandgrandmean based on a template from the literature
-[ALLEEG,EEG] = pop_SortMSTemplates(ALLEEG, GrandGrandMeanIndex, 1, NormativeTemplateIndex);
-[ALLEEG, EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, GrandGrandMeanIndex);
+[EEG,CURRENTSET] = pop_SortMSTemplates(ALLEEG, GrandGrandMeanIndex, 1, NormativeTemplateIndex);
+[ALLEEG, EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
 % This should now be as good as possible, but we should look at it
 pop_ShowIndMSMaps(EEG, 4, GrandGrandMeanIndex, ALLEEG); % Here, we go interactive to allow the user to put the classes in the canonical order
@@ -176,13 +170,13 @@ eeglab redraw
 % First, the sequence of the two group means has be adjusted based on the
 % grand grand mean
 if nGroups > 1
-    ALLEEG = pop_SortMSTemplates(ALLEEG, GrandMeanIndex, 1, GrandGrandMeanIndex);
+    [EEG,CURRENTSET] = pop_SortMSTemplates(ALLEEG, GrandMeanIndex, 1, GrandGrandMeanIndex);
     [ALLEEG,EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET); % and store it
 end
 
 % Then, we sort the individuals based on their group means
 for Group = 1:nGroups
-    ALLEEG = pop_SortMSTemplates(ALLEEG, GroupIndex{Group}, 0, GrandMeanIndex(Group)); % Group 1
+    [EEG,CURRENTSET] = pop_SortMSTemplates(ALLEEG, GroupIndex{Group}, 0, GrandMeanIndex(Group)); % Group 1
     [ALLEEG,EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET); % and store it
 end
 
@@ -206,7 +200,7 @@ pop_ShowIndMSMaps(EEG,FitPars.nClasses);
 %% Here comes the stats part
 
 % Using the individual templates
-pop_QuantMSTemplates(ALLEEG, AllSubjects, 0, FitPars, []                   , fullfile(SavePath,'ResultsFromIndividualTemplates.xlsx'));
+pop_QuantMSTemplates(ALLEEG, AllSubjects, 0, FitPars, []                   ,[], fullfile(SavePath,'ResultsFromIndividualTemplates.xlsx'));
 
 % And using the grand grand mean template
 pop_QuantMSTemplates(ALLEEG, AllSubjects, 1, FitPars, GrandGrandMeanIndex, fullfile(SavePath,'ResultsFromGrandGrandMeanTemplate.xlsx'));

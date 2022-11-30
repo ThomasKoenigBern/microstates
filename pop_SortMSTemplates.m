@@ -74,13 +74,16 @@
 function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, DoMeans, TemplateSet, TemplateName, IgnorePolarity, NClasses)
 
     %% Set default values for outputs and input parameters
-    global EEG;
-    global CURRENTSET;
+%    global EEG;
+%    global CURRENTSET;
     global MSTEMPLATE;
     global showMessage;
     com = '';
-    EEGOUT = EEG;
-    CurrentSet = CURRENTSET;
+%    EEGOUT = EEG;
+%    CurrentSet = CURRENTSET;
+    EEGOUT = AllEEG(SelectedSets);
+    CurrentSet = SelectedSets;
+
 
     if nargin < 2;  SelectedSets = [];          end
     if nargin < 3;  DoMeans = false;            end
