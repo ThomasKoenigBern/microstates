@@ -151,7 +151,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comQuantMSTemplatesS   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0);'                      catch_strings.store_and_hist];
     comQuantMSTemplatesM   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],1);'                      catch_strings.store_and_hist];
     comQuantMSTemplatesT   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],2);'                      catch_strings.store_and_hist];
-    comQuantMSDataVis      = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0, [], [], 1);'           catch_strings.store_and_hist];
+    comQuantMSDataVis      = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0, [], [], []);'           catch_strings.store_and_hist];
 
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'          catch_strings.add_to_hist];
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
@@ -171,8 +171,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     
     plotmenu = findobj(fig, 'tag', 'plot');
 %    uimenu( plotmenu, 'label', 'Plot microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
-    uimenu( plotmenu, 'label', 'Display microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','off');
-    uimenu( plotmenu, 'label', 'Plot microstate dynamics (Own template'                   ,'CallBack',comShowIndMSDyn,'Separator','on');
+    uimenu( plotmenu, 'label', 'Display microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
+    uimenu( plotmenu, 'label', 'Plot microstate dynamics (Own template'                   ,'CallBack',comShowIndMSDyn,'Separator','off');
     uimenu( plotmenu, 'label', 'Plot microstate dynamics (Mean template)'   ,'CallBack',comShowIndMSDynM);
 
     % create menus if necessary

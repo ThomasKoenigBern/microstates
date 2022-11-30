@@ -200,7 +200,7 @@ pop_ShowIndMSMaps(EEG,FitPars.nClasses);
 %% Here comes the stats part
 
 % Using the individual templates
-pop_QuantMSTemplates(ALLEEG, AllSubjects, 0, FitPars, []                   ,[], fullfile(SavePath,'ResultsFromIndividualTemplates.xlsx'));
+pop_QuantMSTemplates(ALLEEG, AllSubjects, 0, FitPars, []                   ,[], fullfile(SavePath,'ResultsFromIndividualTemplates.4R'));
 
 % And using the grand grand mean template
 pop_QuantMSTemplates(ALLEEG, AllSubjects, 1, FitPars, GrandGrandMeanIndex, fullfile(SavePath,'ResultsFromGrandGrandMeanTemplate.xlsx'));
