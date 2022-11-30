@@ -316,11 +316,11 @@ function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
             MinClasses = max(cellfun(@(x) GetClusterField(AllEEG(x),'MinClasses'),num2cell(SelectedSets)));
             MaxClasses = min(cellfun(@(x) GetClusterField(AllEEG(x),'MaxClasses'),num2cell(SelectedSets)));
         case 1,
-            ChosenTemplate = AllEEG(TemplateSet);
+            ChosenTemplate = AllEEG(TemplateIndex);
             MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
             MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
         case 2,
-            ChosenTemplate = MSTEMPLATE(TemplateSet);
+            ChosenTemplate = MSTEMPLATE(TemplateIndex);
             MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
             MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     end
