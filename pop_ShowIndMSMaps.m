@@ -46,7 +46,8 @@
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
 function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, nclasses, DoEdit, AllEEG)
-    
+    % controls whether to show plot
+    visible = true;
     com = '';
 
     if numel(TheEEG) > 1
@@ -72,6 +73,8 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, nclasse
         return;
     end
   
+    ud.visible = visible;
+
     ud.AllMaps   = TheEEG.msinfo.MSMaps;
     ud.chanlocs  = TheEEG.chanlocs;
     ud.setname   = TheEEG.setname;
@@ -93,8 +96,13 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, nclasse
 
     ud.nClasses = nclasses;
 
-    fig_h = figure();
-  
+    if visible
+        fig_h = figure();
+    else
+        fig_h = figure('Visible', 'off');
+    end
+%    set(0,'CurrentFigure',fig_h);
+
     if DoEdit == true;  eTxt = 'on';
     else
                         eTxt = 'off';
@@ -138,6 +146,7 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, nclasse
         ud.Info        = uicontrol('Style', 'pushbutton', 'String', 'Info'      , 'Units','Normalized','Position'  , [0.50 0.05 0.15 0.05], 'Callback', {@MapInfo     , fig_h});
         ud.Sort        = uicontrol('Style', 'pushbutton', 'String', 'Sort'      , 'Units','Normalized','Position'  , [0.65 0.05 0.15 0.05], 'Callback', {@ManSort     , fig_h}, 'Enable',eTxt);
         ud.Done        = uicontrol('Style', 'pushbutton', 'String', 'Close'     , 'Units','Normalized','Position'  , [0.80 0.05 0.15 0.05], 'Callback', {@ShowIndMSMapsClose,fig_h});
+        set(fig_h,'userdata',ud);
     else
         ud.MapPanel    = uipanel(fig_h,'Position',[0.02 0.4 0.96 0.57],'BorderType','Line');
         ud.ButtonPanel = uibuttongroup(fig_h,'Position',[0.71 0.02 0.28 0.37],'BorderType','Line','Title','Explore things');
@@ -167,7 +176,6 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(TheEEG, nclasse
         ActionChangedCallback([],[],fig_h);
 
     end
-    set(fig_h,'userdata',ud);
 
     fig_h.CloseRequestFcn = {@ShowIndMSMapsClose};
 
@@ -681,10 +689,10 @@ end
 
 function ClearMaps(fh)
 
-    figure(fh);
-    UserData = get(fh,'UserData');  
+    UserData = get(fh,'UserData');
+    set(0,'CurrentFigure',fh);
 
-    
+
     if ~isnan(UserData.nClasses)
         sp_x = ceil(sqrt(UserData.nClasses));
         sp_y = ceil(UserData.nClasses / sp_x);
@@ -713,9 +721,8 @@ end
 
 function PlotMSMaps(~, ~,fh)
 % --------------------------
-
-    figure(fh);
-    UserData = get(fh,'UserData');  
+    UserData = get(fh,'UserData');
+    set(0,'CurrentFigure',fh);  % use this instead of figure(fh) so the figure doesn't have to show up
 
     ClearMaps(fh);
 
@@ -777,7 +784,9 @@ function PlotMSMaps(~, ~,fh)
 %                toc
 %                dummy = UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).Maps(x_pos,:)
                 dspCMap(double(UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).Maps(x_pos,:)),[X; Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
-                drawnow
+                if UserData.visible  % drawnow when figure is hidden will sometimes create separate figures, so only do this when visible
+                    drawnow
+                end
                 UserData.TitleHandles{y_pos,x_pos} = title(UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).Labels(x_pos),'FontSize',10,'Interpreter','none');
                 if UserData.DoEdit == true
                     set(UserData.TitleHandles{y_pos,x_pos},'ButtonDownFcn',{@EditMSLabel,y_pos + UserData.ClustPar.MinClasses-1,x_pos});
