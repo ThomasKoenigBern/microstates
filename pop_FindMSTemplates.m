@@ -85,14 +85,20 @@
 function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar, ShowMaps, ShowDyn, TemplateName)
 
     %% Set default values for outputs and input parameters
-    global EEG;
-    global CURRENTSET;
-    global MSTEMPLATE;
+
     com = '';
-    EEGout = EEG;
-    CurrentSet = CURRENTSET;
-    
-    if nargin < 4
+    global MSTEMPLATE;
+
+%    TK 29.11.2022
+%     global EEG;
+%     global CURRENTSET;
+%     EEGout = EEG;
+%     CurrentSet = CURRENTSET;
+
+    EEGout = AllEEG(SelectedSets);
+    CurrentSet = SelectedSets;
+
+    if nargin < 3   % TK 29.11.2022; was 4, so the function ended up clearing the given parameters
         ClustPar = [];
     end
     if nargin < 4;  ShowMaps            = false; end

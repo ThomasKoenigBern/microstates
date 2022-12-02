@@ -1,6 +1,8 @@
-function [step, strLength] = mywaitbar(compl, total, step, nSteps, strLength)
+function [step, strLength] = mywaitbar(compl, total, step, nSteps, strLength,progStrArray)
 
-    progStrArray = '/-\|';
+    if nargin < 6
+        progStrArray = '/-\|';
+    end
     tmp = floor(compl / total * nSteps);
     if step == nSteps
         fprintf(1, [repmat('\b', 1, strLength) '%s']);
