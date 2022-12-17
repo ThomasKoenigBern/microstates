@@ -346,9 +346,47 @@ function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
     %% Check for consistent sorting across selected sets if own templates are being used
     SelectedEEG = AllEEG(SelectedSets);
     if UseMeanTmpl == 0
-        SortedBy = AllEEG(SelectedSets(1)).msinfo.MSMaps(par.nClasses).SortedBy;
 
+        % First check if any datasets remain unsorted
+        SortModes = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(par.nClasses).SortMode, SelectedSets, 'UniformOutput', false);
+        if any(strcmp(SortModes, 'none'))
+            warningMessage = ['Some datasets remain unsorted. ' ...
+                'Would you like to resort all sets according to the same template ' ...
+                 'before proceeding?'];
+
+            PublishedTemplateNames = {MSTEMPLATE.setname};
+            MeanSetNames = {AllEEG(nonemptyMean).setname};
+            CombinedSetNames = [PublishedTemplateNames MeanSetNames];
+
+            res = inputgui('title', 'Quantify microstates', ...
+                'geometry', {1 1 1 1 1 1}, 'uilist', { ...
+                { 'Style', 'text', 'string', warningMessage} ...
+                { 'Style', 'radiobutton', 'string', 'Yes', 'Value', 0} ...
+                { 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'  } ...
+                { 'Style', 'popupmenu', 'string', CombinedSetNames,'tag','TemplateName' } ...
+                { 'Style', 'radiobutton', 'string', 'No', 'Value', 0} ...
+                { 'Style', 'checkbox', 'string', 'Do not ask me again', 'Value', 0} });
+            
+            if isempty(res); return; end 
+            if (res{4})
+                showMessage = 0;
+            end
+            if (res{1})
+                TemplateIndex = res{2};
+                if TemplateIndex <= numel(PublishedTemplateNames)
+                    TemplateName = PublishedTemplateNames(TemplateIndex);
+                    [SelectedEEG, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, 0, -1, TemplateName, 1);
+                else
+                    TemplateName = MeanSetNames(TemplateIndex - numel(PublishedTemplateNames));
+                    [SelectedEEG, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, 0, [], TemplateName, 1);
+                end
+            end
+        end
+
+        % Then check if there is inconsistency in sorting across datasets
+        SortedBy = AllEEG(SelectedSets(1)).msinfo.MSMaps(par.nClasses).SortedBy;
         for i=1:numel(SelectedSets)
+
             if ~strcmp(SortedBy, AllEEG(SelectedSets(i)).msinfo.MSMaps(par.nClasses).SortedBy)
                 warningMessage = ['Sorting information differs across datasets. ' ...
                     'Would you like to resort all sets according to the same template ' ...
@@ -451,7 +489,7 @@ function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
 
     % Generate output file
     idx = 1;
-    if nargin < 6
+    if isempty(FileName)
         [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.csv','Text file for R'},'Save microstate statistics');
         FileName = fullfile(PName,FName);
     else
