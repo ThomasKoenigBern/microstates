@@ -194,6 +194,9 @@ function [AllEEG, TheEEG, com] = pop_GetMSDynamics(AllEEG,TheEEG,UseMean,FitPar,
     end
     TheEEG.chanlocs = chanlocs;
     TheEEG.data = newEEG;
+    % Add field to indicate the set contains dynamics data, not voltage
+    % data
+    TheEEG.msinfo.Dynamics = true;
 
     if ~UseMean
         com = sprintf('[AllEEG EEG com] = pop_GetMSDynamics(%s, %s, 0, %s);'    , inputname(1), inputname(2),struct2String(FitPar));

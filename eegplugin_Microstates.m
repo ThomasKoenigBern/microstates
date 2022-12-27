@@ -137,7 +137,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     MSTEMPLATE = MSTemplate;
     showMessage = 1;
     
-    comFindMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_FindMSTemplates(ALLEEG,[]);'                         catch_strings.store_and_hist]; % ok
+    comFindMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_FindMSTemplates(ALLEEG);'                         catch_strings.store_and_hist]; % ok
     comCombineMSTemplates  = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,false);'           catch_strings.new_and_hist];
     comCombineMSMeans      = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,true );'           catch_strings.new_and_hist];
     comSortMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],false);'                   catch_strings.store_and_hist];
@@ -178,7 +178,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 
     % create menus if necessary
     % -------------------------
-    uimenu( toolssubmenu, 'Label', 'Identify  microstate  maps'                            , 'CallBack', comFindMSTemplates,    'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Identify microstate  maps'                            , 'CallBack', comFindMSTemplates,    'userdata', 'study:on');
 
     uimenu( toolssubmenu, 'Label', 'Compute mean microstate maps across individuals'       , 'CallBack', comCombineMSTemplates, 'userdata', 'study:on','Separator','on');
     uimenu( toolssubmenu, 'Label', 'Compute grand mean microstate maps across means'       , 'CallBack', comCombineMSMeans,     'userdata', 'study:on');
