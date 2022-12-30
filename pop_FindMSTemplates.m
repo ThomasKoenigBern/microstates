@@ -112,7 +112,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     addOptional(p, 'ClustPar', []);
     addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'ShowDyn', false, @(x) validateattributes(x, logClass, logAttributes));
-    addParameter(p, 'TemplateSet', [], @(x) validateattributes(x, {'char', 'string'}, {}));
+    addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
 
     parse(p, AllEEG, varargin{:});
 
@@ -123,13 +123,13 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     TemplateSet = p.Results.TemplateSet;
 
     %% SelectedSets validation
-    setNums = 1:numel(AllEEG);
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableSets = setNums(and(and(~HasChildren, ~HasDyn), ~isEmpty));
+    AvailableSets = find(and(and(~HasChildren, ~HasDyn), ~isEmpty));
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for clustering found.'], 'Identify microstates');
+        errordlg2(['No valid sets for clustering found.'], 'Identify microstates error');
+        return;
     end
 
     % If the user has provided sets, check their validity
@@ -141,7 +141,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             invalidSetsTxt = invalidSetsTxt(1:end-2);
             errorMessage = ['The following sets cannot be clustered: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, mean sets, or dynamics sets.'];
-            errordlg2(errorMessage, 'Identify microstates');
+            errordlg2(errorMessage, 'Identify microstates error');
             return;
         end
     % Otherwise, add set selection gui elements
@@ -149,7 +149,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), CurrentSet);
         HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), CurrentSet);
         isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), CurrentSet);
-        validCurrentSets = CurrentSet(and(and(~HasChildren, ~HasDyn), ~isEmpty));
+        validCurrentSets = CurrentSet(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), CurrentSet <= numel(AllEEG)));
         defaultSets = find(ismember(AvailableSets, validCurrentSets));
 
         AvailableSetnames = {AllEEG(AvailableSets).setname};
@@ -236,45 +236,45 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     end
 
     %% Add other options as gui elements if they were not provided
-    if ~isempty(p.UsingDefaults)
+    % (Only display in GUI if other cluster parameters are already being
+    % displayed, otherwise use defaults)
+    if ~isempty(p.UsingDefaults) && ~isempty(ClustParDefaults)
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Additional options', 'fontweight', 'bold'}}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
-    end
 
-    if contains('ShowMaps', p.UsingDefaults)
-        guiElements = [guiElements ...
-            {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
-        guiGeom = [guiGeom 1];
-        guiGeomV = [guiGeomV 1];
-    end
-
-    if contains('ShowDyn', p.UsingDefaults)
-        guiElements = [guiElements ...
-            {{ 'Style', 'checkbox', 'string','Show dynamics when done','tag','ShowDyn','Value', ShowDyn }}];
-        guiGeom = [guiGeom 1];
-        guiGeomV = [guiGeomV 1];
+        if contains('ShowMaps', p.UsingDefaults)
+            guiElements = [guiElements ...
+                {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
+            guiGeom = [guiGeom 1];
+            guiGeomV = [guiGeomV 1];
+        end
+    
+        if contains('ShowDyn', p.UsingDefaults)
+            guiElements = [guiElements ...
+                {{ 'Style', 'checkbox', 'string','Show dynamics when done','tag','ShowDyn','Value', ShowDyn }}];
+            guiGeom = [guiGeom 1];
+            guiGeomV = [guiGeomV 1];
+        end
     end
 
     %% TemplateSet validation
     TemplateNames = {MSTEMPLATE.setname};
-    TemplateIndex = 1;
     % If the user has provided a template set name, check its validity
     if ~isempty(TemplateSet)
         if (~any(matches(TemplateNames, TemplateSet)))
-            errorMessage = sprintf(['The specified template for sorting %s could not be found in the microstates/Templates ' ...
-                'folder. Please add the template to the folder before using it for sorting.'], TemplateSet);
-            errordlg2([errorMessage],'Identify microstate classes');
+            errorMessage = sprintf(['The specified template "%s" could not be found in the microstates/Templates ' ...
+                'folder. Please add the template to the folder.'], TemplateSet);
+            errordlg2([errorMessage],'Identify microstates error');
             return;
-        else
-            TemplateIndex = find(matches(TemplateNames, TemplateSet));
         end
     % Otherwise, add sorting template set selection gui elements
-    else
+    % (only if some cluster parameters are already being displayed)
+    elseif ~isempty(ClustParDefaults)
         guiElements = [guiElements ...
             {{ 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'SortMaps', 'Value', ~isempty(TemplateSet) }} ...
-            {{ 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', TemplateIndex}}];
+            {{ 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', 1}}];
         guiGeom = [guiGeom 1 1];
         guiGeomV = [guiGeomV 1 1];
     end
@@ -322,8 +322,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         end
         if isfield(outstruct, 'SortMaps')
             if(outstruct.SortMaps)
-                TemplateIndex = outstruct.TemplateIndex;
-                TemplateSet = TemplateNames(TemplateIndex);
+                TemplateSet = TemplateNames{outstruct.TemplateIndex};
             end
         end
     end
@@ -437,10 +436,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     
     %% Command string generation
     structInfo = sprintf('struct(''MinClasses'', %i, ''MaxClasses'', %i, ''GFPPeaks'', %i, ''IgnorePolarity'', %i, ''MaxMaps'', %i, ''Restarts'', %i, ''UseAAHC'', %i, ''Normalize'', %i)',ClustPar.MinClasses, ClustPar.MaxClasses, ClustPar.GFPPeaks, ClustPar.IgnorePolarity, ClustPar.MaxMaps, ClustPar.Restarts, ClustPar.UseAAHC, ClustPar.Normalize);
-    if isempty(TemplateSet)
-        TemplateSet = '[]';
-    end
-    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, %s, ''ShowMaps'', %i, ''ShowDyn'', %i, ''TemplateSet'', %s',  inputname(1), mat2str(SelectedSets), structInfo, ShowMaps, ShowDyn, TemplateSet);
+    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, %s, ''ShowMaps'', %i, ''ShowDyn'', %i, ''TemplateSet'', ''%s'')',  inputname(1), mat2str(SelectedSets), structInfo, ShowMaps, ShowDyn, TemplateSet);
 end
 
 function [ClustPar, UsingDefaults] = checkClustPar(varargin)
