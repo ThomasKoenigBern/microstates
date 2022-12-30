@@ -141,10 +141,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     
     comFindMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_FindMSTemplates(ALLEEG);'                         catch_strings.store_and_hist]; % ok
     comCombineMSTemplates  = [try_strings.no_check '[EEG LASTCOM] = pop_CombMSTemplates(ALLEEG);'                                   catch_strings.new_and_hist];
-    comSortMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],false);'                   catch_strings.store_and_hist];
-    comSortMSMeans         = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],true) ;'                   catch_strings.store_and_hist];
-    comSortMSTemplatesT    = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],false,-1);'                catch_strings.store_and_hist];
-    comSortMSMeansT        = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],true, -1) ;'               catch_strings.store_and_hist];
+    comSortMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
         
     comGetIndMSDynamics    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,false);'                    catch_strings.new_and_hist];
     comGetMeanMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true);'                     catch_strings.new_and_hist];
@@ -185,12 +182,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 
     uimenu( toolssubmenu, 'label', 'Edit & sort microstate maps'                           , 'CallBack', comEditIndMSMaps,      'Separator','on');
 
-    uimenu( toolssubmenu, 'Label', 'Sort individual microstate maps according to mean'     , 'CallBack', comSortMSTemplates,    'userdata', 'study:on','Separator','on');
-    uimenu(toolssubmenu, 'label',  'Sort individual microstate maps according to published template' , 'CallBack', comSortMSTemplatesT,'userdata', 'study:on');
-
-    uimenu( toolssubmenu, 'Label', 'Sort mean microstate maps according to a grand mean'    , 'CallBack', comSortMSMeans    , 'userdata', 'study:on','Separator','on');    
-    uimenu(toolssubmenu, 'label',  'Sort mean microstate maps according to published template'       , 'CallBack', comSortMSMeansT, 'userdata', 'study:on');
-
+    uimenu( toolssubmenu, 'Label', 'Sort microstate maps'                               , 'CallBack', comSortMSTemplates,    'userdata', 'study:on','Separator','on');
+    
     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (own template maps)'  , 'CallBack'       , comGetIndMSDynamics    , 'Separator','on');
     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (mean template maps)' , 'CallBack'       , comGetMeanMSDynamics);
     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (published template maps)' , 'CallBack'  , comGetTMplMSDynamics);

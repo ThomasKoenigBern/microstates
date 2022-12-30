@@ -105,7 +105,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     p.StructExpand = false;         % do not expand ClustPar struct input into key, value args
     
     logClass = {'logical', 'numeric'};
-    logAttributes = {'binary', 'size', [1, 1]};
+    logAttributes = {'binary', 'scalar'};
     
     addRequired(p, 'AllEEG');
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -263,7 +263,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     TemplateNames = {MSTEMPLATE.setname};
     % If the user has provided a template set name, check its validity
     if ~isempty(TemplateSet)
-        if (~any(matches(TemplateNames, TemplateSet)))
+        if ~matches(TemplateSet, TemplateNames)
             errorMessage = sprintf(['The specified template "%s" could not be found in the microstates/Templates ' ...
                 'folder. Please add the template to the folder.'], TemplateSet);
             errordlg2([errorMessage],'Identify microstates error');
@@ -325,6 +325,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
                 TemplateSet = TemplateNames{outstruct.TemplateIndex};
             end
         end
+    end
+
+    if numel(SelectedSets) < 1
+        errordlg2('You must select at least one set of microstate maps','Identify microstates');
+        return;
     end
 
     if ClustPar.UseAAHC && ClustPar.Normalize

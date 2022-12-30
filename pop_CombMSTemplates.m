@@ -79,7 +79,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     p.FunctionName = funcName;
     
     logClass = {'logical', 'numeric'};
-    logAttributes = {'binary', 'size', [1, 1]};
+    logAttributes = {'binary', 'scalar'};
 
     strClass = {'char', 'string'};
     strAttributes = {'scalartext'};
@@ -165,7 +165,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
             title = 'Compute mean maps';
             options = {'Mean maps across individuals', 'Grand mean maps across means'};
             selection = questionDialog(question, title, options);
-            if isempty(selection)
+            if isempty(selection) || strcmp(selection, 'Cancel')
                 return;
             else
                 pickIndSets = strcmp(selection, 'Mean maps across individuals');
@@ -187,7 +187,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         defaultSets = find(ismember(AvailableSets, validCurrentSets));        
         
         guiElements = [guiElements, ....
-                    {{ 'Style', 'text'    , 'string', 'Choose sets for clustering'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Choose sets to combine'}} ...
                     {{ 'Style', 'text'    , 'string', 'Use ctrlshift for multiple selection'}} ...
                     {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
         guiGeom  = [guiGeom  1 1 1];
@@ -226,7 +226,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     TemplateIndex = 1;
     % If the user has provided a template set name, check its validity
     if ~isempty(TemplateSet)
-        if (~any(matches(TemplateNames, TemplateSet)))
+        if ~matches(TemplateSet, TemplateNames)
             errorMessage = sprintf(['The specified template "%s" could not be found in the microstates/Templates ' ...
                 'folder. Please add the template to the folder.'], TemplateSet);
             errordlg2([errorMessage],'Compute mean maps error');
@@ -376,16 +376,12 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
             if numel(TemplateClasses) > 1
                 % The chosen template has the same number of maps as the
                 % current number
-                if any(n == TemplateClasses)
-                    TemplateClassesToUse = n;
+                if n < min(TemplateClasses)
+                    TemplateClassesToUse = min(TemplateClasses);
+                elseif n > max(TemplateClasses)
+                    TemplateClassesToUse = max(TemplateClasses);
                 else
-                    % First try to get the closest larger number
-                    if any(TemplateClasses > n)
-                        TemplateClasses = sort(TemplateClasses(TemplateClasses > n));
-                        TemplateClassesToUse = TemplateClasses(1);
-                    else
-                        TemplateClassesToUse = TemplateClasses(end);
-                    end
+                    TemplateClassesToUse = n;
                 end
             % The chosen template has only one cluster solution
             else
@@ -479,21 +475,3 @@ function Answer = DoesItHaveChildren(in)
         Answer = true;
     end
 end
-
-% Performs element-wise computation of abs(spatial correlation) or 
-% spatial correlation between matrices A and B
-function corr = elementCorr(A,B, IgnorePolarity)
-    % average reference
-    A = A - mean(A, 1);
-    B = B - mean(B, 1);
-
-    % get correlation
-    A = A./sqrt(sum(A.^2, 1));
-    B = B./sqrt(sum(B.^2, 1));           
-    if (IgnorePolarity) 
-        corr = abs(sum(A.*B, 1));
-    else 
-        corr = sum(A.*B, 1);
-    end
-end
-
