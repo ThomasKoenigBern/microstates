@@ -59,26 +59,37 @@ function [CellArray, success,err] = SaveStructToTable(dat,FileName, Delimiter,La
                 end
                 idx = idx + x1;
             else
+                tmpIdx = 0;
                 for j = 1:x1
                     for k = 1:x2
-                        if isempty(Labels)
-                            outnames{idx+x2 * (j-1) + k -1} = sprintf('%s_%i->%i',names{i},j,k);
-                        else
-                            outnames{idx+x2 * (j-1) + k -1} = sprintf('%s_%s->%s',names{i},Labels{j},Labels{k});
+                        if j == k
+                            continue;
                         end
-                        CellArray{1,idx+x2 * (j-1) + k -1} = outnames{idx+x2 * (j-1) + k -1};
+                        if isempty(Labels)
+                            outnames{idx+tmpIdx} = sprintf('%s_%i->%i',names{i},j,k);
+                        else
+                            outnames{idx+tmpIdx} = sprintf('%s_%s->%s',names{i},Labels{j},Labels{k});
+                        end
+                        CellArray{1,idx+tmpIdx} = outnames{idx+tmpIdx};
+                        tmpIdx = tmpIdx + 1;
                     end
                 end
                
                 for n = 1:nObs
-                    tmp = dat(n).(names{i})'; 
-                    tmp = tmp(:);
-                    for j = 1:numel(tmp)
-                       outfields{n,idx+j-1} = tmp(j);
-                       CellArray{n+1,idx+j-1} = tmp(j);
+                    tmpIdx = 0;
+                    tmp = dat(n).(names{i}); 
+                    for j = 1:x1
+                        for k = 1:x2
+                            if j == k
+                                continue;
+                            end
+                            outfields{n,idx+tmpIdx} = tmp(j,k);
+                            CellArray{n+1,idx+tmpIdx} = tmp(j,k);
+                            tmpIdx = tmpIdx + 1;
+                        end
                     end
                 end
-                idx = idx + numel(tmp);
+                idx = idx + tmpIdx;
             end
         end    
     end

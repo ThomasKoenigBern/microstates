@@ -145,7 +145,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         if indSelected && meanSelected && guiOpts.showCombWarning
             warningMessage = ['Both individual sets and mean sets have been selected. ' ...
                 'Are you sure you would like to proceed?'];
-            [yesPressed, boxChecked] = warningDialog(warningMessage, 'Compute mean maps warning');
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compute mean maps warning');
             if boxChecked;  guiOpts.showCombWarning = false;    end
             if ~yesPressed; return;                             end
         end
@@ -173,19 +173,14 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         end
 
         % Add appropriate gui elements
-        HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), CurrentSet);
-        HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), CurrentSet);
-        isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), CurrentSet);
         if pickIndSets
             AvailableSets = indSets;            
-            validCurrentSets = CurrentSet(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), CurrentSet <= numel(AllEEG)));
         else
             AvailableSets = meanSets;
-            validCurrentSets = CurrentSet(and(and(and(HasChildren, ~HasDyn), ~isEmpty), CurrentSet <= numel(AllEEG)));
         end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
-        defaultSets = find(ismember(AvailableSets, validCurrentSets));        
-        
+        defaultSets = find(ismember(AvailableSets, CurrentSet));
+        if isempty(defaultSets);    defaultSets = 1;    end
         guiElements = [guiElements, ....
                     {{ 'Style', 'text'    , 'string', 'Choose sets to combine'}} ...
                     {{ 'Style', 'text'    , 'string', 'Use ctrlshift for multiple selection'}} ...
@@ -210,8 +205,8 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         guiGeomV = [guiGeomV 1];
     end
 
-    % Only add the option to show maps if other gui elements are already
-    % being shown, otherwise use the defaults
+    % Only add the option to show maps and sort when done if other gui 
+    % elements are already being shown, otherwise use the defaults
     if any(contains({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
         if contains('ShowMaps', p.UsingDefaults)
             guiElements = [guiElements ...
@@ -219,29 +214,15 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
         end
-    end
 
-    %% TemplateSet validation
-    TemplateNames = {MSTEMPLATE.setname};
-    TemplateIndex = 1;
-    % If the user has provided a template set name, check its validity
-    if ~isempty(TemplateSet)
-        if ~matches(TemplateSet, TemplateNames)
-            errorMessage = sprintf(['The specified template "%s" could not be found in the microstates/Templates ' ...
-                'folder. Please add the template to the folder.'], TemplateSet);
-            errordlg2([errorMessage],'Compute mean maps error');
-            return;
-        else
-            TemplateIndex = find(matches(TemplateNames, TemplateSet));
+        if contains('TemplateSet', p.UsingDefaults)
+            TemplateNames = {MSTEMPLATE.setname};
+            guiElements = [guiElements ...
+                {{ 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'SortMaps', 'Value', ~isempty(TemplateSet) }} ...
+                {{ 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', 1}}];
+            guiGeom = [guiGeom 1 1];
+            guiGeomV = [guiGeomV 1 1];
         end
-    % Otherwise, add sorting template set selection gui elements
-    % (only if some cluster parameters are already being displayed)
-    elseif any(contains({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
-        guiElements = [guiElements ...
-            {{ 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'SortMaps', 'Value', ~isempty(TemplateSet) }} ...
-            {{ 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', TemplateIndex}}];
-        guiGeom = [guiGeom 1 1];
-        guiGeomV = [guiGeomV 1 1];
     end
 
     %% Prompt user to fill in remaining parameters if necessary
@@ -276,7 +257,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     end
 
     if numel(SelectedSets) < 2
-        errordlg2('You must select at least two sets of microstate maps','Combine microstate maps');
+        errordlg2('You must select at least two sets of microstate maps','Combine microstate maps error');
         return;
     end
 
@@ -363,61 +344,10 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Sorting
     if ~isempty(TemplateSet)
-        ChosenTemplate = MSTEMPLATE(TemplateIndex);
-        
-        % Find the cluster solutions that the chosen template has
-        TemplateClasses = find(~cellfun(@isempty,{ChosenTemplate.msinfo.MSMaps.Maps}));
-
-        for n = MinClasses:MaxClasses
-
-            % If there are multiple cluster solutions in the chosen
-            % template, use the cluster solution with the same or closest
-            % number of maps
-            if numel(TemplateClasses) > 1
-                % The chosen template has the same number of maps as the
-                % current number
-                if n < min(TemplateClasses)
-                    TemplateClassesToUse = min(TemplateClasses);
-                elseif n > max(TemplateClasses)
-                    TemplateClassesToUse = max(TemplateClasses);
-                else
-                    TemplateClassesToUse = n;
-                end
-            % The chosen template has only one cluster solution
-            else
-                TemplateClassesToUse = TemplateClasses;
-            end
-
-            % compare number of channels in mean set and template set -
-            % convert whichever set has more channels to the channel
-            % locations of the other
-            MapsToSort = zeros(1, n, min(EEGout.nbchan, ChosenTemplate.nbchan));
-            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(EEGout.chanlocs,ChosenTemplate.chanlocs);
-            if EEGout.nbchan > ChosenTemplate.nbchan
-                MapsToSort(1,:,:) = EEGout.msinfo.MSMaps(n).Maps * LocalToGlobal';
-                TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps;
-            else
-                MapsToSort(1,:,:) = EEGout.msinfo.MSMaps(n).Maps;
-                TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
-            end
-
-            % Sort
-            [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,TemplateMaps,~IgnorePolarity);
-            EEGout.msinfo.MSMaps(n).Maps = EEGout.msinfo.MSMaps(n).Maps(SortOrder(SortOrder <= n),:);
-            EEGout.msinfo.MSMaps(n).Maps = EEGout.msinfo.MSMaps(n).Maps .* repmat(polarity',1,numel(EEGout.chanlocs));
-
-            % Update map labels and colors
-            [Labels,Colors] = UpdateMicrostateLabels(EEGout.msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,EEGout.msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
-            EEGout.msinfo.MSMaps(n).Labels = Labels;
-            EEGout.msinfo.MSMaps(n).ColorMap = Colors;
-
-            EEGout.msinfo.MSMaps(n).SortMode = 'template based';
-            EEGout.msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
-            EEGout.msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation;
-            EEGout.saved = 'no';
-        end
+        EEGout = pop_SortMSTemplates(EEGout, 1, 'IgnorePolarity', IgnorePolarity, 'TemplateSet', TemplateSet);
     end
 
+    %% Show maps
     if ShowMaps
         pop_ShowIndMSMaps(EEGout, nan, 0, AllEEG);
     end
@@ -439,7 +369,7 @@ function hasDyn = isDynamicsSet(in)
     end
     
     % check if set is a dynamics set
-    if ~isfield(in.msinfo, 'Dynamics')
+    if ~isfield(in.msinfo, 'DynamicsInfo')
         return;
     else
         hasDyn = true;

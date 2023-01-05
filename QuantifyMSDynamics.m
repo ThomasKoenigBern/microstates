@@ -43,7 +43,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate)
+function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateMode, IndGEVs, SingleEpochFileTemplate)
     if nargin < 9
         SingleEpochFileTemplate = [];
     end
@@ -56,23 +56,6 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
     res.Subject      = DataInfo.subject;
     res.Group        = DataInfo.group;
     res.Condition    = DataInfo.condition;
-    
-    % Set template and sorting information
-    if isempty(TemplateName)
-        res.Template = '<<own>>';
-    else
-        res.Template = TemplateName;
-    end
-
-    if isfield(info,'MSMaps')
-        res.SortInfo = info.MSMaps(info.FitPar.nClasses).SortedBy;
-    else
-        res.SortInfo = 'NA';
-    end
-    
-    % Get individual and total GEV values
-    res.IndGEVs = IndGEVs;
-    res.TotalGEV = sum(IndGEVs);  
 
     % Compute temporal dynamics
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
@@ -140,8 +123,13 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
         end
     end
 
-    % Add temporal dynamics to result
     res.TotalTime = sum(eTotalTime);
+
+    % Add individual and total GEV values
+    res.TotalExpVar = sum(IndGEVs);  
+    res.IndExpVar = IndGEVs;
+
+    % Add temporal dynamics
     res.Duration     = mynanmean(eDuration,3);
     res.MeanDuration = mynanmean(eMeanDuration,2);
     
@@ -160,12 +148,12 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
 
     % if quantifying by own maps, include spatial correlations between
     % individual maps and the template maps they were sorted by
-    if isempty(TemplateName)
-        for i=1:info.FitPar.nClasses
-            templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
-            res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
-            spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
-            res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
+    if strcmp(TemplateMode, 'own')
+        res.TemplateLabel = info.MSMaps(info.FitPar.nClasses).Labels;
+        if ~isempty(info.MSMaps(info.FitPar.nClasses).SpatialCorrelation)
+            res.SpCorr = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation;
+        else
+            res.SpCorr = repmat({'None'}, 1, info.FitPar.nClasses);
         end
     end
     

@@ -26,12 +26,12 @@
 %   template. If you want to use a normative template in a script, either load the
 %   dataset with the normative template first and than make this the
 %   TemplateSet that you use for sorting, or set "TemplateSet" to -1 and 
-%   provide the name of the normative template as the "TemplateName" input.
+%   provide the name of the normative template as the "TemplateSet" input.
 %   If the template set is an EEG structure, or an array of EEG structures,
 %   these will be used. If a template set index is not provided or an empty
 %   array is passed in, the user will be prompted to select a template set.
 % 
-%   "TemplateName" (added by Delara 8/16/22)
+%   "TemplateSet" (added by Delara 8/16/22)
 %   -> Name of published template or mean map setname that should be used 
 %   for sorting. Can also be used to specify the setname of the mean set 
 %   used to sort. Will be used if TemplateSet is empty or -1. If 
@@ -97,6 +97,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
+    addParameter(p, 'ClassRange', []);
 
     parse(p, AllEEG, varargin{:});
 
@@ -109,6 +110,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     SelectedSets = p.Results.SelectedSets;
     IgnorePolarity = p.Results.IgnorePolarity;
     TemplateSet = p.Results.TemplateSet;
+    ClassRange = p.Results.ClassRange;
 
     %% SelectedSets validation
     % First make sure there are valid sets for sorting
@@ -124,7 +126,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
 
     % If the user has provided sets, check their validity
     if ~isempty(SelectedSets)
-        % First check for empty sets, dynamics sets, or any sets without
+        % Check for empty sets, dynamics sets, or any sets without
         % microstate maps
         SelectedSets = unique(SelectedSets);
         isValid = ismember(SelectedSets, AvailableSets);
@@ -139,11 +141,8 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         end
     % Otherwise, add set selection gui elements
     else
-        HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), CurrentSet);
-        isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), CurrentSet);
-        validCurrentSets = CurrentSet(and(and(~isEmpty, ~HasDyn), CurrentSet <= numel(AllEEG)));
-        defaultSets = find(ismember(AvailableSets, validCurrentSets));
-
+        defaultSets = find(ismember(AvailableSets, CurrentSet));
+        if isempty(defaultSets);    defaultSets = 1;    end        
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         guiElements = [guiElements, ....
                     {{ 'Style', 'text'    , 'string', 'Choose sets for sorting'}} ...
@@ -173,6 +172,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
                 return;
             else
                 TemplateIndex = find(ismember(meanSets, TemplateSet));
+                TemplateName = meanSetnames{TemplateIndex};
             end
         % Else if the template set is a string, make sure it matches one of
         % the mean setnames or published template setnames
@@ -187,12 +187,13 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
                     return;
                 else
                     TemplateIndex = find(matches(meanSetnames, TemplateSet));
-                    TemplateName = meanSetnames{TemplateIndex};
+                    TemplateName = TemplateSet;
+                    TemplateSet = meanSets(TemplateIndex);
                 end
             elseif matches(TemplateSet, publishedSetnames)
                 usingPublished = true;
                 TemplateIndex = find(matches(publishedSetnames, TemplateSet));
-                TemplateName = publishedSetnames{TemplateIndex};
+                TemplateName = TemplateSet;
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
                     'mean sets or in the microstates/Templates folder.'], TemplateSet);
@@ -233,10 +234,11 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         if isfield(outstruct, 'TemplateIndex')
             if outstruct.TemplateIndex <= numel(meanSetnames)
                 TemplateIndex = outstruct.TemplateIndex;
+                TemplateSet = meanSets(TemplateIndex);
                 TemplateName = meanSetnames{TemplateIndex};
             else
                 TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames);
-                TemplateName = publishedSetnames{TemplateIndex};
+                TemplateSet = publishedSetnames{TemplateIndex};
                 usingPublished = true;
             end
         end
@@ -247,7 +249,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     end
 
     if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Sort microstate classes');
+        errordlg2('You must select at least one set of microstate maps','Sort microstate maps error');
         return;
     end
 
@@ -282,22 +284,24 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
             warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
                 'the following sets: %s. Are you sure you would like to proceed?'], ...
                 TemplateName, txt);
-            [yesPressed, boxChecked] = warningDialog(warningMessage, 'Sort microstate maps warning');
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Sort microstate maps warning');
             if boxChecked;  guiOpts.showSortWarning = false;    end
             if ~yesPressed; return;                             end
         end
     end
 
     %% Sorting
-
     TemplateMinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
     TemplateMaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     AllMinClasses = [TemplateMinClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets)];
     AllMaxClasses = [TemplateMaxClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets)];
-    MinClasses = min(AllMinClasses);
-    MaxClasses = max(AllMaxClasses);
-
-    [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
+    if isempty(ClassRange)
+        MinClasses = min(AllMinClasses);
+        MaxClasses = max(AllMaxClasses);
+    else
+        MinClasses = min(ClassRange);
+        MaxClasses = max(ClassRange);
+    end
 
     for index = 1:length(SelectedSets)
         fprintf('Sorting dataset %i of %i\n', index, numel(SelectedSets));
@@ -326,6 +330,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
             % convert whichever set has more channels to the channel
             % locations of the other
             MapsToSort = zeros(1, n, min(AllEEG(sIndex).nbchan, ChosenTemplate.nbchan));
+            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
             if AllEEG(sIndex).nbchan > ChosenTemplate.nbchan
                 MapsToSort(1,:,:) = AllEEG(sIndex).msinfo.MSMaps(n).Maps * LocalToGlobal';
                 TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps;
@@ -360,7 +365,11 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     CurrentSet = SelectedSets;
 
     %% Command string generation
-    com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateName);
+    if ischar(TemplateSet) || isstring(TemplateSet)
+        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet);
+    elseif isnumeric(TemplateSet)
+        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', %i)', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet);
+    end        
 end
 
 function isEmpty = isEmptySet(in)
@@ -376,7 +385,7 @@ function hasDyn = isDynamicsSet(in)
     end
     
     % check if set is a dynamics set
-    if ~isfield(in.msinfo, 'Dynamics')
+    if ~isfield(in.msinfo, 'DynamicsInfo')
         return;
     else
         hasDyn = true;
