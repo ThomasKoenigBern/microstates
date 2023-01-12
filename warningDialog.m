@@ -20,41 +20,31 @@ function [yesPressed, noPressed, boxChecked] = warningDialog(msg, title)
     noPressed = false;
     boxChecked = false;
 
-    warnDlg = uifigure('Name', title);
+    warnDlg = figure("Name", title, "MenuBar", "none", "ToolBar", "none", ...
+        "NumberTitle", "off", "WindowStyle", "modal", "Color", [.66 .76 1]);
     warnDlg.Position(3:4) = [500 250];
     warnDlg.UserData.yesPressed = yesPressed;
     warnDlg.UserData.noPressed = noPressed;
     warnDlg.CloseRequestFcn = 'uiresume()';
-    grid1 = uigridlayout(warnDlg, [3 1]);
-    grid1.RowHeight = {'1x', 50, 40};
-    grid1.BackgroundColor = [.66 .76 1];        % match EEGLAB background color
-    grid1.Padding = [30 10 30 10];
-    
-    warningLabel = uilabel(grid1, 'Text', msg, 'WordWrap', 'on');
-    warningLabel.FontSize = 14;
-    
-    grid2 = uigridlayout(grid1, [1 4]);
-    grid2.ColumnWidth = {'1x', 90, 90, '1x'};
-    grid2.BackgroundColor = [.66 .76 1];        % match EEGLAB background color
-    grid2.ColumnSpacing = 30;
-   
-    yesBtn = uibutton(grid2, 'Text', 'Yes', 'ButtonPushedFcn', {@btnPressed, warnDlg});
-    yesBtn.Layout.Column = 2;
-    noBtn = uibutton(grid2, 'Text', 'No','ButtonPushedFcn', {@btnPressed, warnDlg});
-    noBtn.Layout.Column = 3;
 
-    grid3 = uigridlayout(grid1, [1 3]);
-    grid3.ColumnWidth = {'1x', 220, '1x'};
-    grid3.BackgroundColor = [.66 .76 1];        % match EEGLAB background color
-    showMessageBox = uicheckbox(grid3, 'Text', 'Do not show this message again');
-    showMessageBox.Layout.Column = 2;
-    showMessageBox.FontSize = 14;
+    warningLabel = uicontrol("Style", "text", "Units", "normalized", ...
+        "Position", [0.05 0.4 0.9 0.5], "String", msg, "FontSize", 12, "Parent", warnDlg, ...
+        "BackgroundColor", [.66 .76 1]);
+    yesBtn = uicontrol("Style", "pushbutton", "String", "Yes", ...
+        "Callback", {@btnPressed, warnDlg}, "Units", "normalized", ...
+        "Position", [0.25 0.2 0.2 0.12], "FontSize", 12, "Parent", warnDlg);
+    noBtn = uicontrol("Style", "pushbutton", "String", "No", ...
+        "Callback", {@btnPressed, warnDlg}, "Units", "normalized", ...
+        "Position", [0.55 0.2 0.2 0.12], "FontSize", 12, "Parent", warnDlg);
+    showMessageBox = uicontrol("Style", "checkbox", "String", "Do not show this message again", ...
+        "Units", "normalized", "Position", [0.25 0.05 0.5 0.12], "FontSize", 12, "Value", 0, ...
+        "Parent", warnDlg, "BackgroundColor", [.66 .76 1]);
 
     if exist('beep') == 5
 	    beep;
     end
 
-    uiwait();
+    uiwait(warnDlg);
 
     yesPressed = warnDlg.UserData.yesPressed;
     noPressed = warnDlg.UserData.noPressed;
@@ -63,11 +53,11 @@ function [yesPressed, noPressed, boxChecked] = warningDialog(msg, title)
     delete(warnDlg);
     
     function btnPressed(src, event, fig)
-        if strcmp(src.Text, 'Yes')
+        if strcmp(src.String, 'Yes')
             fig.UserData.yesPressed = true;
-        elseif strcmp(src.Text, 'No')
+        elseif strcmp(src.String, 'No')
             fig.UserData.noPressed = true;
         end
-        uiresume();
+        uiresume(warnDlg);
     end
 end

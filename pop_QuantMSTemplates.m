@@ -98,12 +98,12 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     p.FunctionName = funcName;
     p.StructExpand = false;         % do not expand FitPar struct input into key, value args
 
-    addRequired(p, 'AllEEG');
+    addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'FitPar', []);
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
     addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
-    addParameter(p, 'gui', true, @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
+    addParameter(p, 'gui', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
     
     parse(p, AllEEG, varargin{:});
 
@@ -222,6 +222,15 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
 
     %% Prompt user to choose SelectedSets and TemplateSet if necessary
     if ~isempty(guiElements)
+        % If gui is being displayed, add option to show/hide GUI
+        if contains('gui', p.UsingDefaults)
+            guiElements = [guiElements ...
+                {{ 'Style', 'text', 'string', ''}} ...
+                {{ 'Style', 'checkbox', 'string','Show data visualizations','tag','showGUI','Value', showGUI}}];
+            guiGeom = [guiGeom 1 1];
+            guiGeomV = [guiGeomV 1 1];
+        end
+
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Quantify microstates');
 
@@ -234,6 +243,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         if isfield(outstruct, 'TemplateIndex')
             if outstruct.TemplateIndex == 1
                 TemplateMode = 'own';
+                TemplateSet = 'own';
             elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
                 TemplateMode = 'mean';
                 TemplateIndex = outstruct.TemplateIndex - 1;
@@ -245,6 +255,10 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
                 TemplateSet = publishedSetnames{TemplateIndex};
                 TemplateName = TemplateSet;
             end
+        end
+
+        if isfield(outstruct, 'showGUI')
+            showGUI = outstruct.showGUI;
         end
     end
 
@@ -359,6 +373,8 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         DataInfo.condition = SelectedEEG(s).condition;
         DataInfo.setname   = SelectedEEG(s).setname;
 
+        SelectedEEG(s).msinfo.FitPar = FitPar;
+
         if strcmp(TemplateMode, 'own')
             msinfo = SelectedEEG(s).msinfo;
         else
@@ -366,11 +382,10 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         end
         Maps = NormDimL2(msinfo.MSMaps(FitPar.nClasses).Maps, 2);
         
-        SelectedEEG(s).msinfo.FitPar = FitPar;
         if strcmp(TemplateMode, 'own')
             [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar,msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateMode, IndGEVs, SingleEpochFileTemplate);
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, [], IndGEVs, SingleEpochFileTemplate);
             end
         else
             [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(SelectedEEG(s).chanlocs,ChosenTemplate.chanlocs);
@@ -382,10 +397,10 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
                 [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar, msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
             else
                 Maps = Maps*GlobalToLocal';
-                [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s), Maps, FitPar, msinfo.ClustPar.IgnorePolarity);
+                [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar, msinfo.ClustPar.IgnorePolarity);
             end
             if ~isempty(MSClass)
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateMode, IndGEVs, SingleEpochFileTemplate);
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate);
             end
         end
         SelectedEEG(s).msinfo.stats = MSStats(s);
@@ -408,13 +423,22 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             x = categorical(x, Labels);
         end
         
-        statsFig = uifigure('Name', figName);
-        statsFig.Position = [100 100 1350 600];
+        if isempty(FileName)
+            statsFig = figure('Name', figName, 'WindowStyle', 'modal', 'NumberTitle', 'off', ...
+            'Position', [100 100 1350 600]);
+            statsFig.CloseRequestFcn = 'uiresume();';
+            statsFig.UserData.FileName = '';
+            plotsPanel = uipanel(statsFig, 'Units', 'normalized', 'Position', [0 0.1 1 0.9]);
+            uicontrol('Style', 'pushbutton', 'String', 'Export microstate statistics', ...
+                'Units', 'normalized', 'Position', [.42 .02 .16 .06], ...
+                'Callback', {@outputStats, FileName, MSStats, Labels, statsFig});
+        else
+            statsFig = figure('Name', figName, 'NumberTitle', 'off', ...
+            'Position', [100 100 1350 600]);
+            plotsPanel = uipanel(statsFig, 'Units', 'normalized', ...
+                'Position', [0 0 1 1], 'BorderType', 'none');
+        end
         
-        grid = uigridlayout(statsFig, [2, 1]);
-        grid.RowHeight = {'1x', 50};
-        
-        plotsPanel = uipanel(grid);
         t = tiledlayout(plotsPanel, 2, 3);
         t.TileSpacing = 'tight';
         t.Padding = 'compact';
@@ -502,30 +526,42 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         end
         h2.XLabel = 'To';
         h2.YLabel = 'From';
-    
-        grid2 = uigridlayout(grid, [1 3]);
-        grid2.ColumnWidth = {'1x', 220, '1x'};
-        exportBtn = uibutton(grid2, 'Text', 'Export microstate statistics', 'ButtonPushedFcn', {@outputStats, FileName, MSStats, Labels});
-        exportBtn.Layout.Column = 2;
+
+        if isempty(FileName)
+            uiwait(statsFig);
+            FileName = statsFig.UserData.FileName;
+            delete(statsFig);
+        else
+            FileName = outputStats([], [], FileName, MSStats, Labels);
+        end
     else
         % Generate output file
-        outputStats([], [], FileName, MSStats, Labels);
+        FileName = outputStats([], [], FileName, MSStats, Labels);
     end
-    
+
     EEGout = SelectedEEG;
     CurrentSet = SelectedSets;
 
     if ischar(TemplateSet) || isstring(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', false)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName);
+        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
     elseif isnumeric(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', false)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName);
+        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
     end
 
 end
 
-function outputStats(src, event, FileName, MSStats, Labels)
+function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)
     if isempty(FileName)
         [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
+        if FName == 0
+            if nargin > 5
+                fig.UserData.FileName = 0;
+                return;
+            else
+                FileName = 0;
+                return;
+            end
+        end
         FileName = fullfile(PName,FName);
     else
         idx = 1;
@@ -555,6 +591,11 @@ function outputStats(src, event, FileName, MSStats, Labels)
             case 6
                 SaveStructToR(MSStats,FileName);
         end
+    end
+
+    if nargin > 5
+        src.Enable = 'off';
+        fig.UserData.FileName = FileName;
     end
 end
 

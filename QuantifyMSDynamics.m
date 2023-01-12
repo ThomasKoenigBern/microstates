@@ -43,7 +43,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateMode, IndGEVs, SingleEpochFileTemplate)
+function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate)
     if nargin < 9
         SingleEpochFileTemplate = [];
     end
@@ -148,13 +148,27 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
 
     % if quantifying by own maps, include spatial correlations between
     % individual maps and the template maps they were sorted by
-    if strcmp(TemplateMode, 'own')
-        res.TemplateLabel = info.MSMaps(info.FitPar.nClasses).Labels;
-        if ~isempty(info.MSMaps(info.FitPar.nClasses).SpatialCorrelation)
-            res.SpCorr = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation;
-        else
-            res.SpCorr = repmat({'None'}, 1, info.FitPar.nClasses);
+    if isempty(TemplateName)
+        for i=1:info.FitPar.nClasses
+            templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
+            res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
+            spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
+            res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
         end
+    end
+
+    % Set template and sorting information
+    if isempty(TemplateName)
+        res.FittingTemplate = '<<own>>';
+    else
+        res.FittingTemplate = TemplateName;
+
+    end
+
+    if ~isempty(info.MSMaps(info.FitPar.nClasses).SortedBy)
+        res.SortedBy = info.MSMaps(info.FitPar.nClasses).SortedBy;
+    else
+        res.SortedBy = 'N/A';
     end
     
     EpochData.Duration     = squeeze(eDuration);
