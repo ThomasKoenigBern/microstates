@@ -1,3 +1,5 @@
+% UPDATE DOCUMENTATION TO REFLECT KEY, VALUE PARAMETERS
+%
 %pop_SortMSTemplates() Reorder microstate maps based on a mean template
 %
 % Usage: >> [EEGOUT,CurrentSet,com] = pop_SortMSTemplates(AllEEG, SelectedSets, DoMeans, TemplateSet, IgnorePolarity, NClasses)
@@ -24,12 +26,12 @@
 %   template. If you want to use a normative template in a script, either load the
 %   dataset with the normative template first and than make this the
 %   TemplateSet that you use for sorting, or set "TemplateSet" to -1 and 
-%   provide the name of the normative template as the "TemplateName" input.
+%   provide the name of the normative template as the "TemplateSet" input.
 %   If the template set is an EEG structure, or an array of EEG structures,
 %   these will be used. If a template set index is not provided or an empty
 %   array is passed in, the user will be prompted to select a template set.
 % 
-%   "TemplateName" (added by Delara 8/16/22)
+%   "TemplateSet" (added by Delara 8/16/22)
 %   -> Name of published template or mean map setname that should be used 
 %   for sorting. Can also be used to specify the setname of the mean set 
 %   used to sort. Will be used if TemplateSet is empty or -1. If 
@@ -71,261 +73,236 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, DoMeans, TemplateSet, TemplateName, IgnorePolarity, NClasses)
-
-    %% Set default values for outputs and input parameters
-%    global EEG;
-%    global CURRENTSET;
-    global MSTEMPLATE;
-    global showMessage;
-    com = '';
-%    EEGOUT = EEG;
-%    CurrentSet = CURRENTSET;
-    EEGOUT = AllEEG(SelectedSets);
-    CurrentSet = SelectedSets;
-
-
-    if nargin < 2;  SelectedSets = [];          end
-    if nargin < 3;  DoMeans = false;            end
-    if nargin < 4;  TemplateSet = [];           end
-    if nargin < 5;  TemplateName = [];          end
-    if nargin < 6;  IgnorePolarity = true;      end 
-    if nargin < 7;  NClasses = [];              end
+function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     
-    nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
-    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG),'UniformOutput',true);
-    nonemptyInd  = nonempty(~HasChildren);
-    nonemptyMean = nonempty(HasChildren);
+    %% Set defaults for outputs
+    com = '';
+    global MSTEMPLATE;
+    global guiOpts;
+    global EEG;
+    global CURRENTSET;
+    EEGout = EEG;
+    CurrentSet = CURRENTSET;
 
-    %% Validate SelectedSets
-    if DoMeans 
-        AvailableSets = nonemptyMean;
+    guiElements = {};
+    guiGeom = {};
+    guiGeomV = [];
+
+    %% Parse inputs and perform initial validation
+    p = inputParser;
+    funcName = 'pop_SortMSTemplates';
+    p.FunctionName = funcName;
+    
+    addRequired(p, 'AllEEG');
+    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
+    addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
+    addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
+    addParameter(p, 'ClassRange', []);
+
+    parse(p, AllEEG, varargin{:});
+
+    if isnumeric(p.Results.TemplateSet)
+        validateattributes(p.Results.TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, funcName, 'TemplateSet');
     else
-        AvailableSets = nonemptyInd;
+        validateattributes(p.Results.TemplateSet, {'char', 'string'}, {'scalartext'});
     end
 
-    % Check if there are available sets to sort
+    SelectedSets = p.Results.SelectedSets;
+    IgnorePolarity = p.Results.IgnorePolarity;
+    TemplateSet = p.Results.TemplateSet;
+    ClassRange = p.Results.ClassRange;
+
+    %% SelectedSets validation
+    % First make sure there are valid sets for sorting
+    HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(and(and(~isEmpty, ~HasDyn), HasMS));
+    
     if isempty(AvailableSets)
-        if DoMeans
-            errordlg2(['No mean sets found. Use Tools -> Microstates ->' ...
-                'Compute mean microstate maps across individuals to create ' ...
-                'the mean maps before sorting.'], 'Sort microstate classes');
-            return;
-        else
-            errordlg2(['No datasets with microstate maps found. Use Tools ->' ...
-                ' Microstates -> Identify microstates to create maps before' ...
-                ' sorting.'], 'Sort microstate classes');
-            return;
-        end
-    end
-
-    % Check if SelectedSets are included in AvailableSets
-    if ~isempty(SelectedSets)
-        isValid = ismember(SelectedSets, AvailableSets);
-        if any(~isValid)
-            invalidSets = SelectedSets(~isValid);
-            if (any(invalidSets > numel(AllEEG)))
-                errordlg2(['Selected dataset indices exceed the total number of ' ...
-                    'datasets loaded to EEGLAB.'], 'Sort microstate classes');
-                return;
-            elseif DoMeans
-                errordlg2(['Individual datasets selected to sort. Choose ' ...
-                    'mean datasets instead or use a "Sort individual ' ...
-                    'microstate maps" menu option.'], 'Sort microstate classes');
-                return;
-            else
-                errordlg2(['Mean datasets selected to sort. Choose individual ' ...
-                    'datasets instead or use a "Sort mean microstate maps" ' ...
-                    'menu option.'], 'Sort microstate classes');
-                return;
-            end
-        end
-    end
-
-    %% Validate TemplateSet    
-    if isstruct(TemplateSet)
-        TemplateNames = {TemplateSet.setname};
-    else
-        if TemplateSet == -1
-            TemplateNames = {MSTEMPLATE.setname};
-        else
-            TemplateNames = {AllEEG(nonemptyMean).setname};
-        end
-    end
-
-    % Check if there are template sets available
-    if isempty(TemplateNames)
-        if TemplateSet == -1
-            errordlg2(['No published templates found. Add template sets to ' ...
-                'the microstates/Templates folder before sorting.'], ['Sort ' ...
-                'microstate classes']);
-            return;
-        else
-            errordlg2(['No mean sets found. Use Tools -> Microstates -> ' ...
-                'Compute mean microstate maps across individuals to create ' ...
-                'the mean maps before sorting.'], 'Sort microstate classes');
-            return;
-        end
-    end
-
-    % Check if the provided template set/name is included in the available
-    % template sets
-    if ~isempty(TemplateSet) && TemplateSet ~= -1
-        if ~ismember(TemplateSet, nonemptyMean)
-            errorMessage = sprintf('Dataset %i is not a valid mean set.', ...
-                TemplateSet);
-            errordlg2([errorMessage], 'Sort microstate classes');
-            return;
-        else
-            TemplateIndex = find(nonemptyMean == TemplateSet, 1);
-        end
-    elseif ~isempty(TemplateName)
-        if (~any(matches(TemplateNames, TemplateName)))
-            if TemplateSet == -1
-                errorMessage = sprintf('The specified template %s could not be found in the microstates/Templates' + ...
-                'folder. Please add the template to the folder before sorting.', TemplateName);
-                errordlg2([errorMessage],'Sort microstate classes');
-                return;
-            else
-                errorMessage = sprintf('The specified mean set %s could not be found.', TemplateName);
-                errordlg2([errorMessage], 'Sort microstate classes');
-                return;
-            end
-        else
-            TemplateIndex = find(matches(TemplateNames, TemplateName));
-        end
-    else
-        TemplateIndex = [];
-    end
-    %% Prompt user to select sets to sort and template sets if needed in pop-up windows
-    if isempty(SelectedSets)
-        AvailableSetnames = {AllEEG(AvailableSets).setname};
-
-        if isempty(TemplateIndex)
-            TemplateIndex = 1;
-        end
-
-        res = inputgui('title','Sort microstate classes',...
-        'geometry', {1 1 1 1 1 1}, 'geomvert', [1 1 4 1 1 1], 'uilist', { ...
-            { 'Style', 'text', 'string', 'Choose sets for sorting'} ...
-            { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
-            { 'Style', 'listbox', 'string', AvailableSetnames, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
-            { 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'  } ...
-            { 'Style', 'popupmenu', 'string', TemplateNames,'tag','MeanName','Value', TemplateIndex} ...
-            { 'Style', 'checkbox', 'string', 'Ignore polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
-            });
-
-        if isempty(res); return; end
-        
-        TemplateIndex = res{2};
-        TemplateName = TemplateNames{TemplateIndex};
-        
-        IgnorePolarity = res{3};
-        if DoMeans
-            SelectedSets = nonemptyMean(res{1});
-        else
-            SelectedSets = nonemptyInd(res{1});
-        end
-
-    elseif isempty(TemplateIndex)
-        TemplateIndex = 1;
-
-        res = inputgui('title','Sort microstate classes',...
-        'geometry', {1 1 1}, 'geomvert', [1 1 1], 'uilist', { ...
-            { 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'  } ...
-            { 'Style', 'popupmenu', 'string', TemplateNames,'tag','MeanName' ,'Value', TemplateIndex } ...
-            { 'Style', 'checkbox', 'string', 'Ignore polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
-            });
-        
-        if isempty(res); return; end
-        TemplateIndex = res{1};
-        TemplateName = TemplateNames{TemplateIndex};
-        IgnorePolarity = res{2};
-
-    else
-        TemplateName = TemplateNames{TemplateIndex};
-    end
-
-    if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Sort microstate classes');
+        errordlg2(['No valid sets for sorting found.'], 'Sort microstate maps error');
         return;
     end
 
-    if isstruct(TemplateSet)
-        ChosenTemplate = TemplateSet(TemplateIndex);
+    % If the user has provided sets, check their validity
+    if ~isempty(SelectedSets)
+        % Check for empty sets, dynamics sets, or any sets without
+        % microstate maps
+        SelectedSets = unique(SelectedSets);
+        isValid = ismember(SelectedSets, AvailableSets);
+        if any(~isValid)
+            invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
+            invalidSetsTxt = invalidSetsTxt(1:end-2);
+            errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, dynamics sets, or sets ' ...
+                'without microstate maps.'];
+            errordlg2(errorMessage, 'Sort microstate maps error');
+            return;
+        end
+    % Otherwise, add set selection gui elements
     else
-        if TemplateSet == -1
-            ChosenTemplate = MSTEMPLATE(TemplateIndex);
+        defaultSets = find(ismember(AvailableSets, CurrentSet));
+        if isempty(defaultSets);    defaultSets = 1;    end        
+        AvailableSetnames = {AllEEG(AvailableSets).setname};
+        guiElements = [guiElements, ....
+                    {{ 'Style', 'text'    , 'string', 'Choose sets for sorting'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Use ctrlshift for multiple selection'}} ...
+                    {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
+        guiGeom  = [guiGeom  1 1 1];
+        guiGeomV = [guiGeomV  1 1 4];
+    end
+
+    %% TemplateSet validation
+    % If the user has provided a template set number or name, check its
+    % validity
+    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
+    meanSets = AvailableSets(HasChildren);
+    meanSetnames = {AllEEG(meanSets).setname};
+    publishedSetnames = {MSTEMPLATE.setname};
+    TemplateIndex = 1;
+    usingPublished = false;
+    if ~isempty(TemplateSet)
+        % If the template set is a number, make sure it is one of the
+        % mean sets in ALLEEG
+        if isnumeric(TemplateSet)
+            if ~ismember(TemplateSet, meanSets)
+                errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
+                    'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
+                errordlg2([errorMessage], 'Sort microstate maps error');
+                return;
+            else
+                TemplateIndex = find(ismember(meanSets, TemplateSet));
+                TemplateName = meanSetnames{TemplateIndex};
+            end
+        % Else if the template set is a string, make sure it matches one of
+        % the mean setnames or published template setnames
         else
-            ChosenTemplate = AllEEG(1,nonemptyMean(TemplateIndex));
+            if matches(TemplateSet, meanSetnames)
+                % If there are multiple mean sets with the same name
+                % provided, notify the suer
+                if numel(find(matches(meanSetnames, TemplateSet))) > 1
+                    errorMessage = sprintf(['There are multiple mean sets with the name "%s." ' ...
+                        'Please specify the set number instead ot the set name.'], TemplateSet);
+                    errordlg2([errorMessage], 'Sort microstate maps error');
+                    return;
+                else
+                    TemplateIndex = find(matches(meanSetnames, TemplateSet));
+                    TemplateName = TemplateSet;
+                    TemplateSet = meanSets(TemplateIndex);
+                end
+            elseif matches(TemplateSet, publishedSetnames)
+                usingPublished = true;
+                TemplateIndex = find(matches(publishedSetnames, TemplateSet));
+                TemplateName = TemplateSet;
+            else
+                errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
+                    'mean sets or in the microstates/Templates folder.'], TemplateSet);
+                errordlg2([errorMessage], 'Sort microstate maps error');
+                return;
+            end
+        end
+
+    % Otherwise, add template set selection gui elements
+    else
+        combinedSetnames = [meanSetnames publishedSetnames];
+        guiElements = [guiElements ...
+            {{ 'Style', 'text', 'string', 'Name of template map to sort by', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
+        guiGeom = [guiGeom 1 1];
+        guiGeomV = [guiGeomV 1 1];
+    end
+
+    %% Add other gui elements
+    if contains('IgnorePolarity', p.UsingDefaults)
+        guiElements = [guiElements ...
+            {{ 'Style', 'checkbox', 'string', 'No polarity','tag','IgnorePolarity','Value', IgnorePolarity }}];
+        guiGeom = [guiGeom 1];
+        guiGeomV = [guiGeomV 1];
+    end
+
+    %% Prompt user to fill in remaining parameters if necessary
+    if ~isempty(guiElements)
+        [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
+             'title','Sort microstate maps');
+
+        if isempty(res); return; end
+        
+        if isfield(outstruct, 'SelectedSets')
+            SelectedSets = AvailableSets(outstruct.SelectedSets);
+        end
+
+        if isfield(outstruct, 'TemplateIndex')
+            if outstruct.TemplateIndex <= numel(meanSetnames)
+                TemplateIndex = outstruct.TemplateIndex;
+                TemplateSet = meanSets(TemplateIndex);
+                TemplateName = meanSetnames{TemplateIndex};
+            else
+                TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames);
+                TemplateSet = publishedSetnames{TemplateIndex};
+                usingPublished = true;
+            end
+        end
+
+        if isfield(outstruct, 'IgnorePolarity')
+            IgnorePolarity = outstruct.IgnorePolarity;
         end
     end
-    
-    %% Verify compatibility between selected sets to sort and template set
 
-    % Check if template set is a parent set of all the selected sets (only
-    % for mean sets)
-    isPublishedTemplate = matches(TemplateName, {MSTEMPLATE.setname});    
-    if ~isPublishedTemplate
+    if numel(SelectedSets) < 1
+        errordlg2('You must select at least one set of microstate maps','Sort microstate maps error');
+        return;
+    end
+
+    if usingPublished
+        ChosenTemplate = MSTEMPLATE(TemplateIndex);
+    else
+        ChosenTemplate = AllEEG(meanSets(TemplateIndex));
+    end
+
+    %% Verify compatibility between selected sets to sort and template set
+    % If one of the selected sets is the same as the template set, remove
+    % it from SelectedSets
+    if matches(ChosenTemplate.setname, {AllEEG(SelectedSets).setname})
+        SelectedSets(matches({AllEEG(SelectedSets).setname}, ChosenTemplate.setname)) = [];
+    end
+
+    % If the template set chosen is a mean set, make sure it is a parent
+    % set of all the selected sets
+    if ~usingPublished
         warningSetnames = {};
         for index = 1:length(SelectedSets)
             sIndex = SelectedSets(index);
-            containsChild = checkSetForChild(AllEEG, nonemptyMean(TemplateIndex), AllEEG(sIndex).setname);
+            containsChild = checkSetForChild(AllEEG, meanSets(TemplateIndex), AllEEG(sIndex).setname);
             if ~containsChild
                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
             end
         end
 
-        if ~isempty(warningSetnames) && showMessage
+        if ~isempty(warningSetnames) && guiOpts.showSortWarning
             txt = sprintf('%s, ', warningSetnames{:});
             txt = txt(1:end-2);
-            warningMessage = sprintf(['Template set %s is not the parent set of ' ...
+            warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
                 'the following sets: %s. Are you sure you would like to proceed?'], ...
                 TemplateName, txt);
-
-            res = inputgui('title', 'Sort microstate classes', ...
-                'geometry', {1 [1 1] 1}, 'uilist', { ...
-                { 'Style', 'text', 'string', warningMessage} ...
-                { 'Style', 'radiobutton', 'string', 'Yes', 'Value', 0} ...
-                { 'Style', 'radiobutton', 'string', 'No', 'Value', 0} ...
-                { 'Style', 'checkbox', 'string', 'Do not ask me again', 'Value', 0} });
-    
-            if isempty(res); return; end 
-            if (res{2}); return; end
-            if (res{3})
-                showMessage = 0;
-            end
-
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Sort microstate maps warning');
+            if boxChecked;  guiOpts.showSortWarning = false;    end
+            if ~yesPressed; return;                             end
         end
     end
-    
-    MinClasses     = ChosenTemplate.msinfo.ClustPar.MinClasses;
-    MaxClasses     = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-   
-    IsSingularSet = MinClasses == MaxClasses;
-   
-    %strcnt = fprintf(1,'pop_SortMSTemplates: Permuting %i of %i subjects ',1,length(SelectedSets));
 
     %% Sorting
-
-    % Delara 9/29/22 edit: use widest rather than narrowest range of
-    % classes (skip over classes that do not exist for certain sets in
-    % later loop)
-    if ~isempty(NClasses)
-        MinClasses = NClasses;
-        MaxClasses = NClasses;
+    TemplateMinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
+    TemplateMaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+    AllMinClasses = [TemplateMinClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets)];
+    AllMaxClasses = [TemplateMaxClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets)];
+    if isempty(ClassRange)
+        MinClasses = min(AllMinClasses);
+        MaxClasses = max(AllMaxClasses);
     else
-        MinClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MinClasses;
-        MaxClasses = AllEEG(SelectedSets(1)).msinfo.ClustPar.MaxClasses;
-        for index = 2:length(SelectedSets)
-            sIndex = SelectedSets(index);
-            MinClasses = min(MinClasses,AllEEG(sIndex).msinfo.ClustPar.MinClasses);
-            MaxClasses = max(MaxClasses,AllEEG(sIndex).msinfo.ClustPar.MaxClasses);
-        end
+        MinClasses = min(ClassRange);
+        MaxClasses = max(ClassRange);
     end
 
-    % Delara 10/7/22 change: make outer loop go through selected sets,
-    % inner loop go through classes
     for index = 1:length(SelectedSets)
         fprintf('Sorting dataset %i of %i\n', index, numel(SelectedSets));
         sIndex = SelectedSets(index);
@@ -341,21 +318,12 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             end
 
             % find the number of template classes to use
-            if TemplateSet == -1
-                % published templates should only have 1 cluster solution
-                HasTemplates = ~cellfun(@isempty,{ChosenTemplate.msinfo.MSMaps.Maps});
-                TemplateClassesToUse = find(HasTemplates == true);
+            if n < TemplateMinClasses
+                TemplateClassesToUse = TemplateMinClasses;
+            elseif n > TemplateMaxClasses
+                TemplateClassesToUse = TemplateMaxClasses;
             else
-                % for mean sets, use min cluster solution if class number
-                % is less than min, max cluster solution if greater than
-                % max, same number otherwise
-                if n < ChosenTemplate.msinfo.ClustPar.MinClasses
-                    TemplateClassesToUse = ChosenTemplate.msinfo.ClustPar.MinClasses;
-                elseif n > ChosenTemplate.msinfo.ClustPar.MaxClasses
-                    TemplateClassesToUse = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-                else
-                    TemplateClassesToUse = n;
-                end
+                TemplateClassesToUse = n;
             end
 
             % compare number of channels in selected set and template set -
@@ -381,43 +349,65 @@ function [EEGOUT, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, D
             AllEEG(sIndex).msinfo.MSMaps(n).Labels = Labels;
             AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = Colors;
 
-            % Delara 8/17/22 change
-            if (TemplateSet == -1)
+            if usingPublished
                 AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'published template';
             else
-                if (DoMeans)
-                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'grand mean map';
-                else
-                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map';
-                end
+                AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map';
             end
+
             AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
             AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation;
             AllEEG(sIndex).saved = 'no';
         end
-
     end
+
+    EEGout = AllEEG(SelectedSets);
+    CurrentSet = SelectedSets;
 
     %% Command string generation
-    if isstruct(TemplateSet)
-        TemplateSetString = inputname(4);
-        if isempty(TemplateSetString)
-            TemplateSetString = '[]';
-        end
-    else
-        TemplateSetString = string(TemplateSet);
-    end
-    if isempty(NClasses)
-        NClassesString = '[]';
-    else
-        NClassesString = string(NClasses);
-    end
-    
-    EEGOUT = AllEEG(SelectedSets);
-    CurrentSet = SelectedSets;
-    
-    com = sprintf('[EEG CURRENTSET com] = pop_SortMSTemplates(%s, %s, %i, %s, "%s", %i, %s);', inputname(1), mat2str(SelectedSets), DoMeans, TemplateSetString, string(TemplateName), IgnorePolarity, NClassesString);
+    if ischar(TemplateSet) || isstring(TemplateSet)
+        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet);
+    elseif isnumeric(TemplateSet)
+        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', %i)', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet);
+    end        
 end
+
+function isEmpty = isEmptySet(in)
+    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if set is a dynamics set
+    if ~isfield(in.msinfo, 'DynamicsInfo')
+        return;
+    else
+        hasDyn = true;
+    end
+end
+
+function hasMS = hasMicrostates(in)
+    hasMS = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if msinfo is empty
+    if isempty(in.msinfo)
+        return;
+    else
+        hasMS = true;
+    end
+end
+
 
 function Answer = DoesItHaveChildren(in)
     Answer = false;

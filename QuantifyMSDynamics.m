@@ -56,34 +56,6 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
     res.Subject      = DataInfo.subject;
     res.Group        = DataInfo.group;
     res.Condition    = DataInfo.condition;
-    
-    % Set template and sorting information
-    if isempty(TemplateName)
-        res.Template = '<<own>>';
-    else
-        res.Template = TemplateName;
-    end
-
-    if isfield(info,'MSMaps')
-        res.SortInfo = info.MSMaps(info.FitPar.nClasses).SortedBy;
-    else
-        res.SortInfo = 'NA';
-    end
-    
-    % Get individual and total GEV values
-    res.IndGEVs = IndGEVs;
-    res.TotalGEV = sum(IndGEVs);
-
-    % if quantifying by own maps, include spatial correlations between
-    % individual maps and the template maps they were sorted by
-    if isempty(TemplateName)
-        for i=1:info.FitPar.nClasses
-            templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
-            res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
-            spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
-            res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
-        end
-    end  
 
     % Compute temporal dynamics
     eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
@@ -95,7 +67,7 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
     eMeanOccurrence  = nan(1,nEpochs);
 
     eOrgTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
-%     eExpTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
+    eExpTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
     
     for e = 1: nEpochs      % e: from 1 to number of maps
 
@@ -144,15 +116,20 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
         
         for c1 = 1: info.FitPar.nClasses
             eMeanGFP(1,c1,e) = eMeanGFP(1,c1,e) ./ cnt(c1);
-%             for c2 = 1: info.FitPar.nClasses
-%                 eExpTM(c1,c2,e) = eOccurrence(1,c1,e) / MeanOcc * eOccurrence(1,c2,e) / MeanOcc / (1 - eOccurrence(1,c1,e) / MeanOcc);
-%             end
-%             eExpTM(c1,c1,e) = 0;
+            for c2 = 1: info.FitPar.nClasses
+                eExpTM(c1,c2,e) = eOccurrence(1,c1,e) / MeanOcc * eOccurrence(1,c2,e) / MeanOcc / (1 - eOccurrence(1,c1,e) / MeanOcc);
+            end
+            eExpTM(c1,c1,e) = 0;
         end
     end
 
-    % Add temporal dynamics to result
     res.TotalTime = sum(eTotalTime);
+
+    % Add individual and total GEV values
+    res.TotalExpVar = sum(IndGEVs);  
+    res.IndExpVar = IndGEVs;
+
+    % Add temporal dynamics
     res.Duration     = mynanmean(eDuration,3);
     res.MeanDuration = mynanmean(eMeanDuration,2);
     
@@ -167,7 +144,32 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
     res.OrgTM = res.OrgTM / sum(res.OrgTM(:));
     
 %     res.ExpTM = mynanmean(eExpTM,3);
-%     res.DeltaTM = res.OrgTM - res.ExpTM;
+    res.DeltaTM = res.OrgTM - mynanmean(eExpTM, 3);
+
+    % if quantifying by own maps, include spatial correlations between
+    % individual maps and the template maps they were sorted by
+    if isempty(TemplateName)
+        for i=1:info.FitPar.nClasses
+            templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
+            res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
+            spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
+            res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
+        end
+    end
+
+    % Set template and sorting information
+    if isempty(TemplateName)
+        res.FittingTemplate = '<<own>>';
+    else
+        res.FittingTemplate = TemplateName;
+
+    end
+
+    if ~isempty(info.MSMaps(info.FitPar.nClasses).SortedBy)
+        res.SortedBy = info.MSMaps(info.FitPar.nClasses).SortedBy;
+    else
+        res.SortedBy = 'N/A';
+    end
     
     EpochData.Duration     = squeeze(eDuration);
     EpochData.Occurrence   = squeeze(eOccurrence);

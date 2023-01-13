@@ -128,7 +128,7 @@ function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, 
             [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
         else
             Maps = Maps*GlobalToLocal';
-            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,ThEEG.msinfo.ClustPar.IgnorePolarity);
+            [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
         end
     else
         [MSClass, gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);

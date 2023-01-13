@@ -1,4 +1,6 @@
- %pop_QuantMSTemplates() quantifies the presence of microstates in EEG data
+% UPDATE DOCUMENTATION TO REFLECT KEY, VALUE PARAMETERS
+% 
+%pop_QuantMSTemplates() quantifies the presence of microstates in EEG data
 %
 % Usage:
 %   >> [EEGOUT, CurrentSet, com,Evol] = pop_QuantMSTemplates(AllEEG, SelectedSets, UseMeanTmpl, FitParameters, TemplateSet, TemplateName, FileName)
@@ -75,320 +77,284 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, SelectedSets, UseMeanTmpl, FitParameters, TemplateSet, TemplateName, FileName)
-    
-    %% Set default values for outputs and input parameters
-    global EEG;
-    global CURRENTSET;    
-    global MSTEMPLATE;
-    global showMessage;
+function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, varargin)
+
+    %% Set defaults for outputs
     com = '';
-    EEGOUT = EEG;
+    global MSTEMPLATE;
+    global guiOpts;
+    global EEG;
+    global CURRENTSET;
+    EEGout = EEG;
     CurrentSet = CURRENTSET;
 
-    if nargin < 2,  SelectedSets    = [];     end   
-    if nargin < 3,  UseMeanTmpl     =  0;     end
-    if nargin < 4,  FitParameters   = [];     end 
-    if nargin < 5,  TemplateSet     = [];     end 
-    if nargin < 6;  TemplateName    = [];     end
-    if nargin < 7;  FileName        = [];     end
+    guiElements = {};
+    guiGeom = {};
+    guiGeomV = [];
 
-    %% Select type of templates to use
-    if nargin < 3
-        ButtonName = questdlg('What type of templates do  you want to use?', ...
-                         'Microstate statistics', ...
-                         'Sorted individual maps', 'Averaged maps','Published templates', 'Sorted individual maps');
-        switch ButtonName,
-            case 'Individual maps',
-                UseMeanTmpl = 0;
-            case 'Averaged maps',
-                UseMeanTmpl = 1;
-            case 'Published templates',
-                UseMeanTmpl = 2;
-        end
-    end 
+    %% Parse inputs and perform initial validation
+    p = inputParser;
+    funcName = 'pop_QuantMSTemplates';
+    p.FunctionName = funcName;
+    p.StructExpand = false;         % do not expand FitPar struct input into key, value args
 
-    %% Validate SelectedSets
+    addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
+    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
+    addParameter(p, 'FitPar', []);
+    addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
+    addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
+    addParameter(p, 'gui', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
+    
+    parse(p, AllEEG, varargin{:});
 
-    % identify valid (containing msinfo) datasets with and without children
-    nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
-    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG),'UniformOutput',true);
-    nonemptyInd  = nonempty(~HasChildren);
-    nonemptyMean = nonempty(HasChildren);
+    if isnumeric(p.Results.TemplateSet)
+        validateattributes(p.Results.TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, funcName, 'TemplateSet');
+    else
+        validateattributes(p.Results.TemplateSet, {'char', 'string'}, {'scalartext'});
+    end
 
-    % Check if there are available sets to quantify
-    if isempty(nonemptyInd)
-        errordlg2(['No datasets with microstate maps found. Use Tools ->' ...
-                ' Microstates -> Identify microstates to create maps before' ...
-                ' quantifying.'], 'Quantify microstates');
+    SelectedSets = p.Results.SelectedSets;
+    FitPar = p.Results.FitPar;
+    TemplateSet = p.Results.TemplateSet;
+    FileName = p.Results.Filename;
+    showGUI = p.Results.gui;
+
+    %% SelectedSets validation
+    HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
+    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    
+    if isempty(AvailableSets)
+        errordlg2(['No valid sets for quantifying found.'], 'Quantify microstates error');
         return;
     end
 
-    % Check if SelectedSets are included in AvailableSets
+    % If the user has provided sets, check their validity
     if ~isempty(SelectedSets)
-        isValid = ismember(SelectedSets, nonemptyInd);
+        SelectedSets = unique(SelectedSets);
+        isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
-            invalidSets = SelectedSets(~isValid);
-            if (any(invalidSets > numel(AllEEG)))
-                errordlg2(['Selected dataset indices exceed the total number of ' ...
-                    'datasets loaded to EEGLAB.'], 'Sort microstate classes');
+            invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
+            invalidSetsTxt = invalidSetsTxt(1:end-2);
+            errorMessage = ['The following sets cannot be quantified: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
+                'or sets without microstate maps.'];
+            errordlg2(errorMessage, 'Quantify microstates error');
+            return;
+        end
+    % Otherwise, add set selection gui elements
+    else
+        defaultSets = find(ismember(AvailableSets, CurrentSet));
+        AvailableSetnames = {AllEEG(AvailableSets).setname};
+        guiElements = [guiElements, ....
+                    {{ 'Style', 'text'    , 'string', 'Choose sets for quantifying'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Use ctrlshift for multiple selection'}} ...
+                    {{ 'Style', 'text'    , 'string', 'If one is chosen, individual stats will be displayed.'}} ...
+                    {{ 'Style', 'text'    , 'string', 'If multiple are chosen, aggregate stats will be displayed.'}} ...
+                    {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
+        guiGeom  = [guiGeom  1 1 1 1 1];
+        guiGeomV = [guiGeomV  1 1 1 1 4];
+    end
+
+    %% TemplateSet validation
+    % If the user has provided a template set number or name, check its
+    % validity
+    meanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    meanSetnames = {AllEEG(meanSets).setname};
+    publishedSetnames = {MSTEMPLATE.setname};
+    TemplateIndex = 1;
+    if ~isempty(TemplateSet)
+        if strcmp(TemplateSet, 'own')
+            TemplateMode = 'own';
+        % If the template set is a number, make sure it is one of the
+        % mean sets in ALLEEG
+        elseif isnumeric(TemplateSet)
+            if ~ismember(TemplateSet, meanSets)
+                errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
+                    'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
+                errordlg2([errorMessage], 'Quantify microstates error');
                 return;
             else
-                if numel(SelectedSets) > 1            % the user has selected multiple datasets
-                    if (numel(invalidSets) == 1)
-                        errordlg2(sprintf(['Dataset %d is a mean set and cannot be quantified.' ...
-                            ' Deselect this dataset to proceed.'], invalidSets),'Quantify microstates');
-                    elseif (numel(invalidSets) < numel(SelectedSets))
-                        errordlg2(sprintf(['Datasets %s are mean sets and cannot be quantified.' ...
-                            ' Deselect these datasets to proceed.'], ...
-                            [sprintf('%d,', invalidSets(1:end-1)), sprintf('%d', invalidSets(end))]), ...
-                            'Quantify microstates');
-                    else
-                        errordlg2(['The selected datasets are mean sets and cannot be quantified.' ...
-                            ' Please select different datasets.'],'Quantify microstates');
-                    end
+                TemplateMode = 'mean';
+                TemplateIndex = find(ismember(meanSets, TemplateSet));
+                TemplateName = meanSetnames{TemplateIndex};
+            end
+        % Else if the template set is a string, make sure it matches one of
+        % the mean setnames or published template setnames
+        else
+            if matches(TemplateSet, meanSetnames)
+                % If there are multiple mean sets with the same name
+                % provided, notify the suer
+                if numel(find(matches(meanSetnames, TemplateSet))) > 1
+                    errorMessage = sprintf(['There are multiple mean sets with the name "%s." ' ...
+                        'Please specify the set number instead ot the set name.'], TemplateSet);
+                    errordlg2([errorMessage], 'Quantify microstates error');
+                    return;
                 else
-                    errordlg2(sprintf(['Dataset %d is a mean set and cannot be quantified.' ...
-                            ' Please select a different dataset.'], invalidSets),'Quantify microstates');
+                    TemplateMode = 'mean';
+                    TemplateIndex = find(matches(meanSetnames, TemplateSet));
+                    TemplateName = TemplateSet;
+                    TemplateSet = meanSets(TemplateIndex);
                 end
-            end
-        end
-    end
-
-    %% Validate TemplateSet
-
-    % identify available templates to use for quantifying based on
-    % template type
-    if UseMeanTmpl == 1
-        TemplateNames = {AllEEG(nonemptyMean).setname};
-    elseif UseMeanTmpl == 2
-        TemplateNames = {MSTEMPLATE.setname};
-    else
-        TemplateNames = 1;
-    end
-    
-    % Check if there are template sets available
-    if isempty(TemplateNames)
-        if UseMeanTmpl == 2
-            errordlg2(['No published templates found. Add template sets to ' ...
-                'the microstates/Templates folder before quantifying.'], ['Quantify ' ...
-                'microstates']);
-            return;
-        else
-            errordlg2(['No mean sets found. Use Tools -> Microstates -> ' ...
-                'Compute mean microstate maps across individuals to create ' ...
-                'the mean maps before quantifying.'], 'Quantify microstates');
-            return;
-        end
-    end
-
-    % Check if the provided template set/name is included in the available
-    % template sets
-    if ~isempty(TemplateSet) && UseMeanTmpl ~= 2
-        if ~ismember(TemplateSet, nonemptyMean)
-            errorMessage = sprintf('Dataset %i is not a valid mean set.', ...
-                TemplateSet);
-            errordlg2([errorMessage], 'Sort microstate classes');
-            return;
-        else
-            TemplateIndex = find(nonemptyMean == TemplateSet, 1);
-        end
-    elseif ~isempty(TemplateName)
-        if (~any(matches(TemplateNames, TemplateName)))
-            if TemplateSet == -1
-                errorMessage = sprintf('The specified template %s could not be found in the microstates/Templates' + ...
-                'folder. Please add the template to the folder before sorting.', TemplateName);
-                errordlg2([errorMessage],'Quantify microstates');
-                return;
+            elseif matches(TemplateSet, publishedSetnames)
+                TemplateMode = 'published';
+                TemplateIndex = find(matches(publishedSetnames, TemplateSet));
+                TemplateName = TemplateSet;
             else
-                errorMessage = sprintf('The specified mean set %s could not be found.', TemplateName);
-                errordlg2([errorMessage], 'Quantify microstates');
+                errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
+                    'mean sets or in the microstates/Templates folder.'], TemplateSet);
+                errordlg2([errorMessage], 'Quantify microstates error');
                 return;
             end
-        else
-            TemplateIndex = find(matches(TemplateNames, TemplateName));
         end
+
+    % Otherwise, add template set selection gui elements
     else
-        TemplateIndex = [];
+        combinedSetnames = ['Own' meanSetnames publishedSetnames];
+        guiElements = [guiElements ...
+            {{ 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
+        guiGeom = [guiGeom 1 1];
+        guiGeomV = [guiGeomV 1 1];
     end
 
-    %% Prompt user to select sets to quantify and template set if needed in pop-up windows
-    AvailableSetnames = {AllEEG(nonemptyInd).setname};
-    if isempty(SelectedSets) && UseMeanTmpl > 0
-
-        if isempty(TemplateIndex)
-            TemplateIndex = 1;
+    %% Prompt user to choose SelectedSets and TemplateSet if necessary
+    if ~isempty(guiElements)
+        % If gui is being displayed, add option to show/hide GUI
+        if contains('gui', p.UsingDefaults)
+            guiElements = [guiElements ...
+                {{ 'Style', 'text', 'string', ''}} ...
+                {{ 'Style', 'checkbox', 'string','Show data visualizations','tag','showGUI','Value', showGUI}}];
+            guiGeom = [guiGeom 1 1];
+            guiGeomV = [guiGeomV 1 1];
         end
 
-        res = inputgui('title','Quantify microstates',...
-        'geometry', {1 1 1 1 1}, 'geomvert', [1 1 4 1 1], 'uilist', { ...
-            { 'Style', 'text', 'string', 'Choose sets for quantifying'} ...
-            { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
-            { 'Style', 'listbox', 'string', AvailableSetnames, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
-            { 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'  } ...
-            { 'Style', 'popupmenu', 'string', TemplateNames,'tag','MeanName','Value', TemplateIndex} ...
-            });
+        [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
+             'title','Quantify microstates');
 
         if isempty(res); return; end
         
-        SelectedSets = nonemptyInd(res{1});
-        TemplateIndex = res{2};
-        TemplateName = TemplateNames{TemplateIndex};
-
-    elseif isempty(SelectedSets) 
-
-        if isempty(TemplateIndex)
-            TemplateIndex = 1;
+        if isfield(outstruct, 'SelectedSets')
+            SelectedSets = AvailableSets(outstruct.SelectedSets);
         end
 
-        res = inputgui('title','Quantify microstates',...
-        'geometry', {1 1 1}, 'geomvert', [1 1 4], 'uilist', { ...
-            { 'Style', 'text', 'string', 'Choose sets for quantifying'} ...
-            { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
-            { 'Style', 'listbox', 'string', AvailableSetnames, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
-            });
+        if isfield(outstruct, 'TemplateIndex')
+            if outstruct.TemplateIndex == 1
+                TemplateMode = 'own';
+                TemplateSet = 'own';
+            elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
+                TemplateMode = 'mean';
+                TemplateIndex = outstruct.TemplateIndex - 1;
+                TemplateSet = meanSets(TemplateIndex);
+                TemplateName = meanSetnames{TemplateIndex};
+            else
+                TemplateMode = 'published';
+                TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames) - 1;
+                TemplateSet = publishedSetnames{TemplateIndex};
+                TemplateName = TemplateSet;
+            end
+        end
 
-        if isempty(res); return; end
-        
-        SelectedSets = nonemptyInd(res{1});
-        
-    elseif isempty(TemplateIndex) && UseMeanTmpl > 0
-        TemplateIndex = 1;
-
-        res = inputgui('title','Quantify microstates',...
-        'geometry', {1 1 1}, 'geomvert', [1 1], 'uilist', { ...
-            { 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'  } ...
-            { 'Style', 'popupmenu', 'string', TemplateNames,'tag','MeanName' ,'Value', TemplateIndex } ...
-            });
-        
-        if isempty(res); return; end
-        TemplateIndex = res{1};
-        TemplateName = TemplateNames{TemplateIndex};
-    elseif (UseMeanTmpl > 0)
-        TemplateName = TemplateNames   {TemplateIndex};
+        if isfield(outstruct, 'showGUI')
+            showGUI = outstruct.showGUI;
+        end
     end
 
     if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Sort microstate classes');
+        errordlg2('You must select at least one set of microstate maps','Quantify microstates error');
         return;
     end
 
-    %% Verify compatibility between selected sets to sort and template set
+    if strcmp(TemplateMode, 'published')
+        ChosenTemplate = MSTEMPLATE(TemplateIndex);
+    elseif strcmp(TemplateMode, 'mean')
+        ChosenTemplate = AllEEG(meanSets(TemplateIndex));
+    end
 
-    % Check if template set is a parent set of all the selected sets (only
-    % for mean sets)
-    if UseMeanTmpl == 1
+    %% Verify compatibility between selected sets and template set
+    % If the template set chosen is a mean set, make sure it is a parent
+    % set of all the selected sets
+    if strcmp(TemplateMode, 'mean')
         warningSetnames = {};
         for index = 1:length(SelectedSets)
             sIndex = SelectedSets(index);
-            containsChild = checkSetForChild(AllEEG, nonemptyMean(TemplateIndex), AllEEG(sIndex).setname);
+            containsChild = checkSetForChild(AllEEG, meanSets(TemplateIndex), AllEEG(sIndex).setname);
             if ~containsChild
                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
             end
         end
 
-        if ~isempty(warningSetnames) && showMessage
+        if ~isempty(warningSetnames) && guiOpts.showQuantWarning1
             txt = sprintf('%s, ', warningSetnames{:});
             txt = txt(1:end-2);
-            warningMessage = sprintf(['Template set %s is not the parent set of ' ...
+            warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
                 'the following sets: %s. Are you sure you would like to proceed?'], ...
                 TemplateName, txt);
-
-            res = inputgui('title', 'Quantify microstates', ...
-                'geometry', {1 [1 1] 1}, 'uilist', { ...
-                { 'Style', 'text', 'string', warningMessage} ...
-                { 'Style', 'radiobutton', 'string', 'Yes', 'Value', 0} ...
-                { 'Style', 'radiobutton', 'string', 'No', 'Value', 0} ...
-                { 'Style', 'checkbox', 'string', 'Do not show this message again', 'Value', 0} });
-    
-            if isempty(res); return; end 
-            if (res{2}); return; end
-            if (res{3})
-                showMessage = 0;
-            end
-
+            [yesPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            if boxChecked;  guiOpts.showQuantWarning1 = false;     end
+            if ~yesPressed; return;                             end
         end
     end
-    
-    %% Update fitting parameters
-    switch UseMeanTmpl
-        case 0,
-            MinClasses = max(cellfun(@(x) GetClusterField(AllEEG(x),'MinClasses'),num2cell(SelectedSets)));
-            MaxClasses = min(cellfun(@(x) GetClusterField(AllEEG(x),'MaxClasses'),num2cell(SelectedSets)));
-        case 1,
-            ChosenTemplate = AllEEG(TemplateIndex);
-            MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
-            MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-        case 2,
-            ChosenTemplate = MSTEMPLATE(TemplateIndex);
-            MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
-            MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+
+    %% Validate and get FitPar
+    if strcmp(TemplateMode, 'own')
+        AllMinClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets);
+        AllMaxClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets);
+        MinClasses = max(AllMinClasses);
+        MaxClasses = min(AllMaxClasses);
+        if MaxClasses < MinClasses
+            errorMessage = ['No overlap in microstate classes found between all selected sets.'];
+            errordlg2(errorMessage, 'Quantify microstates error');
+        end
+    else
+        MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
+        MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     end
 
-%     if UseMeanTmpl == 0
-%         if isfield(AllEEG(SelectedSets(1)).msinfo,'FitPar');     par = AllEEG(SelectedSets(1)).msinfo.FitPar;
-%         else par = [];
-%         end
-%     else
-%         if isfield(ChosenTemplate.msinfo,'FitPar');              par = ChosenTemplate.msinfo.FitPar;
-%         else par = [];
-%         end
-%     end
-    
-    par = [];
-    [par,paramsComplete] = UpdateFitParameters(FitParameters,par,{'nClasses','lambda','PeakFit','b', 'BControl'});
- 
-    if ~paramsComplete
-        par = SetFittingParameters(MinClasses:MaxClasses,par);
-        if isempty(par);    return; end
-    end
+    FitPar = SetFittingParameters2(MinClasses:MaxClasses, FitPar, funcName);
+    if isempty(FitPar);  return; end
 
     %% Check for consistent sorting across selected sets if own templates are being used
     SelectedEEG = AllEEG(SelectedSets);
-    if UseMeanTmpl == 0
-        SortedBy = AllEEG(SelectedSets(1)).msinfo.MSMaps(par.nClasses).SortedBy;
-
-        for i=1:numel(SelectedSets)
-            if ~strcmp(SortedBy, AllEEG(SelectedSets(i)).msinfo.MSMaps(par.nClasses).SortedBy)
-                warningMessage = ['Sorting information differs across datasets. ' ...
-                    'Would you like to resort all sets according to the same template ' ...
-                    'before proceeding?'];
-
-                PublishedTemplateNames = {MSTEMPLATE.setname};
-                MeanSetNames = {AllEEG(nonemptyMean).setname};
-                CombinedSetNames = [PublishedTemplateNames MeanSetNames];
-
-                res = inputgui('title', 'Quantify microstates', ...
-                    'geometry', {1 1 1 1 1 1}, 'uilist', { ...
-                    { 'Style', 'text', 'string', warningMessage} ...
-                    { 'Style', 'radiobutton', 'string', 'Yes', 'Value', 0} ...
-                    { 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'  } ...
-                    { 'Style', 'popupmenu', 'string', CombinedSetNames,'tag','TemplateName' } ...
-                    { 'Style', 'radiobutton', 'string', 'No', 'Value', 0} ...
-                    { 'Style', 'checkbox', 'string', 'Do not ask me again', 'Value', 0} });
-                
-                if isempty(res); return; end 
-                if (res{4})
-                    showMessage = 0;
-                end
-                if (res{1})
-                    TemplateIndex = res{2};
-                    if TemplateIndex <= numel(PublishedTemplateNames)
-                        TemplateName = PublishedTemplateNames(TemplateIndex);
-                        [SelectedEEG, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, 0, -1, TemplateName, 1);
-                    else
-                        TemplateName = MeanSetNames(TemplateIndex - numel(PublishedTemplateNames));
-                        [SelectedEEG, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, 0, [], TemplateName, 1);
-                    end
-                end
-                break;
+    if strcmp(TemplateMode, 'own')
+        % First check if any datasets remain unsorted
+        yesPressed = false;
+        SortModes = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(FitPar.nClasses).SortMode, SelectedSets, 'UniformOutput', false);
+        if any(strcmp(SortModes, 'none')) && guiOpts.showQuantWarning2
+            warningMessage = ['Some datasets remain unsorted. Would you like to ' ...
+                'resort all sets according to the same template before proceeding?'];
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            if boxChecked;  guiOpts.showQuantWarning2 = false;  end
+            if yesPressed
+                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
+                if isempty(com);    return; end
+            elseif ~noPressed
+                return;
             end
+        end
 
+        % Then check if there is inconsistency in sorting across datasets
+        SortedBy = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(FitPar.nClasses).SortedBy, SelectedSets, 'UniformOutput', false);
+        emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
+        SortedBy(emptyIdx) = [];
+        SortedBy(matches(SortedBy, 'none')) = [];
+        if ~yesPressed && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
+            warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
+                'resort all sets according to the same template before proceeding?'];
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            if yesPressed
+                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
+                if isempty(com);    return; end
+            elseif ~noPressed
+                return;
+            end
         end
     end
 
-    if isfield(FitParameters,'SingleEpochFileTemplate')
-        SingleEpochFileTemplate = FitParameters.SingleEpochFileTemplate;
+    if isfield(FitPar,'SingleEpochFileTemplate')
+        SingleEpochFileTemplate = FitPar.SingleEpochFileTemplate;
     else 
         SingleEpochFileTemplate = [];
     end
@@ -406,72 +372,211 @@ function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
         DataInfo.group     = SelectedEEG(s).group;
         DataInfo.condition = SelectedEEG(s).condition;
         DataInfo.setname   = SelectedEEG(s).setname;
-        
-        % Quantifying using own templates
-        if UseMeanTmpl == 0
-            Maps = NormDimL2(SelectedEEG(s).msinfo.MSMaps(par.nClasses).Maps,2);
-            SheetName = 'Individual Maps';
-            SelectedEEG(s).msinfo.FitPar = par;
 
-            [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,par,SelectedEEG(s).msinfo.ClustPar.IgnorePolarity);
+        SelectedEEG(s).msinfo.FitPar = FitPar;
+
+        if strcmp(TemplateMode, 'own')
+            msinfo = SelectedEEG(s).msinfo;
+        else
+            msinfo = ChosenTemplate.msinfo;
+        end
+        Maps = NormDimL2(msinfo.MSMaps(FitPar.nClasses).Maps, 2);
+        
+        if strcmp(TemplateMode, 'own')
+            [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar,msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
                 [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, [], IndGEVs, SingleEpochFileTemplate);
             end
         else
-            Maps = NormDimL2(ChosenTemplate.msinfo.MSMaps(par.nClasses).Maps,2);
-            SheetName = ChosenTemplate.setname;
-            SelectedEEG(s).msinfo.FitPar = par;
-            LocalToGlobal = MakeResampleMatrices(SelectedEEG(s).chanlocs,ChosenTemplate.chanlocs);
+            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(SelectedEEG(s).chanlocs,ChosenTemplate.chanlocs);
             if any(isnan(LocalToGlobal(:)))
-                errordlg2(['Set ' SelectedEEG(s) ' does not have all channel positions defined'],'Microstate fitting');
+                errordlg2(['Set ' SelectedEEG(s).setname ' does not have all channel positions defined'],'Quantify microstates error');
+                return;
             end
-
-            [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,par, ChosenTemplate.msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
+            if SelectedEEG(s).nbchan > ChosenTemplate.nbchan
+                [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar, msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
+            else
+                Maps = Maps*GlobalToLocal';
+                [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar, msinfo.ClustPar.IgnorePolarity);
+            end
             if ~isempty(MSClass)
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, ChosenTemplate.setname, IndGEVs, SingleEpochFileTemplate);
+                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate);
             end
         end
+        SelectedEEG(s).msinfo.stats = MSStats(s);
         EpochData(s) = SSEpochData;
     end
     close(h);
 
     % Set labels for output
-    Labels = [];
-    % Use generic numerical labels for own templates
-    if UseMeanTmpl == 0
-        for i=1:par.nClasses
-            Labels{i} = sprintf('MS%i_%i', par.nClasses, i);
+    Labels = arrayfun(@(x) sprintf('MS %i.%i', FitPar.nClasses, x), 1:FitPar.nClasses, 'UniformOutput', false);
+
+    %% Show GUI with summary statistics
+    if showGUI
+        if numel(SelectedSets) == 1
+            figName = ['Microstates statistics summary: ' SelectedEEG.setname];
+            x = categorical(Labels);
+            x = reordercats(x, Labels);
+        else
+            figName = 'Microstates statistics summary';
+            x = repmat(Labels, 1, numel(SelectedSets));
+            x = categorical(x, Labels);
+        end
+        
+        if isempty(FileName)
+            statsFig = figure('Name', figName, 'WindowStyle', 'modal', 'NumberTitle', 'off', ...
+            'Position', [100 100 1350 600]);
+            statsFig.CloseRequestFcn = 'uiresume();';
+            statsFig.UserData.FileName = '';
+            plotsPanel = uipanel(statsFig, 'Units', 'normalized', 'Position', [0 0.1 1 0.9]);
+            uicontrol('Style', 'pushbutton', 'String', 'Export microstate statistics', ...
+                'Units', 'normalized', 'Position', [.42 .02 .16 .06], ...
+                'Callback', {@outputStats, FileName, MSStats, Labels, statsFig});
+        else
+            statsFig = figure('Name', figName, 'NumberTitle', 'off', ...
+            'Position', [100 100 1350 600]);
+            plotsPanel = uipanel(statsFig, 'Units', 'normalized', ...
+                'Position', [0 0 1 1], 'BorderType', 'none');
+        end
+        
+        t = tiledlayout(plotsPanel, 2, 3);
+        t.TileSpacing = 'tight';
+        t.Padding = 'compact';
+    
+        % GEV
+        gevAx = nexttile(t, 1);
+        if numel(SelectedSets) == 1
+            bar(gevAx, x, MSStats.IndExpVar*100);
+        else
+            IndGEVs = cell2mat(arrayfun(@(x) MSStats(x).IndExpVar*100, 1:numel(SelectedSets), 'UniformOutput', false));
+            swarmchart(gevAx, x, IndGEVs, 25, [0 0.4470 0.7410],'filled');
+        end
+        title(gevAx, 'Explained Variance (%)');
+    
+        % Duration
+        durAx = nexttile(t, 2);
+        if numel(SelectedSets)  == 1
+            bar(durAx, x, MSStats.Duration*1000);
+        else
+            Durations = cell2mat(arrayfun(@(x) MSStats(x).Duration*1000, 1:numel(SelectedSets), 'UniformOutput', false));
+            swarmchart(durAx, x, Durations, 25, [0 0.4470 0.7410],'filled');
+        end
+        title(durAx, 'Mean Duration (ms)');
+    
+        % Occurrence
+        occAx = nexttile(t, 4);
+        if numel(SelectedSets) == 1
+            bar(occAx, x, MSStats.Occurrence);
+        else
+            Occurrences = cell2mat(arrayfun(@(x) MSStats(x).Occurrence, 1:numel(SelectedSets), 'UniformOutput', false));
+            swarmchart(occAx, x, Occurrences, 25, [0 0.4470 0.7410],'filled');
+        end
+        title(occAx, 'Occurence (segments/s)');
+    
+        % Coverage
+        covAx = nexttile(t, 5);
+        if numel(SelectedSets) == 1
+            bar(covAx, x, MSStats.Contribution*100);
+        else
+            Coverages = cell2mat(arrayfun(@(x) MSStats(x).Contribution*100, 1:numel(SelectedSets), 'UniformOutput', false));
+            swarmchart(covAx, x, Coverages, 25, [0 0.4470 0.7410],'filled');
+        end
+        title(covAx, 'Coverage (%)');
+    
+        % GFP
+    %     gfpAx = nexttile(t);
+    %     if numel(SelectedSets) == 1
+    %         bar(gfpAx, x, MSStats.MeanGFP);
+    %     else
+    %         GFPs = cell2mat(arrayfun(@(x) MSStats(x).MeanGFP, 1:numel(SelectedSets), 'UniformOutput', false));
+    %         swarmchart(gfpAx, x, GFPs, 25, [0 0.4470 0.7410],'filled');
+    %     end
+    %     title(gfpAx, 'Mean GFP');
+    
+        % Transition matrix
+        nexttile(t, 3);
+        if numel(SelectedSets) == 1
+            h = heatmap(t, Labels, Labels, MSStats.OrgTM, 'GridVisible', 'off');
+            h.Title = 'Transition Matrix';
+        else
+            avgTM = zeros(FitPar.nClasses);
+            for s=1:numel(SelectedSets)
+                avgTM = avgTM + MSStats(s).OrgTM;
+            end
+            avgTM = avgTM/numel(SelectedSets);
+            h = heatmap(t, Labels, Labels, avgTM, 'GridVisible', 'off');
+            h.Title = 'Average Transition Matrix';
+        end
+        h.XLabel = 'To';
+        h.YLabel = 'From';
+    
+        % Delta transition matrix
+        nexttile(t, 6);
+        if numel(SelectedSets) == 1
+            h2 = heatmap(t, Labels, Labels, MSStats.DeltaTM, 'GridVisible', 'off');
+            h2.Title = 'Delta Transition Matrix';
+        else
+            avgTM = zeros(FitPar.nClasses);
+            for s=1:numel(SelectedSets)
+                avgTM = avgTM + MSStats(s).DeltaTM;
+            end
+            avgTM = avgTM/numel(SelectedSets);
+            h2 = heatmap(t, Labels, Labels, avgTM, 'GridVisible', 'off');
+            h2.Title = 'Average Delta Transition Matrix';
+        end
+        h2.XLabel = 'To';
+        h2.YLabel = 'From';
+
+        if isempty(FileName)
+            uiwait(statsFig);
+            FileName = statsFig.UserData.FileName;
+            delete(statsFig);
+        else
+            FileName = outputStats([], [], FileName, MSStats, Labels);
         end
     else
-    % Use published template or mean set labels for other templates
-        if isfield(ChosenTemplate.msinfo.MSMaps(par.nClasses),'Labels')
-            Labels = ChosenTemplate.msinfo.MSMaps(par.nClasses).Labels;
-        end
+        % Generate output file
+        FileName = outputStats([], [], FileName, MSStats, Labels);
     end
 
-    % Generate output file
-    idx = 1;
-    if nargin < 6
-        [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.csv','Text file for R'},'Save microstate statistics');
+    EEGout = SelectedEEG;
+    CurrentSet = SelectedSets;
+
+    if ischar(TemplateSet) || isstring(TemplateSet)
+        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+    elseif isnumeric(TemplateSet)
+        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+    end
+
+end
+
+function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)
+    if isempty(FileName)
+        [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
+        if FName == 0
+            if nargin > 5
+                fig.UserData.FileName = 0;
+                return;
+            else
+                FileName = 0;
+                return;
+            end
+        end
         FileName = fullfile(PName,FName);
     else
         idx = 1;
-        if ~isempty(strfind(FileName,'.mat'))
+        if contains(FileName,'.mat')
             idx = 4;
         end
-        if ~isempty(strfind(FileName,'.xls'))
+        if contains(FileName,'.xls')
             idx = 5;
         end
-
-        if ~isempty(strfind(FileName,'.4R'))
+        if contains(FileName,'.4R')
             idx = 6;
         end
-
-        
     end
 
-    if ~isempty(FileName)
-    
+    if ~isempty(FileName)   
         switch idx
             case 1
                 SaveStructToTable(MSStats,FileName,',',Labels);
@@ -487,18 +592,49 @@ function [EEGOUT, CurrentSet, com,EpochData] = pop_QuantMSTemplates(AllEEG, Sele
                 SaveStructToR(MSStats,FileName);
         end
     end
-    txt = sprintf('%i ',SelectedSets);
-    txt(end) = [];
 
-    EEGOUT = SelectedEEG;
-    CurrentSet = SelectedSets;
-    
-    if (isempty(TemplateSet))
-        com = sprintf('[ALLEEG EEG com] = pop_QuantMSTemplates(%s, [%s], %i, %s, [], ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), FileName);
-    else
-        com = sprintf('com = pop_QuantMSTemplates(%s, [%s], %i, %s, %s, ''%s'');', inputname(1), txt, UseMeanTmpl, struct2String(par), TemplateSet, FileName);
+    if nargin > 5
+        src.Enable = 'off';
+        fig.UserData.FileName = FileName;
     end
 end
+
+function isEmpty = isEmptySet(in)
+    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if set is a dynamics set
+    if ~isfield(in.msinfo, 'DynamicsInfo')
+        return;
+    else
+        hasDyn = true;
+    end
+end
+
+function hasMS = hasMicrostates(in)
+    hasMS = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if msinfo is empty
+    if isempty(in.msinfo)
+        return;
+    else
+        hasMS = true;
+    end
+end
+
 
 function Answer = DoesItHaveChildren(in)
     Answer = false;
@@ -510,19 +646,6 @@ function Answer = DoesItHaveChildren(in)
         return
     else
         Answer = true;
-    end
-end
-
-function x = GetClusterField(in,fieldname)
-    x = nan;
-    if ~isfield(in,'msinfo')
-        return
-    end
-    if ~isfield(in.msinfo,'ClustPar')
-        return;
-    end
-    if isfield(in.msinfo.ClustPar,fieldname)
-        x = in.msinfo.ClustPar.(fieldname);
     end
 end
 

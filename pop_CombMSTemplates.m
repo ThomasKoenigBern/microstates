@@ -1,10 +1,12 @@
-%pop_CombMSTemplates() interactively averages microstate across EEGs
+% UPDATE DOCUMENTATION TO REFLECT KEY, VALUE PARAMETERS
+%
+% pop_CombMSTemplates() interactively averages microstate across EEGs
 %
 % This is not a simple averaging, but a permute and average loop that
 % optimizes the order of microstate classes in the individual datasets for
 % maximal communality before averaging!
 %
-% Usage: >> [EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, TemplateName)
+% Usage: >> [EEGout,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, TemplateName)
 %
 % EEG lab specific:
 %
@@ -23,7 +25,7 @@
 %   -> Show maps when done
 %
 %   "Name of mean" / MeanSetName
-%   -> Name of the new dataset returned by EEGOUT
+%   -> Name of the new dataset returned by EEGout
 %
 %   Added by Delara 10/12/22
 %   "Sort maps by published template when done" / TemplateName
@@ -31,7 +33,7 @@
 %
 % Output:
 %
-%   "EEGOUT" 
+%   "EEGout" 
 %   -> EEG structure with the EEG containing the new cluster centers
 %
 %   "com"
@@ -56,103 +58,206 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, IgnorePolarity, TemplateName)
+function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
-    %% Set default values for outputs and input parameters
+    %% Set defaults for outputs
     com = '';
-    EEGOUT = [];
     global MSTEMPLATE;
+    global guiOpts;
+    global EEG;
+    global CURRENTSET;
+    EEGout = EEG;
+    CurrentSet = CURRENTSET;
+
+    guiElements = {};
+    guiGeom = {};
+    guiGeomV = [];
+
+    %% Parse inputs and perform initial validation
+    p = inputParser;
+    funcName = 'pop_CombMSTemplates';
+    p.FunctionName = funcName;
     
-    if nargin < 3;  DoMeans = false;            end
-    if nargin < 4;  ShowWhenDone = false;       end
-    if nargin < 5;  MeanSetName = 'GrandMean';  end
-    if nargin < 6;  IgnorePolarity = true;      end
-    if nargin < 7;  TemplateName    = [];       end
+    logClass = {'logical', 'numeric'};
+    logAttributes = {'binary', 'scalar'};
 
-    SortMaps = ~isempty(TemplateName);
-
-    %% Validate TemplateName
-    TemplateNames = {MSTEMPLATE.setname};
-    TemplateIndex = 1;
-    if SortMaps
-        if (~any(matches(TemplateNames, TemplateName)))
-            errorMessage = sprintf('The specified template %s could not be found in the microstates/Templates' + ...
-            'folder. Please add the template to the folder before sorting.', TemplateName);
-            errordlg2([errorMessage],'Identify microstate classes');
-            return;
-        else
-            TemplateIndex = find(matches(TemplateNames, TemplateName));
-        end
-    end
+    strClass = {'char', 'string'};
+    strAttributes = {'scalartext'};
     
-    %% Select sets to combine
-    if numel(CURRENTSET) == 1 
-        nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
-        HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG),'UniformOutput',true);
-        if DoMeans == true
-            nonempty(~HasChildren) = [];
-        else
-            nonempty(HasChildren) = [];
-        end
-        AvailableSets = {AllEEG(nonempty).setname};
-            
-        [res,~,~,structout] = inputgui('title','Average microstate maps across recordings',...
-        'geometry', {1 1 1 1 1 1 1 1 1}, 'geomvert', [1 1 4 1 1 1 1 1 1], 'uilist', { ...
-            { 'Style', 'text', 'string', 'Choose sets for averaging'} ...
-            { 'Style', 'text', 'string', 'Use ctrlshift for multiple selection'} ...
-            { 'Style', 'listbox', 'string', AvailableSets, 'tag','SelectSets' ,'Min', 0, 'Max',2} ...
-            { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
-            { 'Style', 'edit', 'string', MeanSetName,'tag','MeanName' } ...
-            { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
-            { 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'Sort_Maps', 'Value', SortMaps } ...
-            { 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', TemplateIndex} ...
-            { 'Style', 'checkbox', 'string' 'Show maps when done' 'tag' 'Show_Maps'    ,'Value', ShowWhenDone }});
-     
-        if isempty(res); return; end
-        
-        SelectedSets = nonempty(structout.SelectSets);
-        MeanSetName = structout.MeanName;
-        IgnorePolarity = structout.Ignore_Polarity;
-        SortMaps = structout.Sort_Maps;
-        ShowWhenDone = structout.Show_Maps;
+    addRequired(p, 'AllEEG');
+    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
+    addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
+    addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, logClass, logAttributes));
+    addParameter(p, 'MeanName', 'GrandMean', @(x) validateattributes(x, strClass, strAttributes));
+    addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, strClass, strAttributes));
 
-        if SortMaps
-            TemplateIndex = structout.TemplateIndex;
-            TemplateName = TemplateNames(TemplateIndex);
-        end
-    else
-        if nargin < 5 || ischar(TemplateName)
-            [res,~,~,structout] = inputgui('title','Average microstate maps across recordings',...
-                'geometry', {1 1 1 1 1 1}, 'geomvert', [1 1 1 1 1 1], 'uilist', { ...
-                { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
-                { 'Style', 'edit', 'string', MeanSetName,'tag','MeanName' } ...
-                { 'Style', 'checkbox', 'string', 'No polarity','tag','Ignore_Polarity' ,'Value', IgnorePolarity }  ...
-                { 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'Sort_Maps', 'Value', SortMaps } ...
-                { 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', TemplateIndex} ...
-                { 'Style', 'checkbox', 'string' 'Show maps when done' 'tag' 'Show_Maps','Value', ShowWhenDone }});
-        
-            if isempty(res); return; end
-    
-            MeanSetName = structout.MeanName;
-            IgnorePolarity = structout.Ignore_Polarity;
-            SortMaps = structout.Sort_Maps;
-            ShowWhenDone = structout.Show_Maps;
+    parse(p, AllEEG, varargin{:});
 
-            if SortMaps
-                TemplateIndex = structout.TemplateIndex;
-                TemplateName = TemplateNames(TemplateIndex);
-            end
-        end    
-        SelectedSets = CURRENTSET;
-    end
+    SelectedSets = p.Results.SelectedSets;
+    ShowMaps = p.Results.ShowMaps;
+    IgnorePolarity = p.Results.IgnorePolarity;
+    MeanName = p.Results.MeanName;
+    TemplateSet = p.Results.TemplateSet;
 
-    if numel(SelectedSets) < 2
-        errordlg2('You must select at least two sets of microstate maps','Combine microstate maps');
+    %% SelectedSets validation
+    % First make sure there are enough sets to combine (at least 2)
+    HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(and(and(~isEmpty, ~HasDyn), HasMS));
+    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
+    indSets = AvailableSets(~HasChildren);
+    meanSets = AvailableSets(HasChildren);
+
+    if numel(indSets) < 2 && numel(meanSets) < 2
+        errordlg2(['Not enough valid sets for computing mean maps found.' ...
+            'There must be at least 2 sets with microstate maps to combine.'], ...
+            'Compute mean maps error');
         return;
     end
 
-    if ~isfield(AllEEG(SelectedSets(1)),'msinfo')
-        errordlg2(sprintf('Microstate info not found in dataset %',AllEEG(SelectedSets(1)).setname), 'Combine microstate maps');
+    % If the user has provided sets, check their validity
+    if ~isempty(SelectedSets)
+        % First check for empty sets, dynamics sets, or any sets without
+        % microstate maps
+        SelectedSets = unique(SelectedSets);
+        isValid = ismember(SelectedSets, AvailableSets);
+        if any(~isValid)
+            invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
+            invalidSetsTxt = invalidSetsTxt(1:end-2);
+            errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, dynamics sets, or sets ' ...
+                'without microstate maps.'];
+            errordlg2(errorMessage, 'Compute mean maps error');
+            return;
+        end
+
+        % Then make sure there are at least 2 sets
+        if numel(SelectedSets) < 2
+            errordlg2('You must select at least two sets of microstate maps','Combine microstate maps');
+            return;
+        end
+
+        % Then make sure the selected sets are either all individual sets
+        % or all mean sets
+        indSelected = any(ismember(SelectedSets, indSets));
+        meanSelected = any(ismember(SelectedSets, meanSets));
+        if indSelected && meanSelected && guiOpts.showCombWarning
+            warningMessage = ['Both individual sets and mean sets have been selected. ' ...
+                'Are you sure you would like to proceed?'];
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compute mean maps warning');
+            if boxChecked;  guiOpts.showCombWarning = false;    end
+            if ~yesPressed; return;                             end
+        end
+    % Otherwise, ask the user if they want to combine individual sets or
+    % mean sets and add appropriate set selection gui elements
+    else
+        % If there are not enough mean sets or individual sets to combine,
+        % don't bother asking which kind of sets to choose
+        if numel(meanSets) < 2
+            pickIndSets = true;
+        elseif numel(indSets) < 2
+            pickIndSets = false;
+        % If there are enough mean sets and individual sets, ask the user
+        % which kind of sets they would like to use
+        else
+            question = 'Which type of mean maps would you like to create?';
+            title = 'Compute mean maps';
+            options = {'Mean maps across individuals', 'Grand mean maps across means'};
+            selection = questionDialog(question, title, options);
+            if isempty(selection) || strcmp(selection, 'Cancel')
+                return;
+            else
+                pickIndSets = strcmp(selection, 'Mean maps across individuals');
+            end
+        end
+
+        % Add appropriate gui elements
+        if pickIndSets
+            AvailableSets = indSets;            
+        else
+            AvailableSets = meanSets;
+        end
+        AvailableSetnames = {AllEEG(AvailableSets).setname};
+        defaultSets = find(ismember(AvailableSets, CurrentSet));
+        if isempty(defaultSets);    defaultSets = 1;    end
+        guiElements = [guiElements, ....
+                    {{ 'Style', 'text'    , 'string', 'Choose sets to combine'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Use ctrlshift for multiple selection'}} ...
+                    {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
+        guiGeom  = [guiGeom  1 1 1];
+        guiGeomV = [guiGeomV  1 1 4];
+    end
+
+    %% Add other gui elements
+    if contains('MeanName', p.UsingDefaults)
+        guiElements = [guiElements, ...
+            {{ 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'edit', 'string', MeanName,'tag','MeanName'}}];
+        guiGeom = [guiGeom [1 1]];
+        guiGeomV = [guiGeomV 1];
+    end
+
+    if contains('IgnorePolarity', p.UsingDefaults)
+        guiElements = [guiElements ...
+            {{ 'Style', 'checkbox', 'string', 'No polarity','tag','IgnorePolarity','Value', IgnorePolarity }}];
+        guiGeom = [guiGeom 1];
+        guiGeomV = [guiGeomV 1];
+    end
+
+    % Only add the option to show maps and sort when done if other gui 
+    % elements are already being shown, otherwise use the defaults
+    if any(contains({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
+        if contains('ShowMaps', p.UsingDefaults)
+            guiElements = [guiElements ...
+                {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
+            guiGeom = [guiGeom 1];
+            guiGeomV = [guiGeomV 1];
+        end
+
+        if contains('TemplateSet', p.UsingDefaults)
+            TemplateNames = {MSTEMPLATE.setname};
+            guiElements = [guiElements ...
+                {{ 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'SortMaps', 'Value', ~isempty(TemplateSet) }} ...
+                {{ 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', 1}}];
+            guiGeom = [guiGeom 1 1];
+            guiGeomV = [guiGeomV 1 1];
+        end
+    end
+
+    %% Prompt user to fill in remaining parameters if necessary
+    if ~isempty(guiElements)
+        [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
+             'title','Compute mean maps');
+
+        if isempty(res); return; end
+
+        if isfield(outstruct, 'SelectedSets')
+            SelectedSets = AvailableSets(outstruct.SelectedSets);
+        end
+
+        if isfield(outstruct, 'MeanName')
+            MeanName = outstruct.MeanName;
+        end
+    
+        if isfield(outstruct, 'IgnorePolarity')
+            IgnorePolarity = outstruct.IgnorePolarity;
+        end
+        
+        if isfield(outstruct, 'ShowMaps')
+            ShowMaps = outstruct.ShowMaps;
+        end
+        
+        if isfield(outstruct, 'SortMaps')
+            if(outstruct.SortMaps)
+                TemplateIndex = outstruct.TemplateIndex;
+                TemplateSet = TemplateNames{TemplateIndex};
+            end
+        end
+    end
+
+    if numel(SelectedSets) < 2
+        errordlg2('You must select at least two sets of microstate maps','Combine microstate maps error');
         return;
     end
 
@@ -162,22 +267,17 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
     tempIPolarity  = AllEEG(SelectedSets(1)).msinfo.ClustPar.IgnorePolarity;
     GFPPeaks       = AllEEG(SelectedSets(1)).msinfo.ClustPar.GFPPeaks;
     
-     if ~isfield(AllEEG(SelectedSets(1)).msinfo.ClustPar,'UseEMD')
+    if ~isfield(AllEEG(SelectedSets(1)).msinfo.ClustPar,'UseEMD')
         UseEMD = false;
-     else
-         UseEMD = AllEEG(SelectedSets(1)).msinfo.ClustPar.UseEMD;
-     end
+    else
+        UseEMD = AllEEG(SelectedSets(1)).msinfo.ClustPar.UseEMD;
+    end
     
     allchans  = { };
     children  = cell(length(SelectedSets),1);
     keepindex = 0;
 
     for index = 1:length(SelectedSets)
-        if ~isfield(AllEEG(SelectedSets(index)),'msinfo')
-            errordlg2(sprintf('Microstate info not found in dataset %',AllEEG(SelectedSets(index)).setname), 'Combine microstate maps'); 
-            return;
-        end
-    
         if  MinClasses     ~= AllEEG(SelectedSets(index)).msinfo.ClustPar.MinClasses || ...
             MaxClasses     ~= AllEEG(SelectedSets(index)).msinfo.ClustPar.MaxClasses || ...
             tempIPolarity  ~= AllEEG(SelectedSets(index)).msinfo.ClustPar.IgnorePolarity || ...
@@ -216,85 +316,82 @@ function [AllEEG, EEGOUT,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans,
         msinfo.MSMaps(n).Maps = BestMeanMap;
         msinfo.MSMaps(n).ExpVar = ExpVar;
         msinfo.MSMaps(n).ColorMap = lines(n);
-        % Delara 10/14/22: add map labels
         for j = 1:n
-            msinfo.MSMaps(n).Labels{j} = sprintf('%s_%i.%i', MeanSetName, n,j);
+            msinfo.MSMaps(n).Labels{j} = sprintf('%s_%i.%i', MeanName, n,j);
         end
         msinfo.MSMaps(n).SortMode = 'none';
         msinfo.MSMaps(n).SortedBy = 'none';
         msinfo.MSMaps(n).SpatialCorrelation = [];
     end
     
-    EEGOUT = eeg_emptyset();
-    EEGOUT.chanlocs = tmpchanlocs;
-    EEGOUT.data = zeros(numel(EEGOUT.chanlocs),MaxClasses,MaxClasses);
-    EEGOUT.msinfo = msinfo;
+    EEGout = eeg_emptyset();
+    EEGout.chanlocs = tmpchanlocs;
+    EEGout.data = zeros(numel(EEGout.chanlocs),MaxClasses,MaxClasses);
+    EEGout.msinfo = msinfo;
     
     for n = MinClasses:MaxClasses
-        EEGOUT.data(:,1:n,n) = msinfo.MSMaps(n).Maps';
+        EEGout.data(:,1:n,n) = msinfo.MSMaps(n).Maps';
     end
     
-    EEGOUT.setname     = MeanSetName;
-    EEGOUT.nbchan      = size(EEGOUT.data,1);
-    EEGOUT.trials      = size(EEGOUT.data,3);
-    EEGOUT.pnts        = size(EEGOUT.data,2);
-    EEGOUT.srate       = 1;
-    EEGOUT.xmin        = 1;
-    EEGOUT.times       = 1:EEGOUT.pnts;
-    EEGOUT.xmax        = EEGOUT.times(end);
-
+    EEGout.setname     = MeanName;
+    EEGout.nbchan      = size(EEGout.data,1);
+    EEGout.trials      = size(EEGout.data,3);
+    EEGout.pnts        = size(EEGout.data,2);
+    EEGout.srate       = 1;
+    EEGout.xmin        = 1;
+    EEGout.times       = 1:EEGout.pnts;
+    EEGout.xmax        = EEGout.times(end);
 
     %% Sorting
-    if SortMaps == true
-        ChosenTemplate = MSTEMPLATE(TemplateIndex);
-        for n = MinClasses:MaxClasses
-
-            % find the number of template classes to use
-            HasTemplates = ~cellfun(@isempty,{ChosenTemplate.msinfo.MSMaps.Maps});
-            TemplateClassesToUse = find(HasTemplates == true);
-
-            % compare number of channels in mean set and template set -
-            % convert whichever set has more channels to the channel
-            % locations of the other
-            MapsToSort = zeros(1, n, min(EEGOUT.nbchan, ChosenTemplate.nbchan));
-            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(EEGOUT.chanlocs,ChosenTemplate.chanlocs);
-            if EEGOUT.nbchan > ChosenTemplate.nbchan
-                MapsToSort(1,:,:) = EEGOUT.msinfo.MSMaps(n).Maps * LocalToGlobal';
-                TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps;
-            else
-                MapsToSort(1,:,:) = EEGOUT.msinfo.MSMaps(n).Maps;
-                TemplateMaps = ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Maps * GlobalToLocal';
-            end
-
-            % Sort
-            [~,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MapsToSort,TemplateMaps,~IgnorePolarity);
-            EEGOUT.msinfo.MSMaps(n).Maps = EEGOUT.msinfo.MSMaps(n).Maps(SortOrder(SortOrder <= n),:);
-            EEGOUT.msinfo.MSMaps(n).Maps = EEGOUT.msinfo.MSMaps(n).Maps .* repmat(polarity',1,numel(EEGOUT.chanlocs));
-
-            % Update map labels and colors
-            [Labels,Colors] = UpdateMicrostateLabels(EEGOUT.msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,EEGOUT.msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
-            EEGOUT.msinfo.MSMaps(n).Labels = Labels;
-            EEGOUT.msinfo.MSMaps(n).ColorMap = Colors;
-
-            % Delara 8/17/22 change
-            EEGOUT.msinfo.MSMaps(n).SortMode = 'template based';
-            EEGOUT.msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
-            EEGOUT.msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation;
-            EEGOUT.saved = 'no';
-        end
+    if ~isempty(TemplateSet)
+        EEGout = pop_SortMSTemplates(EEGout, 1, 'IgnorePolarity', IgnorePolarity, 'TemplateSet', TemplateSet);
     end
 
-    if ShowWhenDone == true
-        pop_ShowIndMSMaps(EEGOUT, nan, 0, AllEEG);
+    %% Show maps
+    if ShowMaps
+        pop_ShowIndMSMaps(EEGout, nan, 0, AllEEG);
     end
 
     %% Command string generation
-    if SortMaps == true
-        com = sprintf('[ALLEEG, EEG, com] = pop_CombMSTemplates(%s, %s, %i, %i, ''%s'', %i, ''%s'');',inputname(1),mat2str(SelectedSets),DoMeans,ShowWhenDone,MeanSetName,IgnorePolarity,string(TemplateName));
+    com = sprintf('[EEG, com] = pop_CombMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''MeanName'', ''%s'', ''ShowMaps'', %i, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), IgnorePolarity, MeanName, ShowMaps, TemplateSet);
+end
+
+function isEmpty = isEmptySet(in)
+    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if set is a dynamics set
+    if ~isfield(in.msinfo, 'DynamicsInfo')
+        return;
     else
-        com = sprintf('[ALLEEG, EEG, com] = pop_CombMSTemplates(%s, %s, %i, %i, ''%s'', %i);',inputname(1),mat2str(SelectedSets),DoMeans,ShowWhenDone,MeanSetName,IgnorePolarity);
+        hasDyn = true;
     end
 end
+
+function hasMS = hasMicrostates(in)
+    hasMS = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if msinfo is empty
+    if isempty(in.msinfo)
+        return;
+    else
+        hasMS = true;
+    end
+end
+
 
 function Answer = DoesItHaveChildren(in)
     Answer = false;
@@ -308,21 +405,3 @@ function Answer = DoesItHaveChildren(in)
         Answer = true;
     end
 end
-
-% Performs element-wise computation of abs(spatial correlation) or 
-% spatial correlation between matrices A and B
-function corr = elementCorr(A,B, IgnorePolarity)
-    % average reference
-    A = A - mean(A, 1);
-    B = B - mean(B, 1);
-
-    % get correlation
-    A = A./sqrt(sum(A.^2, 1));
-    B = B./sqrt(sum(B.^2, 1));           
-    if (IgnorePolarity) 
-        corr = abs(sum(A.*B, 1));
-    else 
-        corr = sum(A.*B, 1);
-    end
-end
-
