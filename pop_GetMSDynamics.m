@@ -80,7 +80,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     p.FunctionName = funcName;
     p.StructExpand = false;         % do not expand FitPar struct input into key, value args
 
-    addRequired(p, 'AllEEG');
+    addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'FitPar', []);
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
@@ -141,7 +141,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     % validity
     meanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
     meanSetnames = {AllEEG(meanSets).setname};
-    publishedSetnames = {MSTEMPLATE.setname};
+    [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
     if ~isempty(TemplateSet)
         if strcmp(TemplateSet, 'own')
@@ -178,7 +178,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
                 end
             elseif matches(TemplateSet, publishedSetnames)
                 TemplateMode = 'published';
-                TemplateIndex = find(matches(publishedSetnames, TemplateSet));
+                TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
                 TemplateName = TemplateSet;
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
@@ -190,7 +190,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
 
     % Otherwise, add template set selection gui elements
     else
-        combinedSetnames = ['Own' meanSetnames publishedSetnames];
+        combinedSetnames = ['Own' meanSetnames publishedDisplayNames];
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'}} ...
             {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
@@ -222,6 +222,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
                 TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames) - 1;
                 TemplateSet = publishedSetnames{TemplateIndex};
                 TemplateName = TemplateSet;
+                TemplateIndex = sortOrder(TemplateIndex);
             end
         end
     end
@@ -368,6 +369,17 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         com = sprintf('[EEG, CURRENTSET, com] = pop_GetMSDynamics(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
     end
 
+end
+
+function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
+    global MSTEMPLATE;
+    TemplateNames = {MSTEMPLATE.setname};
+    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    TemplateNames = TemplateNames(sortOrder);
+    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
+    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
+    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
 end
 
 function isEmpty = isEmptySet(in)

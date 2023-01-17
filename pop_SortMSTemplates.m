@@ -93,11 +93,11 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     funcName = 'pop_SortMSTemplates';
     p.FunctionName = funcName;
     
-    addRequired(p, 'AllEEG');
+    addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
-    addParameter(p, 'ClassRange', []);
+    addParameter(p, 'ClassRange', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
 
     parse(p, AllEEG, varargin{:});
 
@@ -158,7 +158,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
     meanSets = AvailableSets(HasChildren);
     meanSetnames = {AllEEG(meanSets).setname};
-    publishedSetnames = {MSTEMPLATE.setname};
+    [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
     usingPublished = false;
     if ~isempty(TemplateSet)
@@ -192,7 +192,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
                 end
             elseif matches(TemplateSet, publishedSetnames)
                 usingPublished = true;
-                TemplateIndex = find(matches(publishedSetnames, TemplateSet));
+                TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
                 TemplateName = TemplateSet;
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
@@ -204,7 +204,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
 
     % Otherwise, add template set selection gui elements
     else
-        combinedSetnames = [meanSetnames publishedSetnames];
+        combinedSetnames = [meanSetnames publishedDisplayNames];
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Name of template map to sort by', 'fontweight', 'bold'}} ...
             {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
@@ -237,7 +237,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
                 TemplateSet = meanSets(TemplateIndex);
                 TemplateName = meanSetnames{TemplateIndex};
             else
-                TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames);
+                TemplateIndex = sortOrder(outstruct.TemplateIndex - numel(meanSetnames));
                 TemplateSet = publishedSetnames{TemplateIndex};
                 usingPublished = true;
             end
@@ -257,6 +257,29 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         ChosenTemplate = MSTEMPLATE(TemplateIndex);
     else
         ChosenTemplate = AllEEG(meanSets(TemplateIndex));
+    end
+
+    %% Prompt user to select class range if necessary
+    TemplateMinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
+    TemplateMaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+    AllMinClasses = [TemplateMinClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets)];
+    AllMaxClasses = [TemplateMaxClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets)];
+    MinClasses = min(AllMinClasses);
+    MaxClasses = max(AllMaxClasses);
+    if contains('ClassRange', p.UsingDefaults)
+        classes = MinClasses:MaxClasses;
+        classChoices = sprintf('%i Classes|', classes);
+        classChoices(end) = [];
+
+        [res,~,~,outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', ...
+            { {'Style', 'text', 'string', 'Select classes to sort'} ...
+              {'Style', 'text', 'string' 'Use ctrlshift for multiple selection'} ...
+              {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 2, 'Value', 1:numel(classes), 'Tag', 'ClassRange'}}, ...
+              'title', 'Sort microstate maps');
+        
+        if isempty(res); return; end
+
+        ClassRange = classes(outstruct.ClassRange);
     end
 
     %% Verify compatibility between selected sets to sort and template set
@@ -291,23 +314,11 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     end
 
     %% Sorting
-    TemplateMinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
-    TemplateMaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-    AllMinClasses = [TemplateMinClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets)];
-    AllMaxClasses = [TemplateMaxClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets)];
-    if isempty(ClassRange)
-        MinClasses = min(AllMinClasses);
-        MaxClasses = max(AllMaxClasses);
-    else
-        MinClasses = min(ClassRange);
-        MaxClasses = max(ClassRange);
-    end
-
     for index = 1:length(SelectedSets)
         fprintf('Sorting dataset %i of %i\n', index, numel(SelectedSets));
         sIndex = SelectedSets(index);
 
-        for n = MinClasses:MaxClasses
+        for n = ClassRange
 
             % skip class number if the current set does not contain the
             % current cluster solution
@@ -370,6 +381,17 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     elseif isnumeric(TemplateSet)
         com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', %i)', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet);
     end        
+end
+
+function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
+    global MSTEMPLATE;
+    TemplateNames = {MSTEMPLATE.setname};
+    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    TemplateNames = TemplateNames(sortOrder);
+    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
+    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
+    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
 end
 
 function isEmpty = isEmptySet(in)

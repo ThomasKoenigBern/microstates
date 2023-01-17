@@ -107,7 +107,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     logClass = {'logical', 'numeric'};
     logAttributes = {'binary', 'scalar'};
     
-    addRequired(p, 'AllEEG');
+    addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'ClustPar', []);
     addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
@@ -240,6 +240,16 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
 
+        if contains('TemplateSet', p.UsingDefaults)
+            [TemplateNames, DisplayNames] = getTemplateNames();
+
+            guiElements = [guiElements ...
+                {{ 'Style', 'text', 'string', 'Sort maps by published template when done'}} ...
+                {{ 'Style', 'popupmenu', 'string', DisplayNames,'tag','TemplateIndex','Value', 1}}];
+            guiGeom = [guiGeom 1 1];
+            guiGeomV = [guiGeomV 1 1];
+        end
+
         if contains('ShowMaps', p.UsingDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
@@ -252,15 +262,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
                 {{ 'Style', 'checkbox', 'string','Show dynamics when done','tag','ShowDyn','Value', ShowDyn }}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
-        end
-        
-        if contains('TemplateSet', p.UsingDefaults)
-            TemplateNames = {MSTEMPLATE.setname};
-            guiElements = [guiElements ...
-                {{ 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'SortMaps', 'Value', ~isempty(TemplateSet) }} ...
-                {{ 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', 1}}];
-            guiGeom = [guiGeom 1 1];
-            guiGeomV = [guiGeomV 1 1];
         end
     end
     
@@ -306,9 +307,9 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         if isfield(outstruct, 'ShowDyn')
             ShowDyn = outstruct.ShowDyn;
         end
-        if isfield(outstruct, 'SortMaps')
-            if(outstruct.SortMaps)         
-                TemplateSet = TemplateNames{outstruct.TemplateIndex};
+        if isfield(outstruct, 'TemplateIndex')
+            if outstruct.TemplateIndex ~= 1         
+                TemplateSet = TemplateNames{outstruct.TemplateIndex - 1};
             end
         end
     end
@@ -409,10 +410,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         AllEEG(sIndex).msinfo = msinfo;
         AllEEG(sIndex).saved = 'no';
 
-        if ShowMaps
-            pop_ShowIndMSMaps(EEGout, nan, 0, AllEEG);
-        end
-
         if ShowDyn
             pop_ShowIndMSDyn([],AllEEG(sIndex),0);
         end
@@ -421,10 +418,17 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
 
     %% Sorting
     if ~isempty(TemplateSet)
-        [EEGout, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, 'IgnorePolarity', ClustPar.IgnorePolarity, 'TemplateSet', TemplateSet);
+        [EEGout, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, ...
+            'IgnorePolarity', ClustPar.IgnorePolarity, 'TemplateSet', TemplateSet, ...
+            'ClassRange', ClustPar.MinClasses:ClustPar.MaxClasses);
     else
         EEGout = AllEEG(SelectedSets);
         CurrentSet = SelectedSets;
+    end
+
+    %% Show maps
+    if ShowMaps
+        pop_ShowIndMSMaps(EEGout, 1:numel(EEGout));
     end
     
     %% Command string generation
@@ -465,6 +469,18 @@ function [ClustPar, UsingDefaults] = checkClustPar(varargin)
     parse(p, varargin{:});
     ClustPar = p.Results;
     UsingDefaults = p.UsingDefaults;
+end
+
+function [TemplateNames, DisplayNames] = getTemplateNames()
+    global MSTEMPLATE;
+    TemplateNames = {MSTEMPLATE.setname};
+    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    TemplateNames = TemplateNames(sortOrder);
+    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
+    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
+    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
+    DisplayNames = ['None' DisplayNames];
 end
 
 function isEmpty = isEmptySet(in)

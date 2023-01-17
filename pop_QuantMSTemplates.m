@@ -163,7 +163,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     % validity
     meanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
     meanSetnames = {AllEEG(meanSets).setname};
-    publishedSetnames = {MSTEMPLATE.setname};
+    [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
     if ~isempty(TemplateSet)
         if strcmp(TemplateSet, 'own')
@@ -200,7 +200,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
                 end
             elseif matches(TemplateSet, publishedSetnames)
                 TemplateMode = 'published';
-                TemplateIndex = find(matches(publishedSetnames, TemplateSet));
+                TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
                 TemplateName = TemplateSet;
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
@@ -212,7 +212,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
 
     % Otherwise, add template set selection gui elements
     else
-        combinedSetnames = ['Own' meanSetnames publishedSetnames];
+        combinedSetnames = ['Own' meanSetnames publishedDisplayNames];
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'}} ...
             {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
@@ -254,6 +254,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
                 TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames) - 1;
                 TemplateSet = publishedSetnames{TemplateIndex};
                 TemplateName = TemplateSet;
+                TemplateIndex = sortOrder(TemplateIndex);
             end
         end
 
@@ -548,6 +549,17 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
     end
 
+end
+
+function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
+    global MSTEMPLATE;
+    TemplateNames = {MSTEMPLATE.setname};
+    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    TemplateNames = TemplateNames(sortOrder);
+    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
+    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
+    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
 end
 
 function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)

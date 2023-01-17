@@ -58,7 +58,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
+function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
@@ -84,12 +84,13 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     strClass = {'char', 'string'};
     strAttributes = {'scalartext'};
     
-    addRequired(p, 'AllEEG');
+    addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'MeanName', 'GrandMean', @(x) validateattributes(x, strClass, strAttributes));
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, strClass, strAttributes));
+    addParameter(p, 'SortChildren', false, @(x) validateattributes(logClass, logAttributes));
 
     parse(p, AllEEG, varargin{:});
 
@@ -98,6 +99,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     IgnorePolarity = p.Results.IgnorePolarity;
     MeanName = p.Results.MeanName;
     TemplateSet = p.Results.TemplateSet;
+    SortChildren = p.Results.SortChildren;
 
     %% SelectedSets validation
     % First make sure there are enough sets to combine (at least 2)
@@ -148,6 +150,9 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
             [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compute mean maps warning');
             if boxChecked;  guiOpts.showCombWarning = false;    end
             if ~yesPressed; return;                             end
+            pickIndSets = false;
+        else
+            pickIndSets = indSelected;
         end
     % Otherwise, ask the user if they want to combine individual sets or
     % mean sets and add appropriate set selection gui elements
@@ -191,6 +196,10 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Add other gui elements
     if contains('MeanName', p.UsingDefaults)
+        if pickIndSets
+            MeanName = 'GroupMean_<group name>';
+        end
+
         guiElements = [guiElements, ...
             {{ 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'}} ...
             {{ 'Style', 'edit', 'string', MeanName,'tag','MeanName'}}];
@@ -208,6 +217,16 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     % Only add the option to show maps and sort when done if other gui 
     % elements are already being shown, otherwise use the defaults
     if any(contains({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
+         if contains('TemplateSet', p.UsingDefaults)
+            [TemplateNames, DisplayNames] = getTemplateNames();
+
+            guiElements = [guiElements ...
+                {{ 'Style', 'text', 'string', 'Sort maps by published template when done'}} ...
+                {{ 'Style', 'popupmenu', 'string', DisplayNames,'tag','TemplateIndex','Value', 1}}];
+            guiGeom = [guiGeom 1 1];
+            guiGeomV = [guiGeomV 1 1];
+         end
+
         if contains('ShowMaps', p.UsingDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
@@ -215,13 +234,12 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
 
-        if contains('TemplateSet', p.UsingDefaults)
-            TemplateNames = {MSTEMPLATE.setname};
+        if contains('SortChildren', p.UsingDefaults)
             guiElements = [guiElements ...
-                {{ 'Style', 'checkbox', 'string', 'Sort maps by published template when done', 'tag', 'SortMaps', 'Value', ~isempty(TemplateSet) }} ...
-                {{ 'Style', 'popupmenu', 'string', TemplateNames,'tag','TemplateIndex','Value', 1}}];
-            guiGeom = [guiGeom 1 1];
-            guiGeomV = [guiGeomV 1 1];
+                {{ 'Style', 'checkbox', 'string', 'Sort child sets by mean set when done', ...
+                'tag', 'SortChildren', 'Value', SortChildren}}];
+            guiGeom = [guiGeom 1];
+            guiGeomV = [guiGeomV 1];
         end
     end
 
@@ -248,11 +266,14 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
             ShowMaps = outstruct.ShowMaps;
         end
         
-        if isfield(outstruct, 'SortMaps')
-            if(outstruct.SortMaps)
-                TemplateIndex = outstruct.TemplateIndex;
-                TemplateSet = TemplateNames{TemplateIndex};
+        if isfield(outstruct, 'TemplateIndex')
+            if outstruct.TemplateIndex ~= 1
+                TemplateSet = TemplateNames{outstruct.TemplateIndex - 1};
             end
+        end
+
+        if isfield(outstruct, 'SortChildren')
+            SortChildren = outstruct.SortChildren;
         end
     end
 
@@ -344,16 +365,39 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Sorting
     if ~isempty(TemplateSet)
-        EEGout = pop_SortMSTemplates(EEGout, 1, 'IgnorePolarity', IgnorePolarity, 'TemplateSet', TemplateSet);
+        EEGout = pop_SortMSTemplates(EEGout, 1, 'IgnorePolarity', IgnorePolarity, ...
+            'TemplateSet', TemplateSet, 'ClassRange', MinClasses:MaxClasses);
+    end
+
+    if SortChildren
+        disp('Sorting child sets');
+        EEGout.datfile = [];
+        EEGout.run = [];
+        newEEG = [AllEEG EEGout];
+        childEEG = pop_SortMSTemplates(newEEG, SelectedSets, 'IgnorePolarity', IgnorePolarity, ...
+            'TemplateSet', numel(newEEG), 'ClassRange', ClassRange);
+        [AllEEG, ~, ~] = eeg_store(AllEEG, childEEG, SelectedSets);
     end
 
     %% Show maps
     if ShowMaps
-        pop_ShowIndMSMaps(EEGout, nan, 0, AllEEG);
+        pop_ShowIndMSMaps(EEGout, 1);
     end
 
     %% Command string generation
     com = sprintf('[EEG, com] = pop_CombMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''MeanName'', ''%s'', ''ShowMaps'', %i, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), IgnorePolarity, MeanName, ShowMaps, TemplateSet);
+end
+
+function [TemplateNames, DisplayNames] = getTemplateNames()
+    global MSTEMPLATE;
+    TemplateNames = {MSTEMPLATE.setname};
+    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    TemplateNames = TemplateNames(sortOrder);
+    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
+    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
+    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
+    DisplayNames = ['None' DisplayNames];
 end
 
 function isEmpty = isEmptySet(in)
