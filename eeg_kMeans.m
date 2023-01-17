@@ -43,19 +43,19 @@ if (max_n > n_frame)
     max_n = n_frame;
 end
 
-if isempty(strfind(flags,'p'))
+if ~contains(flags,'p')
     pmode = 0;
 else
     pmode = 1;
 end
 
 newRef = eye(n_chan);
-if ~isempty(strfind(flags,'a'))
+if contains(flags,'a')
     newRef = newRef -1/n_chan;
 end
 
 UseEMD = false;
-if ~isempty(strfind(flags,'e'))
+if contains(flags,'e')
     UseEMD = true;
 end
 
@@ -63,16 +63,14 @@ end
 
 eeg = eeg*newRef;
 
-if ~isempty(strfind(flags,'n'))
+if contains(flags,'n')
     eeg = NormDim(eeg,2);
 end
 
 org_data = eeg;
 best_fit = 0;
 
-TotVar = sum(sum(org_data.*NormDimL2(org_data,2) / sqrt(n_chan),2));
-
-if ~isempty(strfind(flags,'b'))
+if contains(flags,'b')
     h = waitbar(0,sprintf('Computing %i clusters, please wait...',n_mod));
 else
     h = [];
@@ -190,9 +188,14 @@ for run = 1:reruns
         b_ind     = ind;
         b_loading = loading; %/sqrt(n_chan);
         best_fit  = tot_fit;
-        exp_var = sum(b_loading)/TotVar/sqrt(n_chan);
     end    
 end % for run = 1:reruns
+
+% average reference eeg in case it was not already done
+newRef = eye(n_chan);
+newRef = newRef -1/n_chan;
+ref_eeg = eeg*newRef;
+exp_var = sum((b_loading/sqrt(n_chan)).^2)/sum(vecnorm(ref_eeg).^2);
 
 if isempty(h)
     mywaitbar(reruns, reruns, step, nSteps, strLength);

@@ -67,6 +67,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     guiOpts.showQuantWarning1 = true;
     guiOpts.showQuantWarning2 = true;
     guiOpts.showQuantWarning3 = true;
+    guiOpts.showDynWarning = true;
 
     VersionNumber = '1.2';
     vers = ['Microstates ' VersionNumber];
@@ -143,7 +144,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     MSTEMPLATE = MSTemplate;
     
     comFindMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_FindMSTemplates(ALLEEG);'                         catch_strings.store_and_hist]; % ok
-    comCombineMSTemplates  = [try_strings.no_check '[EEG LASTCOM] = pop_CombMSTemplates(ALLEEG);'                                   catch_strings.new_and_hist];
+    comCombineMSTemplates  = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_CombMSTemplates(ALLEEG);'                                   catch_strings.new_and_hist];
     comSortMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
         
     comGetMSDynamics        = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_GetMSDynamics(ALLEEG);'                         catch_strings.new_and_hist];
@@ -155,14 +156,15 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 %    comQuantMSTemplatesM   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],1);'                      catch_strings.store_and_hist];
 %    comQuantMSTemplatesT   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],2);'                      catch_strings.store_and_hist];
 %     comQuantMSDataVis      = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0, [], [], []);'           catch_strings.store_and_hist];
+    
+    comCompareMaps          = [try_strings.no_check 'LASTCOM = pop_CompareMSTemplates(ALLEEG);'                             catch_strings.add_to_hist];
 
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'          catch_strings.add_to_hist];
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
     
-    comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG, nan,false ,ALLEEG);'      catch_strings.add_to_hist];
-    comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG, nan,true  ,ALLEEG);'      catch_strings.store_and_hist];
-    comShowIndMSDyn        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,false);'             catch_strings.store_and_hist];
-    comShowIndMSDynM       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,true);'              catch_strings.store_and_hist];
+    comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(ALLEEG, CURRENTSET, ''Edit'', 1);' catch_strings.store_and_hist];
+    comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(ALLEEG);'                          catch_strings.add_to_hist];
+    comShowIndMSDyn       = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_ShowIndMSDyn(ALLEEG);'                       catch_strings.store_and_hist];
 
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
@@ -174,26 +176,27 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     
     plotmenu = findobj(fig, 'tag', 'plot');
 %    uimenu( plotmenu, 'label', 'Plot microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
-    uimenu( plotmenu, 'label', 'Display microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
-    uimenu( plotmenu, 'label', 'Plot microstate dynamics (Own template'                   ,'CallBack',comShowIndMSDyn,'Separator','off');
-    uimenu( plotmenu, 'label', 'Plot microstate dynamics (Mean template)'   ,'CallBack',comShowIndMSDynM);
+    uimenu( plotmenu, 'label', 'Display microstate maps'                       ,'CallBack',comShowIndMSMaps,'userdata','study:on','Separator','on');
+    uimenu( plotmenu, 'label', 'Plot microstate dynamics'                   ,'CallBack',comShowIndMSDyn,'userdata', 'study:on','Separator','off');
 
     % create menus if necessary
     % -------------------------
     uimenu( toolssubmenu, 'Label', 'Identify microstate maps'                            , 'CallBack', comFindMSTemplates,    'userdata', 'study:on');
 
-    uimenu( toolssubmenu, 'Label', 'Compute mean microstate maps'                       , 'CallBack', comCombineMSTemplates, 'userdata', 'study:on','Separator','on');
+    uimenu( toolssubmenu, 'Label', 'Compute mean microstate maps'                       , 'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
 
-    uimenu( toolssubmenu, 'label', 'Edit & sort microstate maps'                           , 'CallBack', comEditIndMSMaps,      'Separator','on');
+    uimenu( toolssubmenu, 'label', 'Edit & sort microstate maps'                           , 'CallBack', comEditIndMSMaps);
 
-    uimenu( toolssubmenu, 'Label', 'Sort microstate maps'                               , 'CallBack', comSortMSTemplates,    'userdata', 'study:on','Separator','on');
+    uimenu( toolssubmenu, 'Label', 'Sort microstate maps'                               , 'CallBack', comSortMSTemplates,    'userdata', 'study:on');
+
+    uimenu( toolssubmenu, 'Label', 'Compare microstate maps',                     'CallBack', comCompareMaps,         'userdata', 'study:on');
     
-    uimenu(toolssubmenu, 'Label', 'Obtain microstate dynamics'                          , 'CallBack', comGetMSDynamics, 'userdata', 'study:on', 'Separator', 'on');
+    uimenu(toolssubmenu, 'Label', 'Obtain microstate dynamics'                          , 'CallBack', comGetMSDynamics, 'userdata', 'study:on');
 %     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (own template maps)'  , 'CallBack'       , comGetIndMSDynamics    , 'Separator','on');
 %     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (mean template maps)' , 'CallBack'       , comGetMeanMSDynamics);
 %     uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (published template maps)' , 'CallBack'  , comGetTMplMSDynamics);
     
-    uimenu( toolssubmenu, 'Label', 'Quantify microstates in datasets'  , 'CallBack', comQuantMSTemplates, 'userdata', 'study:on', 'Separator','on');
+    uimenu( toolssubmenu, 'Label', 'Quantify microstates'  , 'CallBack', comQuantMSTemplates, 'userdata', 'study:on');
 %    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (mean template maps)' , 'CallBack', comQuantMSTemplatesM,   'position', 13, 'userdata', 'study:on');
 %    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (published template maps)', 'CallBack', comQuantMSTemplatesT,   'position', 14, 'userdata', 'study:on');
 
