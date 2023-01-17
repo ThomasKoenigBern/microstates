@@ -2,8 +2,9 @@ function [success,err] = SaveStructToR(dat,FileName)
 
     dat = dat(:);
     
-    SingleFieldsToWrite = {'DataSet','Subject','Group','Condition','Template','ExpVar','SortInfo','TotalTime'};
-    MultipleFieldsToWrite = {'Duration','Occurrence','Contribution','MeanGFP'};
+    SingleFieldsToWrite = {'DataSet','Subject','Group','Condition', 'TotalTime', ...
+        'TotalExpVar','MeanDuration', 'MeanOccurrence', 'FittingTemplate', 'SortedBy'};
+    MultipleFieldsToWrite = {'IndExpVar','Duration','Occurrence','Contribution','MeanGFP'};
     
     
     nObs = numel(dat);
