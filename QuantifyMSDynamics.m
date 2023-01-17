@@ -148,14 +148,14 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
 
     % if quantifying by own maps, include spatial correlations between
     % individual maps and the template maps they were sorted by
-    if isempty(TemplateName)
-        for i=1:info.FitPar.nClasses
-            templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
-            res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
-            spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
-            res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
-        end
-    end
+%     if isempty(TemplateName)
+%         for i=1:info.FitPar.nClasses
+%             templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
+%             res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
+%             spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
+%             res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
+%         end
+%     end
 
     % Set template and sorting information
     if isempty(TemplateName)
