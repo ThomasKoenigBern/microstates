@@ -409,11 +409,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         msinfo.ClustPar = ClustPar;
         AllEEG(sIndex).msinfo = msinfo;
         AllEEG(sIndex).saved = 'no';
-
-        if ShowDyn
-            pop_ShowIndMSDyn([],AllEEG(sIndex),0);
-        end
-    
     end
 
     %% Sorting
@@ -429,6 +424,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     %% Show maps
     if ShowMaps
         pop_ShowIndMSMaps(EEGout, 1:numel(EEGout));
+    end
+
+    %% Show dynamics
+    if ShowDyn
+        [EEGout, CurrentSet, ~] = pop_ShowIndMSDyn(EEGout, 1:numel(EEGout));
     end
     
     %% Command string generation

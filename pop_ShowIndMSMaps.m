@@ -210,11 +210,16 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(AllEEG, varargi
             set(fig_h,'userdata',ud);
         else
             if Edit
+                if isfield(TheEEG(i).msinfo, 'children')
+                    DynEnable = 'off';
+                else
+                    DynEnable = 'on';
+                end
                 warning('off', 'MATLAB:hg:uicontrol:StringMustBeNonEmpty');
                 ud.MapPanel    = uipanel(fig_h,'Position',[0.02 0.4 0.96 0.57],'BorderType','Line');
                 ud.ButtonPanel = uibuttongroup(fig_h,'Position',[0.71 0.02 0.28 0.37],'BorderType','Line','Title','Explore');
         
-                ud.ShowDyn     = uicontrol('Style', 'pushbutton','String', 'Dynamics', 'Units','Normalized','Position'  , [0.05  0.6 0.9 0.20], 'Parent', ud.ButtonPanel ,'Callback', {@ShowDynamics, fig_h, TheEEG});
+                ud.ShowDyn     = uicontrol('Style', 'pushbutton','String', 'Dynamics', 'Units','Normalized','Position'  , [0.05  0.6 0.9 0.20], 'Parent', ud.ButtonPanel ,'Callback', {@ShowDynamics, fig_h, TheEEG}, 'Enable', DynEnable);
                 ud.Info        = uicontrol('Style', 'pushbutton','String', 'Info'    , 'Units','Normalized','Position'  , [0.05  0.8 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@MapInfo     , fig_h});
                 ud.Compare     = uicontrol('Style', 'pushbutton', 'String', 'Compare', 'Units','Normalized','Position'  , [0.05  0.4 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@CompareMicrostateSolutions, fig_h}, 'Enable',eTxt);
                 ud.Done        = uicontrol('Style', 'pushbutton', 'String', 'Close'  , 'Units','Normalized','Position'  , [0.05  0.2 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@ShowIndMSMapsClose,fig_h});
