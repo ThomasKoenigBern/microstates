@@ -54,14 +54,8 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(AllEEG, varargi
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
-    global ALLEEG;
     global EEG;
-%     AllEEG = ALLEEG;
     TheEEG = EEG;
-
-    guiElements = {};
-    guiGeom = {};
-    guiGeomV = [];
 
     %% Parse inputs and perform initial validation
     p = inputParser;
@@ -162,14 +156,6 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(AllEEG, varargi
         end
     
         ud.nClasses = nclasses;
-    
-        fig_h = figure;
-        if Edit
-            fig_h.WindowStyle = 'modal';
-        end
-        if ~visible
-            fig_h.Visible = 'off';
-        end
 
         if Edit == true;  eTxt = 'on';
         else
@@ -203,49 +189,54 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(AllEEG, varargi
             ud.ButtonPanel = uibuttongroup(fig_h,'Position',[0.05 0.05 0.44 0.24],'BorderType','Line');
             ud.MinusButton = uicontrol('Style', 'pushbutton', 'String', 'Less'      , 'Units','Normalized','Position'  , [0.05 0.05 0.15 0.05], 'Callback', {@ChangeMSMaps,-1,fig_h});
             ud.PlusButton  = uicontrol('Style', 'pushbutton', 'String', 'More'      , 'Units','Normalized','Position'  , [0.20 0.05 0.15 0.05], 'Callback', {@ChangeMSMaps, 1,fig_h});
-            ud.ShowDyn     = uicontrol('Style', 'pushbutton', 'String', 'Dynamics'  , 'Units','Normalized','Position'  , [0.35 0.05 0.15 0.05], 'Callback', {@ShowDynamics, fig_h, TheEEG});
+            ud.ShowDyn     = uicontrol('Style', 'pushbutton', 'String', 'Dynamics'  , 'Units','Normalized','Position'  , [0.35 0.05 0.15 0.05], 'Callback', {@ShowDynamics, TheEEG, i});
             ud.Info        = uicontrol('Style', 'pushbutton', 'String', 'Info'      , 'Units','Normalized','Position'  , [0.50 0.05 0.15 0.05], 'Callback', {@MapInfo     , fig_h});
             ud.Sort        = uicontrol('Style', 'pushbutton', 'String', 'Sort'      , 'Units','Normalized','Position'  , [0.65 0.05 0.15 0.05], 'Callback', {@ManSort     , fig_h}, 'Enable',eTxt);
             ud.Done        = uicontrol('Style', 'pushbutton', 'String', 'Close'     , 'Units','Normalized','Position'  , [0.80 0.05 0.15 0.05], 'Callback', {@ShowIndMSMapsClose,fig_h});
-            set(fig_h,'userdata',ud);
         else
             if Edit
+                fig_h = figure('WindowStyle', 'modal', 'Units', 'normalized', 'Position', [0.3 0.2 0.4 0.6]);
+                if ~visible
+                    fig_h.Visible = 'off';
+                end
                 if isfield(TheEEG(i).msinfo, 'children')
                     DynEnable = 'off';
                 else
                     DynEnable = 'on';
                 end
                 warning('off', 'MATLAB:hg:uicontrol:StringMustBeNonEmpty');
-                ud.MapPanel    = uipanel(fig_h,'Position',[0.02 0.4 0.96 0.57],'BorderType','Line');
-                ud.ButtonPanel = uibuttongroup(fig_h,'Position',[0.71 0.02 0.28 0.37],'BorderType','Line','Title','Explore');
+                ud.MapPanel    = uipanel(fig_h,'Position',[0.02 0.3 0.96 0.67],'BorderType','Line');
+                ud.ButtonPanel = uibuttongroup(fig_h,'Position',[0.71 0.02 0.28 0.27],'BorderType','Line','Title','Explore');
+
+                ud.Info        = uicontrol('Style', 'pushbutton','String', 'Info'    , 'Units','Normalized','Position'  , [0.05  0.7 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@MapInfo     , fig_h});                
+                ud.ShowDyn     = uicontrol('Style', 'pushbutton','String', 'Dynamics', 'Units','Normalized','Position'  , [0.05  0.5 0.9 0.20], 'Parent', ud.ButtonPanel ,'Callback', {@ShowDynamics, TheEEG, i}, 'Enable', DynEnable);
+                ud.Compare     = uicontrol('Style', 'pushbutton', 'String', 'Compare', 'Units','Normalized','Position'  , [0.05  0.3 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@CompareMicrostateSolutions, fig_h}, 'Enable',eTxt);
+                ud.Done        = uicontrol('Style', 'pushbutton', 'String', 'Close'  , 'Units','Normalized','Position'  , [0.05  0.1 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@ShowIndMSMapsClose,fig_h});
         
-                ud.ShowDyn     = uicontrol('Style', 'pushbutton','String', 'Dynamics', 'Units','Normalized','Position'  , [0.05  0.6 0.9 0.20], 'Parent', ud.ButtonPanel ,'Callback', {@ShowDynamics, fig_h, TheEEG}, 'Enable', DynEnable);
-                ud.Info        = uicontrol('Style', 'pushbutton','String', 'Info'    , 'Units','Normalized','Position'  , [0.05  0.8 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@MapInfo     , fig_h});
-                ud.Compare     = uicontrol('Style', 'pushbutton', 'String', 'Compare', 'Units','Normalized','Position'  , [0.05  0.4 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@CompareMicrostateSolutions, fig_h}, 'Enable',eTxt);
-                ud.Done        = uicontrol('Style', 'pushbutton', 'String', 'Close'  , 'Units','Normalized','Position'  , [0.05  0.2 0.9 0.20], 'Parent', ud.ButtonPanel , 'Callback', {@ShowIndMSMapsClose,fig_h});
+                ud.SelPanel    = uibuttongroup(fig_h,'Position',[0.02 0.02 0.68 0.27],'BorderType','Line','Title','Sort');
         
-                ud.SelPanel    = uibuttongroup(fig_h,'Position',[0.02 0.02 0.68 0.37],'BorderType','Line','Title','Sort');
-        
-                uicontrol('Style','Text','String','Select solution','Units','Normalized','Position'                              , [0.01  0.89 0.28 0.10], 'Parent', ud.SelPanel)
-                ud.ClassList   = uicontrol('Style', 'listbox'  ,'String', AvailableClassesText, 'Units','Normalized','Position'  , [0.01  0.05 0.28 0.80], 'Parent', ud.SelPanel,'Callback',{@ActionChangedCallback,fig_h});
+                uicontrol('Style','Text','String','Select solution','Units','Normalized','Position'                              , [0.01  0.89 0.26 0.10], 'Parent', ud.SelPanel)
+                ud.ClassList   = uicontrol('Style', 'listbox'  ,'String', AvailableClassesText, 'Units','Normalized','Position'  , [0.01  0.05 0.26 0.80], 'Parent', ud.SelPanel,'Callback',{@ActionChangedCallback,fig_h});
                         
                 Actions = {'1) Reorder clusters in selected solution based on index','2) Reorder clusters in selected solution based on template','3) Use selected solution to reorder all other solutions','3) First 2), then 3)'};
-                uicontrol('Style','Text','String','Choose the sorting procedure','Units','Normalized','Position'    , [0.3  0.87 0.58 0.12], 'Parent', ud.SelPanel)
-                ud.ActChoice   = uicontrol('Style', 'popupmenu','String', Actions, 'Units','Normalized','Position'  , [0.3  0.68 0.68 0.15], 'Parent', ud.SelPanel,'Callback',{@ActionChangedCallback,fig_h});
+                uicontrol('Style','Text','String','Choose the sorting procedure','Units','Normalized','Position'    , [0.3  0.87 0.68 0.12], 'Parent', ud.SelPanel)
+                ud.ActChoice   = uicontrol('Style', 'popupmenu','String', Actions, 'Units','Normalized','Position'  , [0.3  0.70 0.68 0.15], 'Parent', ud.SelPanel,'Callback',{@ActionChangedCallback,fig_h});
         
-                ud.IdxTxt      = uicontrol('Style','Text','String','Sort Index','Units','Normalized','Position'     , [0.3  0.51 0.2  0.12], 'Parent', ud.SelPanel);
-                ud.IdxEdit     = uicontrol('Style', 'edit'  ,'String', "", 'Units','Normalized','Position'          , [0.51 0.51 0.48 0.12], 'Parent', ud.SelPanel,'Enable','inactive');
-                ud.SelTemplate = uicontrol('Style', 'popupmenu'  ,'String', "", 'Units','Normalized','Position'     , [0.51 0.51 0.48 0.12], 'Parent', ud.SelPanel,'Enable','inactive');
-                ud.IgnorePolarity  = uicontrol('Style', 'checkbox'   ,'String', "Ignore Polarity", 'Units','Normalized','Position', [0.3 0.34 0.48 0.12], 'Parent', ud.SelPanel,'Value',true);
+                ud.IdxTxt      = uicontrol('Style','Text','String','Sort Index','Units','Normalized','Position'     , [0.3 0.51 0.2  0.12], 'Parent', ud.SelPanel);
+                ud.IdxEdit     = uicontrol('Style', 'edit'  ,'String', "", 'Units','Normalized','Position'          , [0.5 0.51 0.48 0.15], 'Parent', ud.SelPanel,'Enable','inactive');
+                ud.SelTemplate = uicontrol('Style', 'popupmenu'  ,'String', "", 'Units','Normalized','Position'     , [0.5 0.51 0.48 0.15], 'Parent', ud.SelPanel,'Enable','inactive', 'Visible', 'off');
+                ud.IgnorePolarity  = uicontrol('Style', 'checkbox'   ,'String', "Ignore Polarity", 'Units','Normalized','Position', [0.3 0.34 0.48 0.12], 'Parent', ud.SelPanel,'Value',true, 'Visible', 'off');
         
-                ud.GoButton    = uicontrol('Style', 'pushbutton', 'String', 'Sort now'  , 'Units','Normalized','Position'  , [0.3  0.1 0.68 0.20], 'Parent', ud.SelPanel , 'Callback', {@SortThingsOut,fig_h});
+                ud.GoButton    = uicontrol('Style', 'pushbutton', 'String', 'Sort now'  , 'Units','Normalized','Position'  , [0.3 0.1 0.68 0.20], 'Parent', ud.SelPanel , 'Callback', {@SortThingsOut,fig_h});
             else
+                fig_h = figure;
+                if ~visible
+                    fig_h.Visible = 'off';
+                end
                 ud.MapPanel = uipanel(fig_h, 'Position', [0 0 1 1], 'BorderType', 'none');
-            end
-            set(fig_h,'userdata',ud);
-    
+            end    
         end
-    
+        set(fig_h,'userdata',ud);    
         fig_h.CloseRequestFcn = {@ShowIndMSMapsClose};
             
         PlotMSMaps([],[],fig_h);
@@ -254,9 +245,9 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(AllEEG, varargi
     end
 
     if ~isnan(nclasses)
-        com = sprintf('[ALLEEG EEG com] = pop_ShowIndMSMaps(%s, %s, ''nclasses'', %i', inputname(1), mat2str(SelectedSets), nclasses);
+        com = sprintf('[ALLEEG EEG com] = pop_ShowIndMSMaps(%s, %s, ''nclasses'', %i)', inputname(1), mat2str(SelectedSets), nclasses);
     else
-        com = sprintf('[ALLEEG EEG com] = pop_ShowIndMSMaps(%s, %s, ''Edit'', %i', inputname(1), mat2str(SelectedSets), Edit);
+        com = sprintf('[ALLEEG EEG com] = pop_ShowIndMSMaps(%s, %s, ''Edit'', %i)', inputname(1), mat2str(SelectedSets), Edit);
     end
     
     if Edit
@@ -315,8 +306,6 @@ function ShowIndMSMapsClose(obj,event,fh)
 
 end
 
-
-
 function SortThingsOut(obj,event,fh)
     UserData = fh.UserData;
     StoreLabels(fh);
@@ -369,7 +358,6 @@ function ActionChangedCallback(obj,event,fh)
             UserData.IgnorePolarity.Visible = 'on';
             UserData.IgnorePolarity.Enable = 'on';
 
-            nClasses = UserData.ClassList.Value + UserData.ClustPar.MinClasses -1;
             [~, DisplayNames] = getTemplateNames();
             UserData.SelTemplate.String = DisplayNames;
         
@@ -384,7 +372,6 @@ function ActionChangedCallback(obj,event,fh)
             UserData.IgnorePolarity.Visible = 'on';
             UserData.IgnorePolarity.Enable  = 'on';
 
-            nClasses = UserData.ClassList.Value + UserData.ClustPar.MinClasses -1;
             [~, DisplayNames] = getTemplateNames();
             UserData.SelTemplate.String = DisplayNames;                
     end
@@ -613,16 +600,12 @@ function SortMapsSolutionChanged(src,event,fh)
     OrderGUI.String = OrderText{src.Value};
 end
 
-function ShowDynamics(~, ~,fh, TheEEG)
-% ---------------------------------------
-    UserData = get(fh,'UserData');
-    TheEEG.msinfo.FitPar.nClasses = UserData.nClasses;
-    pop_ShowIndMSDyn(0,TheEEG,0);
+function ShowDynamics(~, ~, TheEEG, SetIndex)
+    pop_ShowIndMSDyn(TheEEG, SetIndex);
 end
 
 
 function [txt,tit] = GetInfoText(UserData,idx)
-% --------------------------------------------
     nClasses = idx + UserData.ClustPar.MinClasses -1 ;
 
     tit = sprintf('Info for %i classes:',nClasses);
@@ -736,7 +719,7 @@ end
 
 function EditMSLabel(obj,~,i,j)
     set(obj,'Editing','on');
-    fh = get(get(obj,'Parent'),'Parent');
+    fh = get(get(get(obj,'Parent'),'Parent'), 'Parent');
     ud = get(fh,'UserData');
     ud.LabelEdited(i,j) = true;
     set(fh,'UserData',ud);

@@ -118,7 +118,7 @@ function CompareMapsSolutionChanged(obj, event,fh,CompFig)
 
     CorrMat = corr(MapCollection').^2;
 
-    pro = mdscale(1-CorrMat,2,'Options',ops,'Criterion','strain');
+    pro = mdscale(1-CorrMat,2,'Options',ops,'Criterion','strain');    
   
     cla(FigAxes.CompAxis);
     hold(FigAxes.CompAxis,"on");
@@ -148,14 +148,15 @@ function CompareMapsSolutionChanged(obj, event,fh,CompFig)
             Hull = convhull(xy(:,1),xy(:,2));
             patch(FigAxes.CompAxis,xy(Hull,1),xy(Hull,2),PlotColor,'FaceAlpha',.2);
         end
+        ph = plot(FigAxes.CompAxis,pro(ItemsToPlot,1),pro(ItemsToPlot,2),'ok' ,'MarkerFaceColor',PlotColor,'MarkerSize',8);        
         for j = 1:nItemsToPlot
             idx = ItemsToPlot(j);
             txt = sprintf(" %i",nClassCollection(idx));
-            text(FigAxes.CompAxis,pro(idx,1),pro(idx,2),txt,'HorizontalAlignment','Center','VerticalAlignment','Bottom','Interpreter','none');
+            text(FigAxes.CompAxis,pro(idx,1),pro(idx,2),txt,'HorizontalAlignment','center', ...
+                'VerticalAlignment','Bottom','Interpreter','none','FontSize', 11, 'FontWeight', 'bold');
             
             HitMatrix(idx,ItemsToPlot) = true;
         end
-        ph = plot(FigAxes.CompAxis,pro(ItemsToPlot,1),pro(ItemsToPlot,2),'ok' ,'MarkerFaceColor',PlotColor,'MarkerSize',10);        
         LegendSubSet = [LegendSubSet,ph];
     end
     
@@ -170,8 +171,8 @@ function CompareMapsSolutionChanged(obj, event,fh,CompFig)
     FigAxes.CompAxis.XLim = [-lim lim];
     FigAxes.CompAxis.YLim = [-lim lim];
     
-    CompFig.UserData.CorrelationTable = array2table(CorrMat * 100,'VariableNames',CLabelCollection,'RowNames',CLabelCollection);
-    CompFig.UserData.HitMatrix = HitMatrix;
+    FigAxes.CorrelationTable = array2table(CorrMat * 100,'VariableNames',CLabelCollection,'RowNames',CLabelCollection);
+    FigAxes.HitMatrix = HitMatrix;
 
     UpdateCorrTable(CompFig);
     
@@ -194,5 +195,6 @@ function CompareMapsSolutionChanged(obj, event,fh,CompFig)
     axes(FigAxes.YNMapAxis);
     dspCMap(-DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
+    CompFig.UserData = FigAxes;
     
 end
