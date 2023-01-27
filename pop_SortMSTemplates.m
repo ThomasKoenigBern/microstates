@@ -360,6 +360,9 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
             AllEEG(sIndex).msinfo.MSMaps(n).Labels = Labels;
             AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = Colors;
 
+            % Update individual explained variance order
+            AllEEG(sIndex).msinfo.MSMaps(n).ExpVar = AllEEG(sIndex).msinfo.MSMaps(n).ExpVar(SortOrder(SortOrder <= n));
+
             if usingPublished
                 AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'published template';
             else

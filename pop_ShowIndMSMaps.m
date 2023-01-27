@@ -228,6 +228,10 @@ function [AllEEG, TheEEG, com, FigureHandle] = pop_ShowIndMSMaps(AllEEG, varargi
                 ud.IgnorePolarity  = uicontrol('Style', 'checkbox'   ,'String', "Ignore Polarity", 'Units','Normalized','Position', [0.3 0.34 0.48 0.12], 'Parent', ud.SelPanel,'Value',true, 'Visible', 'off');
         
                 ud.GoButton    = uicontrol('Style', 'pushbutton', 'String', 'Sort now'  , 'Units','Normalized','Position'  , [0.3 0.1 0.68 0.20], 'Parent', ud.SelPanel , 'Callback', {@SortThingsOut,fig_h});
+
+                n_x = ud.ClustPar.MaxClasses;
+                n_y = ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses + 1;
+                ud.ExpVarLabels = cell(n_y, n_x);
             else
                 fig_h = figure;
                 if ~visible
@@ -519,6 +523,8 @@ function TemplateSort(fh,MeanIndex,IgnorePolarity)
     [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(nClasses).Labels,MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,UserData.AllMaps(nClasses).ColorMap,MSTEMPLATE(MeanIndex).msinfo.MSMaps(TemplateClassesToUse).ColorMap);
     UserData.AllMaps(nClasses).Labels = Labels;
     UserData.AllMaps(nClasses).ColorMap = Colors;
+
+    UserData.AllMaps(nClasses).ExpVar = UserData.AllMaps(nClasses).ExpVar(SortOrder <= nClasses);
     
     UserData.AllMaps(nClasses).SortedBy = MSTEMPLATE(MeanIndex).setname;
     UserData.AllMaps(nClasses).SortMode = "published template";
@@ -552,6 +558,7 @@ function SingleSort(fh, DoThemAll)
     
         UserData.AllMaps(nClasses).Maps = UserData.AllMaps(nClasses).Maps(NewOrder,:).*repmat(NewOrderSign,1,size(UserData.AllMaps(nClasses).Maps,2));
         UserData.AllMaps(nClasses).Labels = UserData.AllMaps(nClasses).Labels(NewOrder);
+        UserData.AllMaps(nClasses).ExpVar = UserData.AllMaps(nClasses).ExpVar(NewOrder);
         UserData.AllMaps(nClasses).SortMode = 'manual';
         UserData.AllMaps(nClasses).SortedBy = 'user';
 
@@ -569,6 +576,7 @@ function SingleSort(fh, DoThemAll)
             [Labels,Colors] = UpdateMicrostateLabels(UserData.AllMaps(i).Labels,UserData.AllMaps(nClasses).Labels,SortOrder,UserData.AllMaps(i).ColorMap,UserData.AllMaps(nClasses).ColorMap);
             UserData.AllMaps(i).Labels = Labels(1:i);
             UserData.AllMaps(i).ColorMap = Colors(1:i,:);
+            UserData.AllMaps(i).ExpVar = UserData.AllMaps(nClasses).ExpVar(SortOrder(SortOrder <= i));
 
             if i > nClasses+2
                 [SortedMaps,SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(UserData.AllMaps(i).Maps((nClasses+1):end,:), UserData.AllMaps(i-1).Maps(nClasses+1:end,:),~UserData.IgnorePolarity.Value);
@@ -577,7 +585,7 @@ function SingleSort(fh, DoThemAll)
                 UserData.AllMaps(i).Maps((nClasses+1):end,:) = squeeze(SortedMaps) .* repmat(polarity',1,size(UserData.AllMaps(i).Maps,2));
                 UserData.AllMaps(i).Labels((nClasses+1):end) = Labels;
                 UserData.AllMaps(i).ColorMap((nClasses+1):end,:) = Colors;
-
+                UserData.AllMaps(i).ExpVar = UserData.AllMaps(nClasses).ExpVar(SortOrder(SortOrder <= i));
             end
             
             UserData.AllMaps(i).SortMode = 'Template';
@@ -743,6 +751,13 @@ function ClearMaps(fh)
         cla(h);
         set(h, 'Visible','off');
     end
+    if UserData.Edit
+        for y_pos=1:sp_y
+            for x_pos=1:UserData.ClustPar.MinClasses + y_pos - 1
+                delete(UserData.ExpVarLabels{y_pos,x_pos});
+            end
+        end
+    end
 end
 
 function StoreLabels(fh)
@@ -775,11 +790,11 @@ function PlotMSMaps(~, ~,fh)
 %    disp('1');
 %    toc()
     if ~isnan(UserData.nClasses)
-        sp_x = ceil(sqrt(UserData.nClasses));
-        sp_y = ceil(UserData.nClasses / sp_x);
+        n_x = ceil(sqrt(UserData.nClasses));
+        n_y = ceil(UserData.nClasses / n_x);
     
         for m = 1:UserData.nClasses
-            h = subplot(sp_y,sp_x,m,'Parent',UserData.MapPanel);
+            h = subplot(n_y,n_x,m,'Parent',UserData.MapPanel);
             h.Toolbar.Visible = 'off';
             Background = UserData.AllMaps(UserData.nClasses).ColorMap(m,:);
 %            dspMapClass(Montage,'HelperData',HelperData,'Map',double(UserData.AllMaps(UserData.nClasses).Maps(m,:)'));
@@ -805,16 +820,35 @@ function PlotMSMaps(~, ~,fh)
             set(UserData.PlusButton,'enable','on');
         end
     else
-        sp_x = UserData.ClustPar.MaxClasses;
-        sp_y = UserData.ClustPar.MaxClasses - UserData.ClustPar.MinClasses + 1;
-    
+        n_x = UserData.ClustPar.MaxClasses;
+        n_y = UserData.ClustPar.MaxClasses - UserData.ClustPar.MinClasses + 1;
+
         Spacing_x = 0.01;
-        Spacing_y = 0.05;
-        dx = (1-Spacing_x)/sp_x;
-        dy = (1-Spacing_y)/sp_y;
-        for y_pos = 1:sp_y
+        if UserData.Edit
+            Spacing_y = 0.08;
+            dx = (.94+Spacing_x)/n_x;
+            dy = (.88+Spacing_y)/n_y;
+            x_start = .07;
+            y_start = .05;
+        else
+            Spacing_y = 0.05;
+            dx = (.98+Spacing_x)/n_x;
+            dy = (.93+Spacing_y)/n_y;
+            x_start = .01;
+            y_start = .01;
+        end
+
+        for y_pos = 1:n_y
+            if UserData.Edit
+                ExpVar = sum(UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).ExpVar);
+                ExpVarStr = sprintf('%2.2f%%', ExpVar*100);
+                uicontrol('Style', 'text', 'String', ExpVarStr, 'Units', 'normalized', 'Position', ...
+                    [.01, y_start + (n_y-y_pos)*dy + (dy-Spacing_y)/3, .07, .04], 'FontSize', 10, ...
+                    'Parent', UserData.MapPanel);
+            end
             for x_pos = 1:UserData.ClustPar.MinClasses + y_pos - 1
-                h = subplot('Position',[(x_pos-1)*dx+Spacing_x,1-y_pos*dy,dx-Spacing_x,dy-Spacing_y],'Parent',UserData.MapPanel);
+
+                h = subplot('Position',[x_start+(x_pos-1)*dx,y_start+(n_y-y_pos)*dy,dx-Spacing_x,dy-Spacing_y],'Parent',UserData.MapPanel);
 
 %                h = subplot(sp_y,sp_x,(y_pos-1) * sp_x + x_pos,'Parent',UserData.MapPanel);
                 Background = UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).ColorMap(x_pos,:);
@@ -828,6 +862,13 @@ function PlotMSMaps(~, ~,fh)
                 UserData.TitleHandles{y_pos,x_pos} = title(UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).Labels(x_pos),'FontSize',10,'Interpreter','none');
                 if UserData.Edit == true
                     set(UserData.TitleHandles{y_pos,x_pos},'ButtonDownFcn',{@EditMSLabel,y_pos + UserData.ClustPar.MinClasses-1,x_pos});
+                end
+                if UserData.Edit
+                    IndExpVar = UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).ExpVar(x_pos);
+                    IndExpVarStr = sprintf('%2.2f%%', IndExpVar*100);
+                    UserData.ExpVarLabels{y_pos, x_pos} = uicontrol('Style', 'text', 'String', IndExpVarStr, 'Units', 'normalized', 'Position', ...
+                        [x_start+(x_pos-1)*dx, y_start+(n_y-y_pos)*dy - .04, dx-Spacing_x, .04], 'FontSize', 8, ...
+                        'Parent', UserData.MapPanel);
                 end
                 h.Toolbar.Visible = 'off';
                 h.PickableParts = 'all';

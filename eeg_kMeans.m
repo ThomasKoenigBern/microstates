@@ -15,7 +15,6 @@ function[b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,fl
 % b_loading = Amplitude of the assigned cluster at each moment in time
 % exp_var = explained variance of the model
 
-
 if (size(n_mod,1) ~= 1)
 	error('Second argument must be a scalar')
 end
@@ -38,7 +37,6 @@ if isempty(max_n)
     max_n = n_frame;
 end
 
-
 if (max_n > n_frame)
     max_n = n_frame;
 end
@@ -48,6 +46,8 @@ if ~contains(flags,'p')
 else
     pmode = 1;
 end
+
+org_data = eeg;
 
 newRef = eye(n_chan);
 if contains(flags,'a')
@@ -59,15 +59,12 @@ if contains(flags,'e')
     UseEMD = true;
 end
 
-
-
 eeg = eeg*newRef;
 
 if contains(flags,'n')
     eeg = NormDim(eeg,2);
 end
 
-org_data = eeg;
 best_fit = 0;
 
 if contains(flags,'b')
@@ -96,12 +93,12 @@ for run = 1:reruns
 
     idx = randperm(max_n);
     model = eeg(idx(1:n_mod),:);
-    model   = NormDim(model,2)*newRef;							% Average Reference, equal variance of model
+    model   = NormDim(model,2)*newRef;					% Average Reference, equal variance of model
 
     o_ind   = zeros(max_n,1);							% Some initialization
 %	ind     =  ones(max_n,1);
 	count   = 0;
-    covmat = eeg*model';							% Get the unsigned covariance 
+    covmat = eeg*model';							    % Get the unsigned covariance 
     
     if pmode
         if UseEMD == true
@@ -159,6 +156,11 @@ for run = 1:reruns
             end
         end
     end % while any
+
+    % average reference eeg in case it was not already done
+    newRef = eye(n_chan);
+    newRef = newRef -1/n_chan;
+    org_data = org_data*newRef;
     covmat    = org_data*model';							% Get the unsigned covariance 
     if pmode
         if UseEMD == true
@@ -191,11 +193,13 @@ for run = 1:reruns
     end    
 end % for run = 1:reruns
 
-% average reference eeg in case it was not already done
-newRef = eye(n_chan);
-newRef = newRef -1/n_chan;
-ref_eeg = eeg*newRef;
-exp_var = sum((b_loading/sqrt(n_chan)).^2)/sum(vecnorm(ref_eeg).^2);
+% Individual GEVs
+IndGEVnum = zeros(1, n_mod);
+for i = 1:n_mod
+    clustMembers = (b_ind == i);
+    IndGEVnum(i) = sum((b_loading(clustMembers)/sqrt(n_chan)).^2);
+end
+exp_var = IndGEVnum/sum(vecnorm(org_data').^2);
 
 if isempty(h)
     mywaitbar(reruns, reruns, step, nSteps, strLength);
