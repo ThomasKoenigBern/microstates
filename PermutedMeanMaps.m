@@ -1,4 +1,4 @@
-function [MeanMap,SortedMaps,OldMapFit] = PermutedMeanMaps(in,RespectPolarity, Montage, Reruns, UseEMD)
+function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Montage, Reruns, UseEMD)
 
     AutoReruns = false;
 
@@ -183,6 +183,28 @@ function [MeanMap,SortedMaps,OldMapFit] = PermutedMeanMaps(in,RespectPolarity, M
     MeanMap = BestMeanMap;
     SortedMaps = BestSortedMaps;
     OldMapFit = BestOldMapFit;
+
+    % Individual explained variances
+    IndGEVnum = zeros(1, nMaps);
+
+    % Get a nChannels x nMaps array of all individual maps
+    indMaps = [];
+    for s=1:nSubjects
+        indMaps = [indMaps squeeze(in(s, :, :))'];
+    end
+
+    Cov = NormDimL2(MeanMap, 2)*indMaps;
+    if ~RespectPolarity
+        Cov = abs(Cov);
+    end
+    [mfit, class] = max(Cov);
+
+    for c=1:nMaps
+        clustMembers = (class == c);
+        IndGEVnum(c) = sum(mfit(clustMembers).^2);
+    end
+
+    ExpVar = IndGEVnum/sum(vecnorm(indMaps).^2);
     
     fprintf(1,'\n');
     if debug == true
