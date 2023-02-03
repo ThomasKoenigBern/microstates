@@ -863,7 +863,10 @@ function PlotMSMaps(~, ~,fh)
                 if UserData.Edit == true
                     set(UserData.TitleHandles{y_pos,x_pos},'ButtonDownFcn',{@EditMSLabel,y_pos + UserData.ClustPar.MinClasses-1,x_pos});
                 end
-                if UserData.Edit
+
+                % the next if section produced crashes, as ExpVar sometimes
+                % came with only one element. Added an ad hoc fix
+                if UserData.Edit && numel(UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).ExpVar) > 1
                     IndExpVar = UserData.AllMaps(y_pos + UserData.ClustPar.MinClasses-1).ExpVar(x_pos);
                     IndExpVarStr = sprintf('%2.2f%%', IndExpVar*100);
                     UserData.ExpVarLabels{y_pos, x_pos} = uicontrol('Style', 'text', 'String', IndExpVarStr, 'Units', 'normalized', 'Position', ...
