@@ -920,5 +920,3 @@ function hasMS = hasMicrostates(in)
         hasMS = true;
     end
 end
-
-

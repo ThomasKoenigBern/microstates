@@ -1,35 +1,90 @@
-function CompareMicrostateSolutions(obj,event,fh)
-    UserData = get(fh,'UserData');
-    
-    CompFigHandle = figure;
-    CompAxis = gca;
-    fh.UserData.CompFigHandle = CompFigHandle;
-    
-    CompFigHandle.UserData.CompAxis  = subplot('Position',[0.16 0.21 0.64,0.76],'Parent',CompFigHandle);
-    CompFigHandle.UserData.XPMapAxis = subplot('Position',[0.70 0.03 0.10 0.10],'Parent',CompFigHandle);
-    CompFigHandle.UserData.XNMapAxis = subplot('Position',[0.16 0.03 0.10 0.10],'Parent',CompFigHandle);
-    CompFigHandle.UserData.YPMapAxis = subplot('Position',[0.05 0.21 0.10 0.10],'Parent',CompFigHandle);
-    CompFigHandle.UserData.YNMapAxis = subplot('Position',[0.05 0.89 0.10 0.10],'Parent',CompFigHandle);
+function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename, fh)
 
-    choice = '';
-    
-    for i = UserData.ClustPar.MinClasses:UserData.ClustPar.MaxClasses
-        choice = [choice sprintf('%i Classes|',i)];
+    CompFigHandle = figure('Units', 'normalized', 'Position', [0.2 0.1 0.6 0.8]);
+
+    CompFigHandle.UserData.SelectedEEG = SelectedEEG;
+    CompFigHandle.UserData.nClasses = nClasses;
+    CompFigHandle.UserData.Filename = Filename;
+
+    if nargin > 4
+        fh.UserData.CompFigHandle = CompFigHandle;
     end
-    idx = 1: UserData.ClustPar.MaxClasses - UserData.ClustPar.MinClasses + 1;
     
-    choice(end) = [];
+    CompFigHandle.UserData.CompAxis  = subplot('Position',[0.13 0.21 0.61 0.74],'Parent',CompFigHandle);
+    CompFigHandle.UserData.XPMapAxis = subplot('Position',[0.61 0.03 0.10 0.10],'Parent',CompFigHandle);
+    CompFigHandle.UserData.XNMapAxis = subplot('Position',[0.13 0.03 0.10 0.10],'Parent',CompFigHandle);
+    CompFigHandle.UserData.YPMapAxis = subplot('Position',[0.01 0.21 0.10 0.10],'Parent',CompFigHandle);
+    CompFigHandle.UserData.YNMapAxis = subplot('Position',[0.01 0.89 0.10 0.10],'Parent',CompFigHandle);
+
+    if nClasses == 0
+        MinClasses = SelectedEEG.msinfo.ClustPar.MinClasses;
+        MaxClasses = SelectedEEG.msinfo.ClustPar.MaxClasses;
+        choice = sprintf('%i Classes|', MinClasses:MaxClasses);
+        choice(end) = [];
+        idx = 1:MaxClasses - MinClasses + 1;
+    else
+        letters = 'A':'Z';
+        letters = arrayfun(@(x) {letters(x)}, 1:26);
+        setIDs = letters;
+        for i=1:floor(numel(SelectedEEG)/26)
+            setIDs = [setIDs strcat(letters, num2str(i))];
+        end
+        setIDs = setIDs(1:numel(SelectedEEG));
+        CompFigHandle.UserData.setIDs = setIDs;
+
+        choice = strcat(setIDs, ': ', {SelectedEEG.setname});
+        idx = 1:numel(SelectedEEG);
+    end
+   
     obj.Value = idx;
     
-    CompareMapsSolutionChanged(obj, [],fh,CompFigHandle);
+    CompareMapsSolutionChanged(obj, [], CompFigHandle);
     
-    uicontrol('style', 'listbox', 'string', choice, 'Value', idx,'min',1,'max',10, 'Callback',{@CompareMapsSolutionChanged,fh,CompFigHandle},"Unit","normalized", 'Position',[0.82 0.31 0.16 0.3]);
-    uicontrol('style', 'togglebutton' , 'string', "Shared variance", 'Min',1,'Max',0, 'Callback',{@CompareMapsSolutionCorrsToggle,CompFigHandle},"Unit","normalized",'Position',[0.82 0.2 0.16 0.1]);
-    uicontrol('style', 'pushbutton' , 'string', "Done",  'Callback',{@CompareMapsSolutionClose,CompFigHandle},"Unit","normalized",'Position',[0.82 0.1 0.16 0.1]);
-    uicontrol('style', 'pushbutton' , 'string', "-"   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1.2  },"Unit","normalized",'Position',[0.35  0.05 0.1 0.1]);
-    uicontrol('style', 'pushbutton' , 'string', "+"   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1/1.2},"Unit","normalized",'Position',[0.45  0.05 0.1 0.1]);
-    uicontrol('style', 'pushbutton' , 'string', ">|<"   , 'Callback',{@CompareMapsSolutionScale,CompFigHandle,0},"Unit","normalized",'Position'   ,[0.55  0.05 0.1 0.1]);
+    if isempty(Filename)
+        CompFigHandle.WindowStyle = 'modal';
+        viewBtnPos = [0.76 0.1 0.22 0.06];
+        uicontrol('style', 'pushbutton', 'string', 'Export shared variances', 'Callback', {@ExportCorrs, CompFigHandle}, 'Units', 'normalized', 'Position', [.76 .03 .22 .06]);
+    else
+        viewBtnPos = [.76 .05 .22 .06];
+    end
+    uicontrol('style', 'listbox', 'string', choice, 'Value', idx,'min',1,'max',10, ...
+        'Callback',{@CompareMapsSolutionChanged,CompFigHandle},'Units','normalized','Position',[0.76 0.21 0.22 0.35]);
+    uicontrol('style', 'pushbutton', 'string', 'View shared variances', 'Callback',{@CompareMapsSolutionCorrsToggle,CompFigHandle},'Units','normalized','Position',viewBtnPos);
+    uicontrol('style', 'pushbutton' , 'string', '-'   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1.2  },'Units','normalized','Position',[0.27  0.05 0.1 0.06]);
+    uicontrol('style', 'pushbutton' , 'string', '+'   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1/1.2},'Units','normalized','Position',[0.37  0.05 0.1 0.06]);
+    uicontrol('style', 'pushbutton' , 'string', '>|<' ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,0},'Units','normalized','Position'    ,[0.47  0.05 0.1 0.06]);
     CompFigHandle.CloseRequestFcn = {@CompareMapsSolutionClose,CompFigHandle};
+
+    if isempty(Filename)
+        uiwait(CompFigHandle);
+    end
+
+    Filename = CompFigHandle.UserData.Filename;
+
+    if strcmp(CompFigHandle.WindowStyle, 'modal')
+        delete(CompFigHandle);
+    end
+end
+
+function ExportCorrs(obj, event, fh)
+    CorrTable = fh.UserData.CorrelationTable;
+    CorrTable.Properties.RowNames = CorrTable.Properties.VariableNames;
+
+    [FName, PName, idx] = uiputfile({'*.csv', 'Comma separated file'; '*.txt', 'Tab delimited file'; '*.xlsx', 'Excel file'; '*.mat', 'Matlab Table'}, 'Save shared variance matrix');
+    if FName == 0
+        fh.UserData.Filename = '';
+        return;
+    end
+    
+    Filename = fullfile(PName, FName);
+    if idx < 4
+        writetable(CorrTable, Filename, 'WriteRowNames', true);
+    else
+        save(Filename, 'CorrTable');
+    end
+    fh.UserData.Filename = Filename;
+
+    obj.Enable = 'off';
 end
 
 function CompareMapsSolutionCorrsToggle(obj, event,fh)
@@ -49,10 +104,8 @@ function CompareMapsSolutionCorrsToggle(obj, event,fh)
     UpdateCorrTable(fh);
 end
 
-
-
 function CompareMapsSolutionScale(obj, event,fh, Scaling)
-    UserData = get(fh,'UserData');
+    UserData = fh.UserData;
     FigAxes = UserData;
     if Scaling == 0
         lim = UserData.OrgLim;
@@ -71,7 +124,12 @@ function CompareMapsSolutionClose(obj, event,fh)
             delete(fh.UserData.CorrMatFig);
         end
     end
-    delete(fh);
+
+    if strcmp(fh.WindowStyle, 'modal')
+        uiresume(fh);
+    else
+        delete(fh);
+    end
 end
 
 function UpdateCorrTable(fh)
@@ -90,28 +148,40 @@ function UpdateCorrTable(fh)
     addStyle(UserData.CorrMatFig.Children,tblStyle,'cell',[row,col]);
 end
 
-
-
-function CompareMapsSolutionChanged(obj, event,fh,CompFig)
+function CompareMapsSolutionChanged(obj, event, CompFig)
     
-    UserData = get(fh,'UserData');
     FigAxes = CompFig.UserData;
 
-    SelectedSolutions = UserData.ClustPar.MinClasses + obj.Value -1;
     MapCollection    = [];
     ColorCollection  = [];
     LabelCollection  = [];
     nClassCollection = [];
+    setNumCollection = [];
     CLabelCollection = [];
-    for i = SelectedSolutions
-        MapCollection     = [MapCollection; UserData.AllMaps(i).Maps];
-        ColorCollection   = [ColorCollection; UserData.AllMaps(i).ColorMap];
-        for j = 1:i
-            LabelCollection   = [LabelCollection UserData.AllMaps(i).Labels(j)];
-            nClassCollection  = [nClassCollection i];
-            CLabelCollection  = [CLabelCollection,sprintf("%s (%i)",UserData.AllMaps(i).Labels{j},i)];
+
+    if FigAxes.nClasses == 0
+        SelectedSolutions = FigAxes.SelectedEEG.msinfo.ClustPar.MinClasses + obj.Value -1;
+        for i = SelectedSolutions
+            MapCollection     = [MapCollection; FigAxes.SelectedEEG.msinfo.MSMaps(i).Maps];
+            ColorCollection   = [ColorCollection; FigAxes.SelectedEEG.msinfo.MSMaps(i).ColorMap];
+            for j = 1:i
+                LabelCollection   = [LabelCollection FigAxes.SelectedEEG.msinfo.MSMaps(i).Labels(j)];
+                nClassCollection  = [nClassCollection i];
+                CLabelCollection  = [CLabelCollection,sprintf("%s (%i)",FigAxes.SelectedEEG.msinfo.MSMaps(i).Labels{j},i)];
+            end
         end
-    end
+    else
+        SelectedSets = obj.Value;
+        for i=SelectedSets
+            MapCollection = [MapCollection; FigAxes.SelectedEEG(i).msinfo.MSMaps(FigAxes.nClasses).Maps];
+            ColorCollection = [ColorCollection; FigAxes.SelectedEEG(i).msinfo.MSMaps(FigAxes.nClasses).ColorMap];
+            for j=1:FigAxes.nClasses
+                setNumCollection = [setNumCollection i];
+                LabelCollection = [LabelCollection FigAxes.SelectedEEG(i).msinfo.MSMaps(FigAxes.nClasses).Labels(j)];
+                CLabelCollection = [CLabelCollection, sprintf("%s (%s)", FigAxes.SelectedEEG(i).msinfo.MSMaps(FigAxes.nClasses).Labels{j}, FigAxes.setIDs{i})];
+            end
+        end
+    end    
     MapCollection=double(MapCollection);
     
     ops = statset('Display','off','TolFun',0.01);
@@ -148,25 +218,28 @@ function CompareMapsSolutionChanged(obj, event,fh,CompFig)
             Hull = convhull(xy(:,1),xy(:,2));
             patch(FigAxes.CompAxis,xy(Hull,1),xy(Hull,2),PlotColor,'FaceAlpha',.2);
         end
-        ph = plot(FigAxes.CompAxis,pro(ItemsToPlot,1),pro(ItemsToPlot,2),'ok' ,'MarkerFaceColor',PlotColor,'MarkerSize',8);        
+        ph = plot(FigAxes.CompAxis,pro(ItemsToPlot,1),pro(ItemsToPlot,2),'ok','MarkerFaceColor',PlotColor,'MarkerSize',8);        
         for j = 1:nItemsToPlot
             idx = ItemsToPlot(j);
-            txt = sprintf(" %i",nClassCollection(idx));
+            if FigAxes.nClasses == 0                
+                txt = sprintf(" %i",nClassCollection(idx));                
+            else
+                txt = [ ' ' FigAxes.setIDs(setNumCollection(idx))];
+            end
             text(FigAxes.CompAxis,pro(idx,1),pro(idx,2),txt,'HorizontalAlignment','center', ...
-                'VerticalAlignment','Bottom','Interpreter','none','FontSize', 11, 'FontWeight', 'bold');
-            
+                    'VerticalAlignment','Bottom','Interpreter','none','FontSize', 11, 'FontWeight', 'bold');
             HitMatrix(idx,ItemsToPlot) = true;
         end
         LegendSubSet = [LegendSubSet,ph];
     end
     
-    legend(LegendSubSet,ClassesToDisplay,'Interpreter','none','Position',[0.82,0.62,0.16,0.35]);
+    legend(LegendSubSet,ClassesToDisplay,'Interpreter','none','Position',[0.76,0.58,0.22,0.37]);
 
+    axis(FigAxes.CompAxis,'equal');
+    axis(FigAxes.CompAxis,'tight');    
     lim = max(abs([FigAxes.CompAxis.XLim FigAxes.CompAxis.YLim]));
     lim = lim * 1.2;
     FigAxes.OrgLim = lim;
-    axis(FigAxes.CompAxis,'equal');
-    axis(FigAxes.CompAxis,'tight');    
 
     FigAxes.CompAxis.XLim = [-lim lim];
     FigAxes.CompAxis.YLim = [-lim lim];
@@ -179,9 +252,9 @@ function CompareMapsSolutionChanged(obj, event,fh,CompFig)
     ProCentered = pro-repmat(mean(pro,1),size(pro,1),1);
     DimMaps = NormDim(ProCentered'* MapCollection,2);
     
-    X = cell2mat({UserData.chanlocs.X});
-    Y = cell2mat({UserData.chanlocs.Y});
-    Z = cell2mat({UserData.chanlocs.Z});
+    X = cell2mat({FigAxes.SelectedEEG(1).chanlocs.X});
+    Y = cell2mat({FigAxes.SelectedEEG(1).chanlocs.Y});
+    Z = cell2mat({FigAxes.SelectedEEG(1).chanlocs.Z});
 
     axes(FigAxes.XPMapAxis);
     dspCMap( DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);

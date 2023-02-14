@@ -308,6 +308,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         if MaxClasses < MinClasses
             errorMessage = ['No overlap in microstate classes found between all selected sets.'];
             errordlg2(errorMessage, 'Quantify microstates error');
+            return;
         end
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
@@ -325,7 +326,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         SortModes = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(FitPar.nClasses).SortMode, SelectedSets, 'UniformOutput', false);
         if any(strcmp(SortModes, 'none')) && guiOpts.showQuantWarning2
             warningMessage = ['Some datasets remain unsorted. Would you like to ' ...
-                'resort all sets according to the same template before proceeding?'];
+                'sort all sets according to the same template before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
             if boxChecked;  guiOpts.showQuantWarning2 = false;  end
             if yesPressed
@@ -343,8 +344,9 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         SortedBy(matches(SortedBy, 'none')) = [];
         if ~yesPressed && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
             warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
-                'resort all sets according to the same template before proceeding?'];
+                'sort all sets according to the same template before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            if boxChecked;  guiOpts.showQuantWarning3 = false;  end
             if yesPressed
                 [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
                 if isempty(com);    return; end
@@ -538,6 +540,9 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     else
         % Generate output file
         FileName = outputStats([], [], FileName, MSStats, Labels);
+        if FileName == 0
+            return;
+        end
     end
 
     EEGout = SelectedEEG;
@@ -567,7 +572,7 @@ function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)
         [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
         if FName == 0
             if nargin > 5
-                fig.UserData.FileName = 0;
+                fig.UserData.FileName = '';
                 return;
             else
                 FileName = 0;

@@ -68,6 +68,10 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     guiOpts.showQuantWarning2 = true;
     guiOpts.showQuantWarning3 = true;
     guiOpts.showDynWarning = true;
+    guiOpts.showCompWarning1 = true;
+    guiOpts.showCompWarning2 = true;
+    guiOpts.showCompWarning3 = true;
+    guiOpts.showCompWarning4 = true;
 
     VersionNumber = '1.2';
     vers = ['Microstates ' VersionNumber];
@@ -157,7 +161,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 %    comQuantMSTemplatesT   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],2);'                      catch_strings.store_and_hist];
 %     comQuantMSDataVis      = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0, [], [], []);'           catch_strings.store_and_hist];
     
-    comCompareMaps          = [try_strings.no_check 'LASTCOM = pop_CompareMSTemplates(ALLEEG);'                             catch_strings.add_to_hist];
+    comCompareMaps          = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_CompareMSTemplates(ALLEEG);'                             catch_strings.store_and_hist];
 
     comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'          catch_strings.add_to_hist];
     %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
