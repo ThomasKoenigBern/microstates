@@ -97,9 +97,20 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
+    addParameter(p, 'SortOrder', [],  @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
+    addParameter(p, 'NewLabels', [], @(x) validateattributes(x, {'char', 'string', 'cell'}, {'vector'}));
     addParameter(p, 'ClassRange', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
+    addParameter(p, 'SortAll', false, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
 
     parse(p, AllEEG, varargin{:});
+
+    SelectedSets = p.Results.SelectedSets;
+    IgnorePolarity = p.Results.IgnorePolarity;
+    TemplateSet = p.Results.TemplateSet;
+    SortOrder = p.Results.SortOrder;
+    NewLabels = p.Results.NewLabels;
+    ClassRange = p.Results.ClassRange;
+    SortAll = p.Results.SortAll;
 
     if isnumeric(p.Results.TemplateSet)
         validateattributes(p.Results.TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, funcName, 'TemplateSet');
@@ -107,10 +118,17 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         validateattributes(p.Results.TemplateSet, {'char', 'string'}, {'scalartext'});
     end
 
-    SelectedSets = p.Results.SelectedSets;
-    IgnorePolarity = p.Results.IgnorePolarity;
-    TemplateSet = p.Results.TemplateSet;
-    ClassRange = p.Results.ClassRange;
+    if ~isempty(NewLabels)
+        NewLabels = convertStringsToChars(NewLabels);
+        invalidSets = ~cellfun(@(x) ischar(x) || isstring(x), NewLabels);
+        if any(invalidSets)
+            invalidSetsTxt = sprintf('%i, ', find(inValidSets));
+            invalidSetsTxt(end) = [];
+            errorMessage = ['The following elements of NewLabels are invalid: ' invalidSetsTxt ...
+                '. Expected all elements to be strings or chars.'];
+            errordlg2(errorMessage, 'Sort microstate maps error');
+        end
+    end
 
     %% SelectedSets validation
     % First make sure there are valid sets for sorting
@@ -161,10 +179,14 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
     usingPublished = false;
+    manualSort = false;
     if ~isempty(TemplateSet)
-        % If the template set is a number, make sure it is one of the
+        % First check if the user wants to sort manually
+        if matches(TemplateSet, 'manual', IgnoreCase=true)
+            manualSort = true;
+        % Else If the template set is a number, make sure it is one of the
         % mean sets in ALLEEG
-        if isnumeric(TemplateSet)
+        elseif isnumeric(TemplateSet)
             if ~ismember(TemplateSet, meanSets)
                 errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
@@ -204,7 +226,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
 
     % Otherwise, add template set selection gui elements
     else
-        combinedSetnames = [meanSetnames publishedDisplayNames];
+        combinedSetnames = ['Manual sort' meanSetnames publishedDisplayNames];
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Name of template map to sort by', 'fontweight', 'bold'}} ...
             {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
@@ -213,7 +235,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     end
 
     %% Add other gui elements
-    if contains('IgnorePolarity', p.UsingDefaults)
+    if contains('IgnorePolarity', p.UsingDefaults) && ~manualSort
         guiElements = [guiElements ...
             {{ 'Style', 'checkbox', 'string', 'No polarity','tag','IgnorePolarity','Value', IgnorePolarity }}];
         guiGeom = [guiGeom 1];
@@ -232,12 +254,14 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         end
 
         if isfield(outstruct, 'TemplateIndex')
-            if outstruct.TemplateIndex <= numel(meanSetnames)
-                TemplateIndex = outstruct.TemplateIndex;
+            if outstruct.TemplateIndex == 1
+                manualSort = true;
+            elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
+                TemplateIndex = outstruct.TemplateIndex-1;
                 TemplateSet = meanSets(TemplateIndex);
                 TemplateName = meanSetnames{TemplateIndex};
             else
-                TemplateIndex = sortOrder(outstruct.TemplateIndex - numel(meanSetnames));
+                TemplateIndex = sortOrder(outstruct.TemplateIndex - numel(meanSetnames) - 1);
                 TemplateSet = publishedSetnames{TemplateIndex};
                 usingPublished = true;
             end
@@ -253,13 +277,29 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         return;
     end
 
+    %% Handle manual sort case
+    if manualSort
+        % Check that only one set was selected
+        if numel(SelectedSets) > 1
+            errordlg2('Only one dataset can be chosen for manual sorting.', 'Sort microstate maps error');
+            return;
+        end
+
+        [SortedMaps, com] = pop_ManualSort(AllEEG, SelectedSets, SortOrder, NewLabels, ClassRange, SortAll, IgnorePolarity);
+        if isempty(SortedMaps);  return; end
+        AllEEG(SelectedSets).msinfo.MSMaps = SortedMaps;
+        EEGout = AllEEG(SelectedSets);
+        CurrentSet = SelectedSets;
+        return;
+    end
+
     if usingPublished
         ChosenTemplate = MSTEMPLATE(TemplateIndex);
     else
         ChosenTemplate = AllEEG(meanSets(TemplateIndex));
     end
 
-    %% Prompt user to select class range if necessary
+    %% Prompt user to select class range and option to sort all if necessary
     TemplateMinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
     TemplateMaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     AllMinClasses = [TemplateMinClasses, arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets)];
@@ -271,15 +311,17 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         classChoices = sprintf('%i Classes|', classes);
         classChoices(end) = [];
 
-        [res,~,~,outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', ...
+        [res,~,~,outstruct] = inputgui('geometry', [1 1 1 1], 'geomvert', [1 1 4 1], 'uilist', ...
             { {'Style', 'text', 'string', 'Select classes to sort'} ...
               {'Style', 'text', 'string' 'Use ctrlshift for multiple selection'} ...
-              {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 2, 'Value', 1:numel(classes), 'Tag', 'ClassRange'}}, ...
+              {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 2, 'Value', 1:numel(classes), 'Tag', 'ClassRange'}, ...
+              {'Style', 'checkbox', 'string', 'Sort remaining solutions by selected solution(s)', 'Value', SortAll, 'Tag', 'SortAll'}}, ...
               'title', 'Sort microstate maps');
         
         if isempty(res); return; end
 
         ClassRange = classes(outstruct.ClassRange);
+        SortAll = outstruct.SortAll;
     end
 
     %% Verify compatibility between selected sets to sort and template set
@@ -356,7 +398,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
             AllEEG(sIndex).msinfo.MSMaps(n).Maps = AllEEG(sIndex).msinfo.MSMaps(n).Maps .* repmat(polarity',1,numel(AllEEG(sIndex).chanlocs));
 
             % Update map labels and colors
-            [Labels,Colors] = UpdateMicrostateLabels(AllEEG(sIndex).msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,AllEEG(sIndex).msinfo.MSMaps(n).ColorMap,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
+            [Labels,Colors] = UpdateMicrostateLabels(AllEEG(sIndex).msinfo.MSMaps(n).Labels,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).Labels,SortOrder,ChosenTemplate.msinfo.MSMaps(TemplateClassesToUse).ColorMap);
             AllEEG(sIndex).msinfo.MSMaps(n).Labels = Labels;
             AllEEG(sIndex).msinfo.MSMaps(n).ColorMap = Colors;
 
@@ -365,14 +407,30 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
 
             if usingPublished
                 AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'published template';
+                AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
             else
-                AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map';
+                if strcmp(ChosenTemplate.msinfo.MSMaps(n).SortMode, 'none')
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = 'mean map';
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
+                else
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortMode = [ChosenTemplate.msinfo.MSMaps(n).SortMode '->mean map'];
+                    AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.msinfo.MSMaps(n).SortedBy '->' ChosenTemplate.setname];
+                end
             end
-
-            AllEEG(sIndex).msinfo.MSMaps(n).SortedBy = [ChosenTemplate.setname];
+            
             AllEEG(sIndex).msinfo.MSMaps(n).SpatialCorrelation = SpatialCorrelation;
-            AllEEG(sIndex).saved = 'no';
+            AllEEG(sIndex).saved = 'no';            
         end
+
+        if SortAll
+            disp(['Sorting unselected solutions by largest selected solution' newline]);
+            % Sort unsorted solutions by largest sorted solution
+            AllClasses = AllEEG(sIndex).msinfo.ClustPar.MinClasses:AllEEG(sIndex).msinfo.ClustPar.MaxClasses;
+            unsortedClasses = ~ismember(AllClasses, ClassRange);
+            largestSortedClass = max(ClassRange);
+            AllEEG(sIndex).msinfo.MSMaps = sortAllSolutions(AllEEG(sIndex).msinfo.MSMaps, AllClasses(unsortedClasses), largestSortedClass, IgnorePolarity);
+        end
+
     end
 
     EEGout = AllEEG(SelectedSets);
@@ -380,10 +438,34 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
 
     %% Command string generation
     if ischar(TemplateSet) || isstring(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet);
+        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', ''%s'', ''SortAll'', %i);', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet, SortAll);
     elseif isnumeric(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', %i)', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet);
+        com = sprintf('[EEG, CURRENTSET, com] = pop_SortMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''TemplateSet'', %i, ''SortAll'', %i);', inputname(1), mat2str(SelectedSets), IgnorePolarity, TemplateSet, SortAll);
     end        
+end
+
+function MSMaps = sortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)    
+    for i=ClassRange
+
+        [SortedMaps, SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MSMaps(i).Maps, MSMaps(nClasses).Maps, ~IgnorePolarity);
+        MSMaps(i).Maps = squeeze(SortedMaps).*repmat(polarity',1,size(squeeze(SortedMaps), 2));
+
+        [Labels, Colors] = UpdateMicrostateLabels(MSMaps(i).Labels, MSMaps(nClasses).Labels, SortOrder, MSMaps(nClasses).ColorMap);
+        MSMaps(i).Labels = Labels(1:i);
+        MSMaps(i).ColorMap = Colors(1:i, :);
+        MSMaps(i).SortMode = [MSMaps(nClasses).SortMode 'alternate solution in set'];
+        MSMaps(i).SortedBy = sprintf('%s->this set (%i classes)', MSMaps(nClasses).SortedBy, nClasses);
+        MSMaps(i).SpatialCorrelation = SpatialCorrelation;
+        MSMaps(i).ExpVar = MSMaps(i).ExpVar(SortOrder(SortOrder <= i));
+
+        if i > nClasses+1
+            [SortedMaps, SortOrder, ~, polarity] = ArrangeMapsBasedOnMean(MSMaps(i).Maps((nClasses+1):end,:), MSMaps(i-1).Maps((nClasses+1):end,:), ~IgnorePolarity);
+            MSMaps(i).Maps((nClasses+1):end,:) = squeeze(SortedMaps).*repmat(polarity',1,size(squeeze(SortedMaps),2));
+            MSMaps(i).Labels((nClasses+1):end) = arrayfun(@(x) sprintf('MS_%i.%i', i, nClasses+x), 1:(i-nClasses), 'UniformOutput', false);
+            endExpVar = MSMaps(i).ExpVar((nClasses+1):end);
+            MSMaps(i).ExpVar((nClasses+1):end) = endExpVar(SortOrder);
+        end
+    end
 end
 
 function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()

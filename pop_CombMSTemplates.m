@@ -334,11 +334,24 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         end
         % We sort out the stuff
         [BestMeanMap,~,ExpVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
+
+        % Compute mean shared variances
+        sharedVars = zeros(numel(SelectedSets), n);
+        for index = 1:length(SelectedSets)
+            for class = 1:n
+                var = corr(squeeze(MapsToSort(index,class,:)), BestMeanMap(class, :)').^2;
+                if var < .5
+                    var = 1 - var;
+                end
+                sharedVars(index,class) = var;
+            end
+        end
         msinfo.MSMaps(n).Maps = BestMeanMap;
         msinfo.MSMaps(n).ExpVar = ExpVar;
-        msinfo.MSMaps(n).ColorMap = lines(n);
+        msinfo.MSMaps(n).SharedVar = mean(sharedVars);        
+        msinfo.MSMaps(n).ColorMap = repmat([.75 .75 .75], n, 1);
         for j = 1:n
-            msinfo.MSMaps(n).Labels{j} = sprintf('%s_%i.%i', MeanName, n,j);
+            msinfo.MSMaps(n).Labels{j} = sprintf('MS_%i.%i', n,j);
         end
         msinfo.MSMaps(n).SortMode = 'none';
         msinfo.MSMaps(n).SortedBy = 'none';

@@ -382,7 +382,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
        
                 msinfo.MSMaps(nClusters).Maps = b_model;
                 msinfo.MSMaps(nClusters).ExpVar = double(exp_var);
-                msinfo.MSMaps(nClusters).ColorMap = lines(nClusters);
+                msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
                     msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
                 end
@@ -396,7 +396,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
                 msinfo.MSMaps(nClusters).Maps = b_model{nClusters-ClustPar.MinClasses+1};
                 msinfo.MSMaps(nClusters).ExpVar = exp_var(nClusters-ClustPar.MinClasses+1);
-                msinfo.MSMaps(nClusters).ColorMap = lines(nClusters);
+                msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
                     msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
                 end
@@ -432,7 +432,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     end
     
     %% Command string generation
-    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s, ''ShowMaps'', %i, ''ShowDyn'', %i, ''TemplateSet'', ''%s'')',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar), ShowMaps, ShowDyn, TemplateSet);
+    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s, ''ShowMaps'', %i, ''ShowDyn'', %i, ''TemplateSet'', ''%s'');',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar), ShowMaps, ShowDyn, TemplateSet);
 end
 
 function [ClustPar, UsingDefaults] = checkClustPar(varargin)
