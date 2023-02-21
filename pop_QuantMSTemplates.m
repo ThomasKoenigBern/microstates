@@ -607,7 +607,7 @@ function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)
             case 4
                 save(FileName,'MSStats');
             case 5
-                xlswrite(FileName,SaveStructToTable(MSStats,[],[],Labels),SheetName);
+                xlswrite(FileName,SaveStructToTable(MSStats,[],[],Labels));
             case 6
                 SaveStructToR(MSStats,FileName);
         end

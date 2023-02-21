@@ -90,7 +90,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'MeanName', 'GrandMean', @(x) validateattributes(x, strClass, strAttributes));
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, strClass, strAttributes));
-    addParameter(p, 'SortChildren', false, @(x) validateattributes(logClass, logAttributes));
+    addParameter(p, 'SortChildren', false, @(x) validateattributes(x,logClass, logAttributes));
 
     parse(p, AllEEG, varargin{:});
 
