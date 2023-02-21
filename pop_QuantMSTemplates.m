@@ -341,7 +341,10 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         SortedBy = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(FitPar.nClasses).SortedBy, SelectedSets, 'UniformOutput', false);
         emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
         SortedBy(emptyIdx) = [];
-        SortedBy(matches(SortedBy, 'none')) = [];
+        if any(contains(SortedBy, '->'))
+            multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
+            SortedBy(contains(SortedBy, '->')) = multiSortedBys;
+        end
         if ~yesPressed && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
             warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
