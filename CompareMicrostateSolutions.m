@@ -23,13 +23,7 @@ function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename, 
         choice(end) = [];
         idx = 1:MaxClasses - MinClasses + 1;
     else
-        letters = 'A':'Z';
-        letters = arrayfun(@(x) {letters(x)}, 1:26);
-        setIDs = letters;
-        for i=1:floor(numel(SelectedEEG)/26)
-            setIDs = [setIDs strcat(letters, num2str(i))];
-        end
-        setIDs = setIDs(1:numel(SelectedEEG));
+        setIDs = string(1:numel(SelectedEEG));
         CompFigHandle.UserData.setIDs = setIDs;
 
         choice = strcat(setIDs, ': ', {SelectedEEG.setname});
