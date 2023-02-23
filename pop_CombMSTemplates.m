@@ -384,10 +384,8 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     if SortChildren
         disp('Sorting child sets');
-        EEGout.datfile = [];
-        EEGout.run = [];
-        newEEG = [AllEEG EEGout];
-        childEEG = pop_SortMSTemplates(newEEG, SelectedSets, 'IgnorePolarity', IgnorePolarity, ...
+        newEEG = pop_newset(AllEEG(SelectedSets), EEGout, numel(SelectedSets), 'gui', 'off');
+        childEEG = pop_SortMSTemplates(newEEG, 1:numel(SelectedSets), 'IgnorePolarity', IgnorePolarity, ...
             'TemplateSet', numel(newEEG), 'ClassRange', MinClasses:MaxClasses);
         [AllEEG, ~, ~] = eeg_store(AllEEG, childEEG, SelectedSets);
     end

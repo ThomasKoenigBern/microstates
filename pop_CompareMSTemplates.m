@@ -246,18 +246,15 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
 
     SelectedEEG = [];
     if ~isempty(IndividualSets)
-        SelectedEEG = [SelectedEEG AllEEG(IndividualSets)];
+        SelectedEEG = pop_newset(SelectedEEG, AllEEG(IndividualSets), numel(SelectedEEG), 'gui', 'off');
     end
     if ~isempty(MeanSets)
-        SelectedEEG = [SelectedEEG AllEEG(MeanSets)];
+        SelectedEEG = pop_newset(SelectedEEG, AllEEG(MeanSets), numel(SelectedEEG), 'gui', 'off');
     end
     nonpublishedSets = 1:numel(SelectedEEG);
     if ~isempty(PublishedSetIndices)
         publishedSets = MSTEMPLATE(PublishedSetIndices);
-        if isfield(publishedSets, 'comment')
-            publishedSets = rmfield(publishedSets, 'comment');
-        end
-        SelectedEEG = [SelectedEEG publishedSets];
+        SelectedEEG = pop_newset(SelectedEEG, publishedSets, numel(SelectedEEG), 'gui', 'off');
     end
 
     %% If comparing within a dataset, check for consistent sorting across solutions
@@ -459,6 +456,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             
             for class=inputEEG(i).msinfo.ClustPar.MinClasses:inputEEG(i).msinfo.ClustPar.MaxClasses
                 inputEEG(i).msinfo.MSMaps(class).Maps = inputEEG(i).msinfo.MSMaps(class).Maps*LocalToGlobal';
+                inputEEG(i).chanlocs = inputEEG(minSetIdx).chanlocs;
             end
         end
     end
