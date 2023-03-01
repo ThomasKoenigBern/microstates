@@ -180,13 +180,10 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
     TemplateIndex = 1;
     usingPublished = false;
     manualSort = false;
-    if ~isempty(TemplateSet)
-        % First check if the user wants to sort manually
-        if matches(TemplateSet, 'manual', IgnoreCase=true)
-            manualSort = true;
-        % Else If the template set is a number, make sure it is one of the
+    if ~isempty(TemplateSet)        
+        % If the template set is a number, make sure it is one of the
         % mean sets in ALLEEG
-        elseif isnumeric(TemplateSet)
+        if isnumeric(TemplateSet)
             if ~ismember(TemplateSet, meanSets)
                 errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
@@ -197,9 +194,11 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
                 TemplateName = meanSetnames{TemplateIndex};
             end
         % Else if the template set is a string, make sure it matches one of
-        % the mean setnames or published template setnames
+        % the mean setnames, published template setnames, or "manual"
         else
-            if matches(TemplateSet, meanSetnames)
+            if matches(TemplateSet, 'manual', IgnoreCase=true)
+                manualSort = true;
+            elseif matches(TemplateSet, meanSetnames)
                 % If there are multiple mean sets with the same name
                 % provided, notify the suer
                 if numel(find(matches(meanSetnames, TemplateSet))) > 1
@@ -226,7 +225,11 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
 
     % Otherwise, add template set selection gui elements
     else
-        combinedSetnames = ['Manual sort' meanSetnames publishedDisplayNames];
+        if numel(SelectedSets) > 1
+            combinedSetnames = [meanSetnames publishedDisplayNames];
+        else
+            combinedSetnames = ['Manual sort' meanSetnames publishedDisplayNames];
+        end
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Name of template map to sort by', 'fontweight', 'bold'}} ...
             {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
@@ -254,16 +257,28 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         end
 
         if isfield(outstruct, 'TemplateIndex')
-            if outstruct.TemplateIndex == 1
-                manualSort = true;
-            elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
-                TemplateIndex = outstruct.TemplateIndex-1;
-                TemplateSet = meanSets(TemplateIndex);
-                TemplateName = meanSetnames{TemplateIndex};
+            if contains('Manual sort', combinedSetnames)
+                if outstruct.TemplateIndex == 1
+                    manualSort = true;
+                elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
+                    TemplateIndex = outstruct.TemplateIndex-1;
+                    TemplateSet = meanSets(TemplateIndex);
+                    TemplateName = meanSetnames{TemplateIndex};
+                else
+                    TemplateIndex = sortOrder(outstruct.TemplateIndex - numel(meanSetnames) - 1);
+                    TemplateSet = publishedSetnames{TemplateIndex};
+                    usingPublished = true;
+                end
             else
-                TemplateIndex = sortOrder(outstruct.TemplateIndex - numel(meanSetnames) - 1);
-                TemplateSet = publishedSetnames{TemplateIndex};
-                usingPublished = true;
+                if outstruct.TemplateIndex <= numel(meanSetnames)
+                    TemplateIndex = outstruct.TemplateIndex;
+                    TemplateSet = meanSets(TemplateIndex);
+                    TemplateName = meanSetnames{TemplateIndex};
+                else
+                    TemplateIndex = sortOrder(outstruct.TemplateIndex - numel(meanSetnames));
+                    TemplateSet = publishedSetnames{TemplateIndex};
+                    usingPublished = true;
+                end
             end
         end
 
@@ -322,6 +337,16 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
 
         ClassRange = classes(outstruct.ClassRange);
         SortAll = outstruct.SortAll;
+    else
+        if any(ClassRange < MinClasses) || any(ClassRange > MaxClasses)
+            invalidClasses = ClassRange(or((ClassRange < MinClasses), (ClassRange > MaxClasses)));
+            invalidClassesTxt = sprintf('%i, ', invalidClasses);
+            invalidClassesTxt = invalidClassesTxt(1:end-2);
+            errorMessage = sprintf(['The following specified cluster solutions to sort are invalid: %s' ...
+                '. Valid class numbers are in the range %i-%i.'], invalidClassesTxt, MinClasses, MaxClasses);
+            errordlg2(errorMessage, 'Sort microstate maps error');
+            return;
+        end
     end
 
     %% Verify compatibility between selected sets to sort and template set

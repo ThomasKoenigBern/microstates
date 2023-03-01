@@ -1,4 +1,4 @@
-function [c,imap,xm,ym,chandle] = dspCMap(map,ChanPos,varargin)
+function [c,imap,xm,ym,chandle] = dspCMap(ax,map,ChanPos,varargin)
 % dspCMap - Display topographic scalp maps
 % ----------------------------------------
 % Copyright 2009-2011 Thomas Koenig
@@ -274,7 +274,7 @@ end
 
 %ContourLevel = (nNegLevels:(nPosLevels-1)) * CStep;
 
-[c,h] = contourf(xm,ym,imap, ContourLevel);
+[c,h] = contourf(ax,xm,ym,imap, ContourLevel);
 chandle.c = c;
 chandle.h = h;
 
@@ -290,7 +290,7 @@ LabBkG = 1;
 
 if vararginmatch(varargin,'Background')
     BckCol = varargin{vararginmatch(varargin,'Background')+1};
-    set(gca,'Color',BckCol);
+    ax.Color = BckCol;
 end
 
 switch cmap
@@ -305,15 +305,15 @@ switch cmap
             end
         end
 
-        colormap(gca,cm);
-        contour(xm,ym,imap,ContourLevel(ContourLevel < 0),'LineColor',[0.99 0.99 0.99],'LineWidth',2);
+        colormap(ax,cm);
+        contour(ax,xm,ym,imap,ContourLevel(ContourLevel < 0),'LineColor',[0.99 0.99 0.99],'LineWidth',2);
 
     case 'ww'
         disp('The white colormap needs some reprogramming');
-        colormap(ones(numel(ll),3));
+        colormap(ax,ones(numel(ll),3));
         LabBkG = 0.9;
         
-        contour(xm,ym,imap,[0 0],'LineWidth',MapLineWidth*2,'LineColor',[0 0 0]);
+        contour(ax,xm,ym,imap,[0 0],'LineWidth',MapLineWidth*2,'LineColor',[0 0 0]);
 
     case 'hot'
         disp('The hot colormap needs some reprogramming');
@@ -328,11 +328,11 @@ switch cmap
         size(hot(cntpos))
         cm = [zeros(negpos,3);hot(cntpos)];
         
-        colormap(gca,cm);
+        colormap(ax,cm);
         
     case 'br'
-        caxis([-8*CStep 8*CStep]);
-        colormap(gca,bluered);
+        clim(ax,[-8*CStep 8*CStep]);
+        colormap(ax,bluered);
         LabBkG = 1;
     case 'rr'
         for i = 1:numel(ll)
@@ -345,7 +345,7 @@ switch cmap
                 cm(i,:) = [1 0.875-l 0.875-l];
             end
         end
-        colormap(gca,cm);
+        colormap(ax,cm);
         
         LabBkG = 1;
 %        if (ll(1) < 0)
@@ -412,7 +412,7 @@ if vararginmatch(varargin,'Extrema')
 
     [mx,maxIdx] = max(map,[],2);
     [mn,minIdx] = min(map,[],2);
-    plot([pxG(maxIdx);pxG(minIdx)],[pyG(maxIdx);pyG(minIdx)],'*k');
+    plot(ax, [pxG(maxIdx);pxG(minIdx)],[pyG(maxIdx);pyG(minIdx)],'*k');
 end
 
 
@@ -427,14 +427,14 @@ if vararginmatch(varargin,'Centroids')
     cnx = sum(map(negIdx).*pxG(negIdx))./ sum(map(negIdx));
     cny = sum(map(negIdx).*pyG(negIdx))./ sum(map(negIdx));
     
-    plot([cpx cnx],[cpy cny],'*k');
+    plot(ax, [cpx cnx],[cpy cny],'*k');
 end
 
 if vararginmatch(varargin,'GravityCenter')
     cpx = sum(abs(map).*pxG)./ sum(abs(map));
     cpy = sum(abs(map).*pyG)./ sum(abs(map));
     
-    plot(cpx,cpy,'*k');
+    plot(ax, cpx,cpy,'*k');
 end
 
 
@@ -443,24 +443,25 @@ if NoseRadius > 0
     w = w / 180 * pi;
     xc = sin(w) .* NoseRadius;
     yc = cos(w) .* NoseRadius + r_max;
-    patch(xc,yc,ones(size(xc))-1000,[1 1 1],'LineWidth',1);
+    patch(ax,xc,yc,ones(size(xc))-1000,[1 1 1],'LineWidth',1);
        Ang = [18 20 22 24 26 28] / 180 * pi;
     
     for i = 1:numel(Ang)
         x = sin(Ang(i)) * [1.05 1.1] * r_max;
         y = cos(Ang(i)) * [1.05 1.1] * r_max;
-        line( x,y,'LineWidth',1,'Color',[0 0 0]);
-        line(-x,y,'LineWidth',1,'Color',[0 0 0]);
+        line(ax, x,y,'LineWidth',1,'Color',[0 0 0]);
+        line(ax, -x,y,'LineWidth',1,'Color',[0 0 0]);
     end
     ell_h = ellipse(r_max*0.99,r_max*0.99,[],0,0);
+    ell_h.Parent = ax;
     set(ell_h,'LineWidth',1,'Color',[0 0 0]);
     
 end
 
-set(gca,'XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'NextPlot','replace','DataAspectRatio',[1 1 1]);
+set(ax,'XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'NextPlot','replace','DataAspectRatio',[1 1 1]);
 
 if vararginmatch(varargin,'Background')
-    set(gca,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[]);
+    set(ax,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[]);
 else
     axis off
 end

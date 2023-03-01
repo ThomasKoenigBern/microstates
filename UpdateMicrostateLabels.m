@@ -23,14 +23,12 @@ function [NewLabels, NewColors] = UpdateMicrostateLabels(OldLabels,TemplateLabel
     % Change labels of unsorted maps to the generic labels
     nGenericLabels = nOldLabels - nCopiedLabels;
     if nGenericLabels > 0
-        NewLabels((nCopiedLabels+1):nOldLabels) = arrayfun(@(x) sprintf('MS_%i.%i', nOldLabels, nCopiedLabels+x), 1:numel(nGenericLabels), ...
+        NewLabels((nCopiedLabels+1):nOldLabels) = arrayfun(@(x) sprintf('MS_%i.%i', nOldLabels, nCopiedLabels+x), 1:nGenericLabels, ...
             'UniformOutput', false);
 
         if nargin > 3
             % Change colors of unsorted maps to gray
-            if nGenericLabels > 0
-                NewColors((nCopiedLabels+1):nOldLabels, :) = repmat(.75, nGenericLabels, 3);
-            end
+            NewColors((nCopiedLabels+1):nOldLabels, :) = repmat(.75, nGenericLabels, 3);
         end
     end
 end
