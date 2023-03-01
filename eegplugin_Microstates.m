@@ -67,11 +67,12 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     guiOpts.showQuantWarning1 = true;
     guiOpts.showQuantWarning2 = true;
     guiOpts.showQuantWarning3 = true;
+    guiOpts.showQuantWarning4 = true;
+    guiOpts.showQuantWarning5 = true;
     guiOpts.showDynWarning = true;
     guiOpts.showCompWarning1 = true;
     guiOpts.showCompWarning2 = true;
     guiOpts.showCompWarning3 = true;
-    guiOpts.showCompWarning4 = true;
 
     VersionNumber = '1.2';
     vers = ['Microstates ' VersionNumber];

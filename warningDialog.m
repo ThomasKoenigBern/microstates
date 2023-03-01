@@ -22,7 +22,7 @@ function [yesPressed, noPressed, boxChecked] = warningDialog(msg, title)
 
     warnDlg = figure("Name", title, "MenuBar", "none", "ToolBar", "none", ...
         "NumberTitle", "off", "WindowStyle", "modal", "Color", [.66 .76 1]);
-    warnDlg.Position(3:4) = [500 250];
+    warnDlg.Position(3:4) = [500 300];
     warnDlg.UserData.yesPressed = yesPressed;
     warnDlg.UserData.noPressed = noPressed;
     warnDlg.CloseRequestFcn = 'uiresume()';

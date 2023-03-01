@@ -322,12 +322,13 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     SelectedEEG = AllEEG(SelectedSets);
     if strcmp(TemplateMode, 'own')
         % First check if any datasets remain unsorted
-        yesPressed = false;
+        noSort = false;
         SortModes = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(FitPar.nClasses).SortMode, SelectedSets, 'UniformOutput', false);
         if any(strcmp(SortModes, 'none')) && guiOpts.showQuantWarning2
             warningMessage = ['Some datasets remain unsorted. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            noSort = noPressed;
             if boxChecked;  guiOpts.showQuantWarning2 = false;  end
             if yesPressed
                 [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
@@ -345,11 +346,46 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
             SortedBy(contains(SortedBy, '->')) = multiSortedBys;
         end
-        if ~yesPressed && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
+        if numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
             warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
             if boxChecked;  guiOpts.showQuantWarning3 = false;  end
+            if yesPressed
+                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
+                if isempty(com);    return; end
+            elseif ~noPressed
+                return;
+            end
+        end
+
+        % Check for unassigned labels
+        Colors = cell2mat(arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(FitPar.nClasses).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false)');
+        if ~noSort && any(arrayfun(@(x) all(Colors(x,:) == [.75 .75 .75]), 1:size(Colors,1))) && guiOpts.showQuantWarning4
+            warningMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, each set must either be ' ...
+                'manually sorted and assigned new labels, or sorted by a template set with equal (ideally) or greater number of maps. Would you like ' ...
+                'to re-sort before proceeding?'];
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            if boxChecked;  guiOpts.showQuantWarning4 = false;   end
+            if yesPressed
+                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
+                if isempty(com);    return; end
+            elseif ~noPressed
+                return;
+            end
+        end
+
+        % Check for consistent labels 
+        AllLabels = {};
+        for set=1:numel(SelectedEEG)                 
+            AllLabels = [AllLabels SelectedEEG(set).msinfo.MSMaps(FitPar.nClasses).Labels];
+        end 
+        if ~noSort && numel(unique(AllLabels)) > FitPar.nClasses && guiOpts.showQuantWarning5
+            warningMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
+                'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
+                'and assigned the same set of labels, or sorted using a template set with an equal number of maps. Would you like to re-sort before proceeding?'];
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            if boxChecked;  guiOpts.showQuantWarning5 = false;   end
             if yesPressed
                 [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
                 if isempty(com);    return; end
@@ -366,12 +402,9 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     end
 
     %% Quantify
-    h = waitbar(0);
-    set(h,'Name','Quantifying microstates, please wait...');
-    set(findall(h,'type','text'),'Interpreter','none');
-
+    h = waitbar(0, sprintf('Working on %s', SelectedEEG(1).setname), 'Name', 'Quantifying microstates, please wait...');
     for s = 1:numel(SelectedSets)
-        waitbar((s-1) / numel(SelectedSets),h,sprintf('Working on %s',SelectedEEG(s).setname),'Interpreter','none');
+        waitbar((s-1) / numel(SelectedSets),h,sprintf('Working on %s',SelectedEEG(s).setname));
 
         % Get dataset information
         DataInfo.subject   = SelectedEEG(s).subject;
