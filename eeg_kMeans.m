@@ -78,6 +78,11 @@ else
     tic
 end
 
+if max_n < n_mod
+    b_model = [];
+    return;
+end
+
 for run = 1:reruns
     if isempty(h)
         [step, strLength] = mywaitbar(run, reruns, step, nSteps, strLength);
@@ -92,6 +97,8 @@ for run = 1:reruns
     end
 
     idx = randperm(max_n);
+    size(idx)
+    n_mod
     model = eeg(idx(1:n_mod),:);
     model   = NormDim(model,2)*newRef;					% Average Reference, equal variance of model
 
