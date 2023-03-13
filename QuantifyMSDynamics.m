@@ -144,7 +144,8 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
     res.OrgTM = res.OrgTM / sum(res.OrgTM(:));
     
 %     res.ExpTM = mynanmean(eExpTM,3);
-    res.DeltaTM = res.OrgTM - mynanmean(eExpTM, 3);
+    res.DeltaTM = ((res.OrgTM - mynanmean(eExpTM, 3))*100)./mynanmean(eExpTM, 3);
+    res.DeltaTM(isnan(res.DeltaTM)) = 0;
 
     % if quantifying by own maps, include spatial correlations between
     % individual maps and the template maps they were sorted by
