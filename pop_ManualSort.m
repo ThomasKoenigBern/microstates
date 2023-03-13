@@ -15,29 +15,123 @@ function [SortedMaps, com] = pop_ManualSort(AllEEG, SelectedSet, SortOrder, NewL
     ud.AllMaps      = SelectedEEG.msinfo.MSMaps;
     ud.chanlocs     = SelectedEEG.chanlocs;
     ud.ClustPar     = SelectedEEG.msinfo.ClustPar;
-    ud.Edit         = true;
-    ud.nClasses     = nan;
+    ud.Edit         = false;
+    ud.Visible      = true;
     ud.com          = '';
     ud.SelectedSet  = SelectedSet;
-%     ud.PrevPosition = [0 0 0 0];
+
+    % Compute initial figure size and whether scrolling is needed
+    minGridSize = 60;
+    mapPanelNormHeight = .72;
+    mapPanelNormWidth = .98;
+    nRows = ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses + 1;
+    nCols = ud.ClustPar.MaxClasses;
+    ud.minPanelWidth = minGridSize*nCols;
+    ud.minPanelHeight = minGridSize*nRows;
     
-    fig = uifigure('WindowStyle', 'modal', 'Units', 'pixels', ...
-        'Position', [385 174 768 518] ,'Visible', 'off', ...
-        'Name', sprintf('Microstate maps of %s', SelectedEEG.setname), ...
-        'AutoResizeChildren', 'off', 'SizeChangedFcn', @sizeChanged);
+    % Get usable screen size
+    toolkit = java.awt.Toolkit.getDefaultToolkit();
+    jframe = javax.swing.JFrame;
+    insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
+    tempFig = figure('MenuBar', 'none', 'ToolBar', 'none', 'Visible', 'off');
+    titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    delete(tempFig);
+    figSize = get(0, 'screensize') + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
     
-    ud.FigLayout = uigridlayout(fig, [3 1]);
+    ud.Scroll = false;
+    % Use scrolling and uifigure
+    if ud.minPanelWidth > figSize(3)*mapPanelNormWidth || ud.minPanelHeight > figSize(4)*mapPanelNormHeight
+        ud.Scroll = true;
+        fig_h = uifigure('Name', ['Microstate maps of ' SelectedEEG.setname], 'Units', 'pixels', ...
+            'Position', figSize, 'Resize', 'off');
+        if ud.minPanelWidth < fig_h.Position(3) - 20
+            ud.minPanelWidth = fig_h.Position(3) - 50;
+        end
+        selPanelHeight = 190;       % combined height of button area and padding
+        if ud.minPanelHeight < fig_h.Position(4) - selPanelHeight
+            ud.minPanelHeight = fig_h.Position(4) - selPanelHeight - 30;
+        end
+
+        fig_h.UserData = ud;
+        buildUIFig(fig_h)
+    % Otherwise use a normal figure (faster rendering) 
+    else
+        fig_h = figure('MenuBar', 'none', 'ToolBar', 'none', 'NumberTitle', 'off', 'WindowStyle', 'modal', ...
+                'Name', ['Microstate maps of ' SelectedEEG.setname], 'Position', figSize);
+
+        fig_h.UserData = ud;
+        buildFig(fig_h);
+    end
+    
+    PlotMSMaps(fig_h, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
+    if ~isvalid(fig_h)
+        return;
+    end
+    solutionChanged([], [], fig_h);
+    
+    fig_h.CloseRequestFcn = 'uiresume()';
+    uiwait();
+
+    if isvalid(fig_h)
+        ud = fig_h.UserData;
+        delete(fig_h);     
+        SortedMaps = ud.AllMaps;
+        com = ud.com;
+    end
+end
+
+function buildFig(fig_h)
+    ud = fig_h.UserData;
+            
+    ud.MapPanel = uipanel(fig_h, 'Position', [.01 .27 .98 .72], 'BorderType', 'line');
+    
+    uicontrol(fig_h, 'Style', 'Text', 'String', 'Select solution', 'Units', 'normalized', 'Position', [.01 .22 .15 .03], 'HorizontalAlignment', 'left');
+    AvailableClassesText = arrayfun(@(x) {sprintf('%i Classes', x)}, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
+    ud.ClassList = uicontrol(fig_h, 'Style', 'listbox','String', AvailableClassesText, 'Units','Normalized','Position', [.01 .06 0.15 .16], 'Callback',{@solutionChanged, fig_h});
+       
+    uicontrol(fig_h, 'Style', 'Text', 'String', 'Sort Order (negative to flip polarity)', 'Units', 'normalized', 'Position', [.17 .21 .17 .03], 'HorizontalAlignment', 'left');
+    ud.OrderEdit = uicontrol(fig_h, 'Style', 'edit', 'String', "", 'Units', 'normalized', 'Position', [.34 .21 .65 .04]);
+        
+    uicontrol(fig_h, 'Style', 'Text', 'String', 'New Labels', 'Units', 'normalized', 'Position', [.17 .16 .17 .03], 'HorizontalAlignment', 'left');
+    ud.LabelsEdit = uicontrol(fig_h, 'Style', 'Edit', 'String', "", 'Units', 'normalized', 'Position', [.34 .16 .65 .04]);
+
+    ud.IgnorePolarity = uicontrol(fig_h, 'Style', 'checkbox', 'String', ' Ignore Polarity', 'Value', 1, 'Units', 'normalized', 'Position', [.76 .11 .23 .04]);
+    ud.SortAll = uicontrol(fig_h, 'Style', 'checkbox', 'String', ' Use selected solution to reorder all other solutions', 'Value', 0, 'Units', 'normalized', 'Position', [.17 .11 .59 .04]);
+
+    uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Sort', 'Units', 'normalized', 'Position', [.17 .06 .82 .04], 'Callback', {@ManualSortCallback,fig_h});
+    
+    uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Cancel', 'Units', 'normalized', 'Position', [.78 .005 .1 .045], 'Callback', {@btnPressed, fig_h});
+    uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Save', 'Units', 'normalized', 'Position', [.89 .005 .1 .045], 'Callback', {@btnPressed, fig_h});
+
+    fig_h.UserData = ud;
+end
+
+function buildUIFig(fig_h)
+    ud = fig_h.UserData;
+    
+    ud.FigLayout = uigridlayout(fig_h, [3 1]);
     ud.FigLayout.RowHeight = {'1x', 120, 30};
+
+    ud.MapPanel = uipanel(ud.FigLayout);
+
+    if ud.Scroll
+        ud.MapPanel.Scrollable = 'on';
+        ud.TilePanel = uipanel(ud.MapPanel, 'Units', 'pixels', 'Position', [0 0 ud.minPanelWidth ud.minPanelHeight], 'BorderType', 'none');
+    end
     
     SelLayout = uigridlayout(ud.FigLayout, [1 2]);
     SelLayout.Padding = [0 0 0 0];
-    SelLayout.Layout.Row = 2;
-    SelLayout.ColumnWidth = {90, '1x'};
+    SelLayout.ColumnWidth = {180, '1x'};
     
+    SolutionLayout = uigridlayout(SelLayout, [2 1]);
+    SolutionLayout.Padding = [0 0 0 0];
+    SolutionLayout.RowHeight = {15, '1x'};
+
+    uilabel(SolutionLayout, 'Text', 'Select solution');
     AvailableClasses = arrayfun(@(x) {sprintf('%i Classes', x)}, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
-    ud.ClassList = uilistbox(SelLayout, 'Items', AvailableClasses, ...
+    ud.ClassList = uilistbox(SolutionLayout, 'Items', AvailableClasses, ...
         'ItemsData', ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses, ...
-        'ValueChangedFcn',{@solutionChanged,fig});
+        'ValueChangedFcn',{@solutionChanged,fig_h});
     
     SortLayout = uigridlayout(SelLayout, [4 1]);
     SortLayout.Padding = [0 0 0 0];
@@ -63,38 +157,27 @@ function [SortedMaps, com] = pop_ManualSort(AllEEG, SelectedSet, SortOrder, NewL
     ud.SortAll = uicheckbox(CheckBoxLayout, 'Text', ' Use selected solution to reorder all other solutions');
     ud.IgnorePolarity = uicheckbox(CheckBoxLayout, 'Text', ' Ignore Polarity', 'Value', 1);
     
-    uibutton(SortLayout, 'Text', 'Sort', 'ButtonPushedFcn', {@ManualSortCallback,fig});
+    uibutton(SortLayout, 'Text', 'Sort', 'ButtonPushedFcn', {@ManualSortCallback,fig_h});
     
     BtnLayout = uigridlayout(ud.FigLayout, [1 3]);
-    BtnLayout.ColumnWidth = {'1x', 70, 70};
+    BtnLayout.ColumnWidth = {'1x', 120, 120};
     BtnLayout.Padding = [0 0 0 5];
-    CancelBtn = uibutton(BtnLayout, 'Text', 'Cancel', 'ButtonPushedFcn', {@btnPressed, fig});
+    CancelBtn = uibutton(BtnLayout, 'Text', 'Cancel', 'ButtonPushedFcn', {@btnPressed, fig_h});
     CancelBtn.Layout.Column = 2;
-    SaveBtn = uibutton(BtnLayout, 'Text', 'Save', 'ButtonPushedFcn', {@btnPressed, fig});
+    SaveBtn = uibutton(BtnLayout, 'Text', 'Save', 'ButtonPushedFcn', {@btnPressed, fig_h});
     SaveBtn.Layout.Column = 3;
     
-    fig.UserData = ud;
-    
-    PlotMSMaps(fig, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
-    solutionChanged([], [], fig);
-    
-    fig.Visible = 'on';
-    drawnow limitrate
-
-%     fig.CloseRequestFcn = 'uiresume(fig)';
-    uiwait(fig);
-
-    if isvalid(fig)
-        ud = fig.UserData;
-        delete(fig);     
-        SortedMaps = ud.AllMaps;
-        com = ud.com;
-    end
+    fig_h.UserData = ud;
 end
 
-function btnPressed(src, event, fig)
-    if strcmp(src.Text, 'Save')
-        uiresume(fig);
+function btnPressed(src, ~, fig)
+    if fig.UserData.Scroll
+        text = src.Text;
+    else
+        text = src.String;
+    end
+    if strcmp(text, 'Save')
+        uiresume();
     else
         delete(fig);
     end
@@ -102,13 +185,20 @@ end
 
 function ManualSortCallback(~, ~, fig)
     MSMaps = fig.UserData.AllMaps;
-    SortOrder = sscanf(fig.UserData.OrderEdit.Value, '%i')';
-    NewLabels = split(fig.UserData.LabelsEdit.Value)';
-    NewLabels = NewLabels(~cellfun(@isempty, NewLabels));
-    nClasses = fig.UserData.ClassList.Value;
+    if fig.UserData.Scroll
+        SortOrder = sscanf(fig.UserData.OrderEdit.Value, '%i')';
+        NewLabels = split(fig.UserData.LabelsEdit.Value)';
+        NewLabels = NewLabels(~cellfun(@isempty, NewLabels));
+        nClasses = fig.UserData.ClassList.Value;        
+    else
+        SortOrder = sscanf(fig.UserData.OrderEdit.String, '%i')';
+        NewLabels = split(fig.UserData.LabelsEdit.String)';
+        NewLabels = NewLabels(~cellfun(@isempty, NewLabels));
+        nClasses = fig.UserData.ClassList.Value + fig.UserData.ClustPar.MinClasses - 1;
+    end
     SortAll = fig.UserData.SortAll.Value;
-    ClassRange = fig.UserData.ClustPar.MinClasses:fig.UserData.ClustPar.MaxClasses;
     IgnorePolarity = fig.UserData.IgnorePolarity.Value;
+    ClassRange = fig.UserData.ClustPar.MinClasses:fig.UserData.ClustPar.MaxClasses;    
     SelectedSet = fig.UserData.SelectedSet;
 
     [MSMaps, com] = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, SortAll, ClassRange, IgnorePolarity, SelectedSet);
@@ -137,40 +227,48 @@ function [MSMaps, com] = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, Sort
         return;
     end
 
+    if nClasses > max(ClassRange) || nClasses < min(ClassRange)
+        warningMessage = sprintf(['The specified set to sort does not contain a %i microstate solution. Valid ' ...
+            ' class numbers to sort are in the range %i-%i.'], nClasses, max(ClassRange), min(ClassRange));
+        errordlg2(warningMessage, 'Sort microstate maps error');
+        return;
+    end
+
     % Validate SortOrder
     sortOrderSign = sign(SortOrder(:)');
-    SortOrder = abs(SortOrder(:)');
-    if (numel(SortOrder) ~= nClasses)
+    absSortOrder = abs(SortOrder(:)');
+    if (numel(absSortOrder) ~= nClasses)
         MSMaps = [];
         errordlg2('Invalid manual sort order given','Sort microstate maps error');
         return
     end
 
-    if numel(unique(SortOrder)) ~= nClasses
+    if numel(unique(absSortOrder)) ~= nClasses
         MSMaps = [];
         errordlg2('Invalid manual sort order given','Sort microstate maps error');
         return
     end
 
-    if any(unique(SortOrder) ~= unique(1:nClasses))
+    if any(unique(absSortOrder) ~= unique(1:nClasses))
         MSMaps = [];
         errordlg2('Invalid manual sort order given','Sort microstate maps error');
         return
     end
 
     % Validate NewLabels
-    if numel(NewLabels) ~= ClassRange
+    if numel(NewLabels) ~= nClasses
         MSMaps = [];
         errordlg2('Invalid manual map labels given', 'Sort microstate maps error');
         return;
     end
 
     % Manual sort    
-    if ~all(SortOrder == 1:nClasses) && ~all(string(NewLabels) == string(MSMaps(nClasses).Labels))
+    if ~all(SortOrder == 1:nClasses) || ~all(string(NewLabels) == string(MSMaps(nClasses).Labels))
+        SortOrder = absSortOrder;
         MSMaps(nClasses).Maps = MSMaps(nClasses).Maps(SortOrder,:).*repmat(sortOrderSign',1,size(MSMaps(nClasses).Maps,2));
         MSMaps(nClasses).Labels = NewLabels(:)';
         MSMaps(nClasses).ColorMap = lines(nClasses);
-        MSMaps(nClasses).ExpVar = MSMaps(nClasses).ExpVar(SortOrder);
+%         MSMaps(nClasses).ExpVar = MSMaps(nClasses).ExpVar(SortOrder);
         MSMaps(nClasses).SortMode = 'manual';
         MSMaps(nClasses).SortedBy = 'user';
     end
@@ -180,25 +278,33 @@ function [MSMaps, com] = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, Sort
         MSMaps = sortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity);
     end
 
-    NewLabelsTxt = sprintf('%s, ', string(NewLabels));
+    NewLabelsTxt = sprintf('''%s'', ', string(NewLabels));
     NewLabelsTxt = ['{' NewLabelsTxt(1:end-2) '}'];
-    com = sprintf(['[EEG, CURRENTSET, COM] = pop_SortMSTemplates(ALLEEG, %i, ''IgnorePolarity'', %i, ''TemplateSet'', ''manual'', ''SortOrder'', ' ...
-        '%s, ''NewLabels'', %s, ''ClassRange'', %i, ''SortAll'', %i)'], SelectedSet, IgnorePolarity, mat2str(SortOrder), NewLabelsTxt, nClasses, SortAll);
+    com = sprintf(['[EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, %i, ''IgnorePolarity'', %i, ''TemplateSet'', ''manual'', ''Classes'', %i, ''SortOrder'', ' ...
+        '%s, ''NewLabels'', %s, ''SortAll'', %i);'], SelectedSet, IgnorePolarity, nClasses, mat2str(SortOrder), NewLabelsTxt, SortAll);
 end
 
 function MSMaps = sortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)    
+    % If the template set has unassigned maps, remove them (only base 
+    % sorting on assigned maps)
+    TemplateMaps = MSMaps(nClasses).Maps;
+    nAssignedLabels = sum(~arrayfun(@(x) all(MSMaps(nClasses).ColorMap(x,:) == [.75 .75 .75]), 1:nClasses));
+    if nAssignedLabels < nClasses
+        TemplateMaps(nAssignedLabels+1:end,:) = [];
+    end
+
     for i=ClassRange
         if i == nClasses
             continue
-        end
+        end        
 
-        [SortedMaps, SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MSMaps(i).Maps, MSMaps(nClasses).Maps, ~IgnorePolarity);
+        [SortedMaps, SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MSMaps(i).Maps, TemplateMaps, ~IgnorePolarity);
         MSMaps(i).Maps = squeeze(SortedMaps).*repmat(polarity',1,size(squeeze(SortedMaps), 2));
 
         [Labels, Colors] = UpdateMicrostateLabels(MSMaps(i).Labels, MSMaps(nClasses).Labels, SortOrder, MSMaps(nClasses).ColorMap);
         MSMaps(i).Labels = Labels(1:i);
         MSMaps(i).ColorMap = Colors(1:i, :);
-        MSMaps(i).SortMode = [MSMaps(nClasses).SortMode 'alternate solution in set'];
+        MSMaps(i).SortMode = [MSMaps(nClasses).SortMode '->alternate solution in set'];
         MSMaps(i).SortedBy = sprintf('%s->this set (%i classes)', MSMaps(nClasses).SortedBy, nClasses);
         MSMaps(i).SpatialCorrelation = SpatialCorrelation;
         MSMaps(i).ExpVar = MSMaps(i).ExpVar(SortOrder(SortOrder <= i));
@@ -216,58 +322,20 @@ end
 function solutionChanged(~, ~, fig)
     ud = fig.UserData;
     nClasses = ud.ClassList.Value;
+    if ~ud.Scroll
+        nClasses = ud.ClustPar.MinClasses + nClasses - 1;
+    end
 
-    ud.OrderEdit.Value = sprintf('%i ', 1:nClasses);
+    if ud.Scroll
+        ud.OrderEdit.Value = sprintf('%i ', 1:nClasses);
+    else
+        ud.OrderEdit.String = sprintf('%i ', 1:nClasses);
+    end
 
-    if strcmp(ud.AllMaps(nClasses).SortMode, 'none')
-        letters = 'A':'Z';
+    letters = 'A':'Z';
+    if ud.Scroll
         ud.LabelsEdit.Value = sprintf('%s ', string(arrayfun(@(x) {letters(x)}, 1:nClasses)));
     else
-        ud.LabelsEdit.Value = sprintf('%s ', string(ud.AllMaps(nClasses).Labels));
+        ud.LabelsEdit.String = sprintf('%s ', string(arrayfun(@(x) {letters(x)}, 1:nClasses)));
     end
-end
-
-function sizeChanged(fig, ~)
-
-%     uiresume(fig);
-
-    p = fig.UserData.TilePanel;
-
-%     if all(fig.Position == fig.UserData.PrevPosition)
-%         return;
-%     end
-
-    if fig.UserData.Edit
-        expVarWidth = 53;
-        minGridHeight = 90;
-    else
-        expVarWidth = 0;
-        minGridHeight = 60;
-    end
-    minGridWidth = 62;
-
-    nCols = fig.UserData.ClustPar.MaxClasses;
-    nRows = fig.UserData.ClustPar.MaxClasses - fig.UserData.ClustPar.MinClasses + 1;
-
-    minPanelWidth = expVarWidth + minGridWidth*nCols;
-    minPanelHeight = minGridHeight*nRows;
-
-    p.Units = 'pixels';
-
-    if p.Position(3) > minPanelWidth && p.Position(4) > minPanelHeight
-        p.Units = 'normalized';
-        p.Position = [0 0 1 1];
-        return;
-    end
-
-    if p.Position(3) <= minPanelWidth
-        p.Position(1:3) = [0 0 minPanelWidth];
-    end
-
-    if p.Position(4) <= minPanelHeight
-        p.Position(1:2) = [0 0];
-        p.Position(4) = minPanelHeight;
-    end
-
-%     fig.UserData.PrevPosition = fig.Position;
 end
