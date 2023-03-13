@@ -407,6 +407,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         ClustPar.UseEMD = false;
     end
     
+    FailedSets = [];
     %% Clustering
     for i=1:length(SelectedSets)
         fprintf("Clustering dataset %i of %i\n", i, length(SelectedSets));
@@ -441,6 +442,12 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             end
         end
         
+        if size(MapsToUse,2) < ClustPar.MaxClasses
+            warning('Not enough data to cluster in set %s',AllEEG(sIndex).setname);
+            FailedSets = [FailedSets,sIndex]; %#ok<AGROW> 
+            continue;
+        end
+
         flags = '';
         if ClustPar.IgnorePolarity == false
             flags = [flags 'p'];
@@ -487,6 +494,10 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         AllEEG(sIndex).msinfo = msinfo;
         AllEEG(sIndex).saved = 'no';
     end
+
+    % Remove sets that were not clustered
+    AllEEG(FailedSets)       = [];
+    SelectedSets(FailedSets) = [];
 
     %% Sorting
     if ~isempty(TemplateSet)

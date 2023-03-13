@@ -76,6 +76,11 @@ else
     tic
 end
 
+if max_n < n_mod
+    b_model = [];
+    return;
+end
+
 for run = 1:reruns
     if isempty(h)
         [step, strLength] = mywaitbar(run, reruns, step, nSteps, strLength);
