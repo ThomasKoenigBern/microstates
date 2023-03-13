@@ -1,14 +1,10 @@
-function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename, fh)
+function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename)
 
     CompFigHandle = figure('Units', 'normalized', 'Position', [0.2 0.1 0.6 0.8]);
 
     CompFigHandle.UserData.SelectedEEG = SelectedEEG;
     CompFigHandle.UserData.nClasses = nClasses;
     CompFigHandle.UserData.Filename = Filename;
-
-    if nargin > 4
-        fh.UserData.CompFigHandle = CompFigHandle;
-    end
     
     CompFigHandle.UserData.CompAxis  = subplot('Position',[0.13 0.21 0.61 0.74],'Parent',CompFigHandle);
     CompFigHandle.UserData.XPMapAxis = subplot('Position',[0.61 0.03 0.10 0.10],'Parent',CompFigHandle);
@@ -25,6 +21,7 @@ function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename, 
     else
         setIDs = string(1:numel(SelectedEEG));
         CompFigHandle.UserData.setIDs = setIDs;
+        CompFigHandle.UserData.setnames = {SelectedEEG.setname};
 
         choice = strcat(setIDs, ': ', {SelectedEEG.setname});
         idx = 1:numel(SelectedEEG);
@@ -60,7 +57,7 @@ function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename, 
     end
 end
 
-function ExportCorrs(obj, event, fh)
+function ExportCorrs(obj, ~, fh)
     CorrTable = fh.UserData.CorrelationTable;
     CorrTable.Properties.RowNames = CorrTable.Properties.VariableNames;
 
@@ -81,7 +78,7 @@ function ExportCorrs(obj, event, fh)
     obj.Enable = 'off';
 end
 
-function CompareMapsSolutionCorrsToggle(obj, event,fh)
+function CompareMapsSolutionCorrsToggle(~, ~,fh)
     
     if isfield(fh.UserData,'CorrMatFig')
         if isvalid(fh.UserData.CorrMatFig)
@@ -98,7 +95,7 @@ function CompareMapsSolutionCorrsToggle(obj, event,fh)
     UpdateCorrTable(fh);
 end
 
-function CompareMapsSolutionScale(obj, event,fh, Scaling)
+function CompareMapsSolutionScale(~, ~,fh, Scaling)
     UserData = fh.UserData;
     FigAxes = UserData;
     if Scaling == 0
@@ -112,7 +109,7 @@ function CompareMapsSolutionScale(obj, event,fh, Scaling)
     end
 end
 
-function CompareMapsSolutionClose(obj, event,fh)
+function CompareMapsSolutionClose(~, ~,fh)
     if isfield(fh.UserData,'CorrMatFig')
         if isvalid(fh.UserData.CorrMatFig)
             delete(fh.UserData.CorrMatFig);
@@ -172,7 +169,7 @@ function CompareMapsSolutionChanged(obj, event, CompFig)
             for j=1:FigAxes.nClasses
                 setNumCollection = [setNumCollection i];
                 LabelCollection = [LabelCollection FigAxes.SelectedEEG(i).msinfo.MSMaps(FigAxes.nClasses).Labels(j)];
-                CLabelCollection = [CLabelCollection, sprintf("%s (%s)", FigAxes.SelectedEEG(i).msinfo.MSMaps(FigAxes.nClasses).Labels{j}, FigAxes.setIDs{i})];
+                CLabelCollection = [CLabelCollection, sprintf("%s (%s)", FigAxes.SelectedEEG(i).msinfo.MSMaps(FigAxes.nClasses).Labels{j}, FigAxes.setnames{i})];
             end
         end
     end    
@@ -251,16 +248,16 @@ function CompareMapsSolutionChanged(obj, event, CompFig)
     Z = cell2mat({FigAxes.SelectedEEG(1).chanlocs.Z});
 
     axes(FigAxes.XPMapAxis);
-    dspCMap( DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap2(FigAxes.XPMapAxis, DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     axes(FigAxes.XNMapAxis);
-    dspCMap(-DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap2(FigAxes.XNMapAxis, -DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     axes(FigAxes.YPMapAxis);
-    dspCMap( DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap2(FigAxes.YPMapAxis, DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     axes(FigAxes.YNMapAxis);
-    dspCMap(-DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap2(FigAxes.YNMapAxis, -DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     CompFig.UserData = FigAxes;
     

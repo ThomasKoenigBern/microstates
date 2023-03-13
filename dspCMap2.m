@@ -1,4 +1,4 @@
-function [c,imap,xm,ym,chandle] = dspCMap(ax,map,ChanPos,varargin)
+function [c,imap,xm,ym,chandle] = dspCMap2(ax,map,ChanPos,varargin)
 % dspCMap - Display topographic scalp maps
 % ----------------------------------------
 % Copyright 2009-2011 Thomas Koenig
@@ -59,7 +59,7 @@ y = y ./ r;
 z = z ./ r;
 
 hold off
-cla
+cla(ax)
 
 if numel(varargin) == 1
     varargin = varargin{1};
