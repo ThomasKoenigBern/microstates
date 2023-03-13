@@ -5,19 +5,13 @@ function [NewLabels, NewColors] = UpdateMicrostateLabels(OldLabels,TemplateLabel
     % Number of colors that are not gray is the number of maps with
     % valid assignments/labels
     nAssignedLabels = sum(~arrayfun(@(x) all(TemplateColor(x,:) == [.75 .75 .75]), 1:nTemplateLabels));
-    nCopiedLabels = min(nAssignedLabels, nOldLabels);
-    ToCopy = SortOrder <= nCopiedLabels;
+    ToCopy = SortOrder <= nOldLabels;       % only copy template labels with valid corresponding old maps
+    ToCopy(nAssignedLabels+1:end) = 0;      % only copy template labels that have been assigned (not generic)
+    nCopiedLabels = sum(ToCopy);
 
-    if nOldLabels < nAssignedLabels
-        NewLabels(1:nCopiedLabels) = TemplateLabels(ToCopy);
-        if nargin > 3
-            NewColors(1:nCopiedLabels,:) = TemplateColor(ToCopy, :);
-        end
-    else
-        NewLabels(1:nCopiedLabels) = TemplateLabels(1:nCopiedLabels);
-        if nargin > 3
-            NewColors(1:nCopiedLabels,:) = TemplateColor(1:nCopiedLabels,:);
-        end
+    NewLabels(1:nCopiedLabels) = TemplateLabels(ToCopy);
+    if nargin > 3
+        NewColors(1:nCopiedLabels,:) = TemplateColor(ToCopy, :);
     end
 
     % Change labels of unsorted maps to the generic labels
