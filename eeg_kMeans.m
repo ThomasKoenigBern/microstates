@@ -47,19 +47,17 @@ else
     pmode = 1;
 end
 
-org_data = eeg;
-
+% Average reference
 newRef = eye(n_chan);
-if contains(flags,'a')
-    newRef = newRef -1/n_chan;
-end
+newRef = newRef -1/n_chan;
+eeg = eeg*newRef;
+
+org_data = eeg;
 
 UseEMD = false;
 if contains(flags,'e')
     UseEMD = true;
 end
-
-eeg = eeg*newRef;
 
 if contains(flags,'n')
     eeg = NormDim(eeg,2);
@@ -158,9 +156,6 @@ for run = 1:reruns
     end % while any
 
     % average reference eeg in case it was not already done
-    newRef = eye(n_chan);
-    newRef = newRef -1/n_chan;
-    org_data = org_data*newRef;
     covmat    = org_data*model';							% Get the unsigned covariance 
     if pmode
         if UseEMD == true
