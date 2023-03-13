@@ -1,40 +1,115 @@
-%% UPDATE DOCUMENTATION TO REFLECT KEY, VALUE PARAMETERS
-%
 % pop_ShowIndMSDyn() Show microstate dynamics over time
 %
 % Usage:
-%   >> [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, MeanSet)
+%   >> [EEG, CURRENTSET, com] = pop_ShowIndMSDyn(ALLEEG, SelectedSets,
+%   'key1', value1, 'key2', value2)
 %
-% EEG lab specific:
+% To use each subject's own microstate maps for backfitting, specify
+% "TemplateSet" as "own."
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_ShowIndMSDyn(ALLEEG, 1:5, 'TemplateSet',
+%       'own')
 %
-%   "AllEEG" 
-%   -> AllEEG structure with all the EEGs that may be analysed
+% To use a mean set or published set for backfitting, specify either the
+% index of the mean set in ALLEEG, the name of the mean set, or the name of
+% the published set.
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_ShowIndMSDyn(ALLEEG, 1:5, 'TemplateSet',
+%       'Koenig2002')
 %
-%   "TheEEG" 
-%   -> EEG structure with the EEG to search for templates
+% Graphical interface:
 %
-%   UseMean
-%   -> True if a mean cluster center is to be used to quantify the EEG
-%   data, false (default) if the template from the data itself is to be used
+%   "Choose sets for plotting dynamics"
+%   -> Select sets for plotting dynamics. If multiple are selected, a
+%   window will be generated for each.
+%   -> Command line equivalent: "SelectedSets"
 %
-%   "Number of Classes" / FitPar.nClasses 
-%   -> Number of clusters to quantify
+%   "Name of template set"
+%   -> Name of template set whose maps will be used for backfitting. Select 
+%   "Own" to use each subject's own maps to backfit their own data, or 
+%   select the name of a template set to use its maps for backfitting for 
+%   all subjects.
+%   -> Command line equivalent: "TemplateSet"
 %
-%   "Name of Mean" (GUI)
-%   -> EEG dataset containing the mean clusters to be used if UseMean is
-%   true, else not relevant
+%   "Microstate fitting parameters"
+%   ------------------------------
 %
-%   Meanset (parameter)
-%   -> Index of the AllEEG dataset containing the mean clusters to be used 
-%      if UseMean is true, else not relevant
+%   "Number of classes"
+%   -> Number of classes to use for backfitting
+%   -> Command line equivalent: "FitPar.nClasses"
 %
-% Output:
+%   "Fitting only on GFP peaks"
+%   -> Controls whether to backfit maps only at global field power peaks
+%   and interpolate microstae assignments in between peaks, or to backfit
+%   maps at all timepoints.
+%   -> Command line equivalent: "FitPar.PeakFit"
 %
-%   "AllEEG" 
-%   -> AllEEG structure with all the EEG (fitting parameters may be updated)
+%   "Remove potentially truncated microstates"
+%   -> Controls whether to remove microstate assignments around boundary
+%   events in the EEG data
+%   -> Command line equivalent: "FitPar.BControl"
 %
-%   "TheEEG" 
-%   -> EEG structure with the EEG (fitting parameters may be updated)
+%   "Label smoothing window"
+%   -> Window size in ms to use for temporal smoothing of microstate
+%   assignments. Use 0 to skip temporal smoothing. Ignored if fitting only
+%   on GFP peaks.
+%   -> Command line equivalent: "FitPar.b"
+%
+%   "Non-Smoothness penality"
+%   -> Penalty for non-smoothness in the temporal smoothing algorithm.
+%   Ignored if fitting only on GFP peaks.
+%   -> Command line equivalent: "FitPar.lambda"
+%
+% Inputs:
+%
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
+%
+%   "SelectedSets" (optional)
+%   -> Array of set indices of ALLEEG for which dynamics will be plotted.
+%   If not provided, a GUI will appear to select sets.
+%
+% Key, Value inputs (optional):
+%
+%   "FitPar"
+%   -> Structure containing fields specifying parameters for backfitting.
+%   If some required fields are not included, a GUI will appear with the
+%   unincluded fields. Required fields:
+%       "FitPar.nClasses"
+%       -> Number of classes to use for backfitting
+%
+%       "FitPar.PeakFit"
+%       -> 1 = backfit maps only at global field power peaks and
+%       interpolate in between, 0 = backfit maps at all timepoints
+%
+%       "FitPar.BControl"
+%       -> 1 = Remove microstate assignments around boundary events in the
+%       EEG data, 0 = keep all microstate assignments
+%
+%       "FitPar.b"
+%       -> Window size in ms to use for temporal smoothing of microstate
+%       assignments. Use 0 to skip temporal smoothing. Ignored if fitting
+%       only on GFP peaks.
+%
+%       "FitPar.lambda"
+%       > Penalty for non-smoothness in the temporal smoothing algorithm.
+%       Ignored if fitting only on GFP peaks.
+%
+%   "TemplateSet"
+%   -> Integer, string, or character vector specifying the template set
+%   whose maps should be used for backfitting. Can be either the index of 
+%   a mean set in ALLEEG, the name of a mean set in ALLEEG, the name of a 
+%   published template set in the microstates/Templates folder, or "own" to
+%   use each subject's own maps for backfitting. If not provided, a GUI 
+%   will appear to select a template set.
+%
+% Outputs:
+%
+%   "EEG" 
+%   -> EEG structure array of sets chosen for plotting dynamics
+%
+%   "CURRENTSET" 
+%   -> Indices of sets chosen for plotting dynamics
 %
 %   "com"
 %   -> Command necessary to replicate the computation
@@ -126,7 +201,7 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
         defaultSets = find(ismember(AvailableSets, CurrentSet));
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         guiElements = [guiElements, ....
-                    {{ 'Style', 'text'    , 'string', 'Choose sets for plotting'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Choose sets for plotting dynamics'}} ...
                     {{ 'Style', 'text'    , 'string', 'Use ctrlshift for multiple selection'}} ...
                     {{ 'Style', 'text'    , 'string', 'If multiple are chosen, a window will be opened for each.'}} ...
                     {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
@@ -141,12 +216,10 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     meanSetnames = {AllEEG(meanSets).setname};
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
-    if ~isempty(TemplateSet)
-        if strcmp(TemplateSet, 'own')
-            TemplateMode = 'own';
+    if ~isempty(TemplateSet)        
         % If the template set is a number, make sure it is one of the
         % mean sets in ALLEEG
-        elseif isnumeric(TemplateSet)
+        if isnumeric(TemplateSet)
             if ~ismember(TemplateSet, meanSets)
                 errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
@@ -158,9 +231,11 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
                 TemplateName = meanSetnames{TemplateIndex};
             end
         % Else if the template set is a string, make sure it matches one of
-        % the mean setnames or published template setnames
+        % the mean setnames, published template setnames, or "own"
         else
-            if matches(TemplateSet, meanSetnames)
+            if matches(TemplateSet, 'own', IgnoreCase=true)
+                TemplateMode = 'own';               
+            elseif matches(TemplateSet, meanSetnames)
                 % If there are multiple mean sets with the same name
                 % provided, notify the suer
                 if numel(find(matches(meanSetnames, TemplateSet))) > 1
@@ -190,7 +265,7 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     else
         combinedSetnames = ['Own' meanSetnames publishedDisplayNames];
         guiElements = [guiElements ...
-            {{ 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'text', 'string', 'Name of template set', 'fontweight', 'bold'}} ...
             {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
         guiGeom = [guiGeom 1 1];
         guiGeomV = [guiGeomV 1 1];
@@ -278,7 +353,7 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     end
 
-    FitPar = SetFittingParameters2(MinClasses:MaxClasses, FitPar, funcName);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName);
     if isempty(FitPar);  return; end
 
     %% Plot dynamics
@@ -352,9 +427,9 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
         uicontrol('Style', 'text'      , 'String',sprintf('Explained variance: %3.1f%%',fit * 100),'Units','Normalized','Position', [0.1 0.19 0.8 0.03]);
         
         if strcmp(TemplateMode, 'own'   )
-            uicontrol('Style', 'pushbutton', 'String', 'Map' ,'Units','Normalized','Position', [0.91 0.70 0.07 0.2], 'Callback', {@PlotMSMaps, SelectedEEG(s),ud.nClasses});
+            uicontrol('Style', 'pushbutton', 'String', 'Map' ,'Units','Normalized','Position', [0.91 0.70 0.07 0.2], 'Callback', {@PlotMaps, SelectedEEG(s),ud.nClasses});
         else
-            uicontrol('Style', 'pushbutton', 'String', 'Map' ,'Units','Normalized','Position', [0.91 0.70 0.07 0.2], 'Callback', {@PlotMSMaps, ChosenTemplate,ud.nClasses});
+            uicontrol('Style', 'pushbutton', 'String', 'Map' ,'Units','Normalized','Position', [0.91 0.70 0.07 0.2], 'Callback', {@PlotMaps, ChosenTemplate,ud.nClasses});
         end    
 
     end
@@ -363,15 +438,15 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     CurrentSet = SelectedSets;
 
     if ischar(TemplateSet) || isstring(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_ShowIndMSDyn(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
+        com = sprintf('[EEG, CURRENTSET, com] = pop_ShowIndMSDyn(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
     elseif isnumeric(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_ShowIndMSDyn(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
+        com = sprintf('[EEG, CURRENTSET, com] = pop_ShowIndMSDyn(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
     end
 end
 
 
-function PlotMSMaps(~,~,TheEEG,nClasses)
-    pop_ShowIndMSMaps(TheEEG,nClasses);
+function PlotMaps(~,~,TheEEG,nClasses)
+    pop_ShowIndMSMaps(TheEEG, 1, 'Classes', nClasses);
 end
 
 function PlotMSDyn(obj, ~,fh, varargin)
@@ -490,12 +565,17 @@ end
 function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
     global MSTEMPLATE;
     TemplateNames = {MSTEMPLATE.setname};
-    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
+    [minClasses, sortOrder] = sort(minClasses, 'ascend');
+    maxClasses = maxClasses(sortOrder);
+    classRangeTxt = string(minClasses);
+    diffMaxClasses = maxClasses ~= minClasses;
+    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
     TemplateNames = TemplateNames(sortOrder);
     nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
     nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
+    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
 end
 
 function isEmpty = isEmptySet(in)

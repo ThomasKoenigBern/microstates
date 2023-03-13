@@ -1,40 +1,84 @@
-% UPDATE DOCUMENTATION TO REFLECT KEY, VALUE PARAMETERS
-%
-% pop_CombMSTemplates() interactively averages microstate across EEGs
+% pop_CombMSTemplates() Interactively average microstate maps across sets
 %
 % This is not a simple averaging, but a permute and average loop that
 % optimizes the order of microstate classes in the individual datasets for
-% maximal communality before averaging!
+% maximal communality before averaging.
 %
-% Usage: >> [EEGout,com] = pop_CombMSTemplates(AllEEG, CURRENTSET, DoMeans, ShowWhenDone, MeanSetName, TemplateName)
+% Usage:
+%   >> [ALLEEG, EEG, com] = pop_CombMSTemplates(ALLEEG, SelectedSets, 
+%       'key1', value1, 'key2', value2, ...)
 %
-% EEG lab specific:
+% Graphical interface:
 %
-%   "AllEEG" 
-%   -> AllEEG structure with all the EEGs that may be analysed
+%   "Choose sets to combine"
+%   -> Select sets to average into mean maps
+%   -> Command line equivalent: "SelectedSets"
 %
-%   "CURRENTSET" 
-%   -> Index of selected EEGs. If more than one EEG is selected, the analysis
-%      will be limited to those, if not, the user is asked.
+%   "Name of mean"
+%   -> Name of mean set to be identified
+%   -> Command line equivalent: "MeanName"
 %
-%   "DoMeans"
-%   -> True if you want to grand-average microstate maps already averaged
-%   over datasets, false otherwise. Default is false (no GUI based choice).
+%   "No polarity"
+%   -> Consider maps with inverted polarity the same class (standard for
+%   resting state EEG)
+%   -> Command line equivalent: "IgnorePolarity"
 %
-%   "Show maps when done" / ShowWhenDone
-%   -> Show maps when done
-%
-%   "Name of mean" / MeanSetName
-%   -> Name of the new dataset returned by EEGout
-%
-%   Added by Delara 10/12/22
-%   "Sort maps by published template when done" / TemplateName
+%   "Sort maps by published template when done"
 %   -> Sort maps according to the specified published template when done
+%   -> Command line equivalent: "TemplateSet"
 %
-% Output:
+%   "Show maps when done"
+%   -> Show maps when done
+%   -> Command line equivalent: "ShowMaps"
 %
-%   "EEGout" 
-%   -> EEG structure with the EEG containing the new cluster centers
+%   "Sort child sets by mean set when done"
+%   -> Sort sets chosen for averaging by the mean set after it has been
+%   identified
+%   -> Command line equivalent: "SortChildren"
+%
+% Inputs:
+%
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
+%
+%   "SelectedSets" (optional)
+%   -> Array of set indices of ALLEEG to average. If not provided, a GUI
+%   will appear to choose sets.
+%
+% Key, Value inputs (optional):
+%
+%   "MeanName"
+%   -> String or character vector specifying name of mean set to be
+%   identified. If not provided, a GUI will appear to enter a name.
+%
+%   "IgnorePolarity"
+%   -> 1 = Consider maps with inverted polarities the same class, 0 =
+%   consider maps with inverted polarites different classes. If not
+%   provided, a GUI will appear to select this option.
+%
+%   "TemplateSet"
+%   -> String or character vector of a published template name to sort the
+%   mean set by after it is identified. The provided template name must be
+%   the setname of a set contained in the microstate/Templates folder.
+%   -> Default = no sorting occurs
+%
+%   "ShowMaps"
+%   -> 1 = Show maps after they are identified, 0 = do not show maps
+%   -> Default = do not show maps
+%
+%   "SortChildren"
+%   -> 1 = Sort sets selected for averaging by the mean set after it is
+%   identified, 0 = do not sort child sets
+%   -> Default: child sets remain unsorted
+%
+% Outputs:
+%
+%   "ALLEEG"
+%   -> ALLEEG structure array containing all sets loaded in EEGLAB. Will
+%   include child sets with updated sorting if this option was selected.
+%
+%   "EEG" 
+%   -> EEG structure containing mean microstate maps across selected sets
 %
 %   "com"
 %   -> Command necessary to replicate the computation
@@ -379,35 +423,40 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     %% Sorting
     if ~isempty(TemplateSet)
         EEGout = pop_SortMSTemplates(EEGout, 1, 'IgnorePolarity', IgnorePolarity, ...
-            'TemplateSet', TemplateSet, 'ClassRange', MinClasses:MaxClasses);
+            'TemplateSet', TemplateSet, 'Classes', MinClasses:MaxClasses);
     end
 
     if SortChildren
         newEEG = pop_newset(AllEEG(SelectedSets), EEGout, numel(SelectedSets), 'gui', 'off');
         disp('Sorting child sets...');
         childEEG = pop_SortMSTemplates(newEEG, 1:numel(SelectedSets), 'IgnorePolarity', IgnorePolarity, ...
-            'TemplateSet', numel(newEEG), 'ClassRange', MinClasses:MaxClasses);
+            'TemplateSet', numel(newEEG), 'Classes', MinClasses:MaxClasses);
         [AllEEG, ~, ~] = eeg_store(AllEEG, childEEG, SelectedSets);
     end
 
     %% Show maps
     if ShowMaps
-        pop_ShowIndMSMaps(EEGout, 1);
+        pop_ShowIndMSMaps(EEGout, 1, 'Classes', MinClasses:MaxClasses);
     end
 
     %% Command string generation
-    com = sprintf('[EEG, com] = pop_CombMSTemplates(%s, %s, ''IgnorePolarity'', %i, ''MeanName'', ''%s'', ''ShowMaps'', %i, ''TemplateSet'', ''%s'')', inputname(1), mat2str(SelectedSets), IgnorePolarity, MeanName, ShowMaps, TemplateSet);
+    com = sprintf('[ALLEEG, EEG] = pop_CombMSTemplates(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i, ''ShowMaps'', %i, ''TemplateSet'', ''%s'', ''SortChildren'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity, ShowMaps, TemplateSet, SortChildren);
 end
 
 function [TemplateNames, DisplayNames] = getTemplateNames()
     global MSTEMPLATE;
     TemplateNames = {MSTEMPLATE.setname};
-    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
+    [minClasses, sortOrder] = sort(minClasses, 'ascend');
+    maxClasses = maxClasses(sortOrder);
+    classRangeTxt = string(minClasses);
+    diffMaxClasses = maxClasses ~= minClasses;
+    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
     TemplateNames = TemplateNames(sortOrder);
     nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
     nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
+    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
     DisplayNames = ['None' DisplayNames];
 end
 

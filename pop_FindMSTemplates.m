@@ -1,66 +1,143 @@
-% UPDATE DOCUMENTATION TO REFLECT KEY, VALUE PARAMETERS
-%
-%pop_FindMSTemplates() interactively identify microstate topographies
+% pop_FindMSTemplates() Interactively identify microstate topographies
 %
 % Usage:
-%   >> [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, SelectedSets, ClustPar,ShowMaps,ShowDyn, TemplateName)
+%   >> [EEG, CURRENTSET, com] = pop_FindMSTemplates(ALLEEG, SelectedSets, 
+%       'key1', value1, 'key2', value2, ...)
 %
-% EEG lab specific:
+% Graphical interface:
 %
-%   "EEGout"
-%   -> The refreshed set of current EEGs
-%
-%   "CurrentSet"
-%   -> The indices of the refreshed set of current EEGs
-%
-% Graphical interface / parameters:
+%   "Choose sets for clustering"
+%   -> Select sets for which microstates will be identified
+%   -> Command line equivalent: "SelectedSets"
 %
 %   "Clustering parameters"
 %    ---------------------
-%   "Min number of classes" / ClustPar.MinClasses
-%   -> Minimal number of clusters to search for
+%   "Algorithm"
+%   -> Choose k-means or AAHC for the algorithm used for clustering
+%   -> Command line equivalent: "ClustPar.UseAAHC"
 %
-%   "Max number of classes" / ClustPar.MaxClasses
-%   -> Maximum number of clusters to search for
+%   "Min number of classes"
+%   -> Minimum number of clusters to identify
+%   -> Command line equivalent: "ClustPar.MinClasses"
 %
-%   "Number of restarts" / ClustPar.Restarts
-%   -> Number of times the k-means is restarted with a new random configuration
+%   "Max number of classes"
+%   -> Maximum number of clusters to identify
+%   -> Command line equivalent: "ClustPar.MaxClasses"
 %
-%   "Max number of maps to use" / ClustPar.MaxMaps
-%   -> Use a random subsample of the data to identify the clusters
+%   "Number of restarts"
+%   -> Number of times the k-means algorithm is restarted with a new random
+%   configuration. Ignored if AAHC is selected.
+%   -> Command line equivalent: "ClustPar.Restarts"
 %
-%   "GFP peaks only" / ClustPar.GFPPeaks
-%   -> Limit the selection of maps used for cluster to moments of GFP peaks
+%   "Max number of maps to use"
+%   -> Maximum number of data samples used to identify clusters. Will
+%   choose a random subsample of the size specified. Enter "inf" to use all
+%   data samples.
+%   -> Command line equivalent: "ClustPar.MaxMaps"
 %
-%   "No polarity" / ClustPar.IgnorePolarity
-%   -> Assign maps with inverted polarity to the same class (standard for resting EEG)
+%   "GFP peaks only"
+%   -> Limit the selection of maps used for clustering to global field
+%   power peaks
+%   -> Command line equivalent: "ClustPar.GFPPeaks"
 %
-%   "Use AAHC Algorithm" / ClustPar.UseAAHC
-%   -> Use the AAHC algorithm instead of the k-means
+%   "No polarity"
+%   -> Assign maps with inverted polarity to the same class (standard for
+%   resting state EEG)
+%   -> Command line equivalent: "ClustPar.IgnorePolarity"
 %
-%   "Normalize EEG before clustering" / ClustPar.UseAAHC
-%   -> Make all data GFP = 1 before clustering
+%   "Normalize EEG before clustering"
+%   -> Normalize data such that each sample has a global field power of 1
+%   before clustering. Normalization will only apply to clustering and not
+%   modify data stored in the EEG set.
+%   -> Command line equivalent: "ClustPar.Normalize"
 %
-%   "Display options"
+%   "Additional options"
 %    ---------------
-%
-%   "Show maps when done" / ShowMaps
-%   -> Show maps when done
-%
-%   "Show dynamics when done" / ShowDyn
-%   -> Show dynamics when done
-%
-%   Added by Delara 10/12/22
-%   "Sort maps by published template when done" / TemplateName
+%   "Sort maps by published template when done"
 %   -> Sort maps according to the specified published template when done
+%   -> Command line equivalent: "TemplateSet"
 %
-% Output:
+%   "Show maps when done"
+%   -> Show maps when done. If multiple sets are selected, a tab will be
+%   opened for each.
+%   -> Command line equivalent: "ShowMaps"
 %
-%   "EEGout" 
-%   -> EEG structure with the EEG containing the identified cluster centers
+%   "Show dynamics when done"
+%   -> Show microstate dynamics when done. If multiple sets are selected, a
+%   window will be opened for each.
+%   -> Command line equivalent: "ShowDyn"
+%
+% Inputs:
+%
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
+%
+%   "SelectedSets" (optional)
+%   -> Array of set indices of ALLEEG for which microstates will be
+%   identified. If not provided, a GUI will appear to choose sets.
+%
+% Key, Value inputs (optional):
+%
+%   "ClustPar"
+%   -> Structure containing fields specifying parameters to use for
+%   clustering. If some required fields are not included, a GUI will appear
+%   with the unincluded fields. Required fields:
+%       "ClustPar.UseAAHC"
+%       -> 1 = use AAHC algorithm, 0 = use k-means algorithm
+%
+%       "ClustPar.MinClasses"
+%       -> Minimum number of clusters to identify
+%
+%       "ClustPar.MaxClasses"
+%       -> Maximum number of clusters to identify
+%
+%       "ClustPar.Restarts"
+%       -> Number of times the k-means algorithm is restarted with a new
+%        random configuration. Ignored if ClustPar.UseAAHC is 1.
+%
+%       "ClustPar.MaxMaps"
+%       -> Maximum number of data samples used to identify clusters. Will
+%       choose a random subsample of the size specified. Use "inf" to use
+%       all data samples.
+%
+%       "ClustPar.GFPPeaks"
+%       -> 1 = Use only samples at global field power peaks for clustering,
+%       0 = use all samples for clustering
+%
+%       "ClustPar.IgnorePolarity"
+%       -> 1 = Assign maps with inverted polarity to the same class, 0 =
+%       assign maps with inverted polarity to different classes
+%
+%       "ClustPar.Normalize"
+%       -> 1 = Normalize data such that each sample has a global field
+%       power of 1 before clustering, 0 = do not normalize data.
+%        Normalization will only apply to clustering and not modify data 
+%       stored in the EEG set.
+%
+%   "TemplateSet"
+%   -> String or character vector of a published template name to sort all
+%   specified sets by after clustering. The provided template name must be
+%   the setname of a set contained in the microstate/Templates folder.
+%   -> Default = no sorting occurs
+%
+%   "ShowMaps"
+%   -> 1 = Show maps after clustering. If multiple sets are selected, a tab
+%   will be opened for each. 0 = Do not show maps.
+%   -> Default = do not show maps
+%
+%   "ShowDyn"
+%   -> 1 = Show microstate dynamics after clustering. If multiple sets are
+%   selected, a window will be opened for each. 0 = Do not show dynamics.
+%   -> Default = do not show dynamics
+%
+% Outputs:
+%
+%   "EEG" 
+%   -> EEG structure array of selected sets with microstate map information
+%   added to the "msinfo" field
 % 
-%   "CurrentSet"
-%   -> The indices of the EEGs containing the identified cluster centers
+%   "CURRENTSET"
+%   -> The indices of the EEGs containing the identified microstate maps
 %
 %   "com"
 %   -> Command necessary to replicate the computation
@@ -395,7 +472,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
                 msinfo.MSMaps(nClusters).Maps = b_model{nClusters-ClustPar.MinClasses+1};
-                msinfo.MSMaps(nClusters).ExpVar = exp_var(nClusters-ClustPar.MinClasses+1);
+                msinfo.MSMaps(nClusters).ExpVar = exp_var{nClusters-ClustPar.MinClasses+1};
                 msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
                     msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
@@ -415,7 +492,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     if ~isempty(TemplateSet)
         [EEGout, CurrentSet, ~] = pop_SortMSTemplates(AllEEG, SelectedSets, ...
             'IgnorePolarity', ClustPar.IgnorePolarity, 'TemplateSet', TemplateSet, ...
-            'ClassRange', ClustPar.MinClasses:ClustPar.MaxClasses);
+            'Classes', ClustPar.MinClasses:ClustPar.MaxClasses);
     else
         EEGout = AllEEG(SelectedSets);
         CurrentSet = SelectedSets;
@@ -423,7 +500,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
 
     %% Show maps
     if ShowMaps
-        pop_ShowIndMSMaps(EEGout, 1:numel(EEGout));
+        pop_ShowIndMSMaps(EEGout, 1:numel(EEGout), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses);
     end
 
     %% Show dynamics
@@ -432,7 +509,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     end
     
     %% Command string generation
-    com = sprintf('[EEG CURRENTSET com] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s, ''ShowMaps'', %i, ''ShowDyn'', %i, ''TemplateSet'', ''%s'');',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar), ShowMaps, ShowDyn, TemplateSet);
+    com = sprintf('[EEG, CURRENTSET] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s, ''ShowMaps'', %i, ''ShowDyn'', %i, ''TemplateSet'', ''%s'');',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar), ShowMaps, ShowDyn, TemplateSet);
 end
 
 function [ClustPar, UsingDefaults] = checkClustPar(varargin)
@@ -474,12 +551,17 @@ end
 function [TemplateNames, DisplayNames] = getTemplateNames()
     global MSTEMPLATE;
     TemplateNames = {MSTEMPLATE.setname};
-    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
+    [minClasses, sortOrder] = sort(minClasses, 'ascend');
+    maxClasses = maxClasses(sortOrder);
+    classRangeTxt = string(minClasses);
+    diffMaxClasses = maxClasses ~= minClasses;
+    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
     TemplateNames = TemplateNames(sortOrder);
     nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
     nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
+    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
     DisplayNames = ['None' DisplayNames];
 end
 
