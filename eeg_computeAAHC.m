@@ -83,14 +83,14 @@ function [b_model,exp_var] = eeg_computeAAHC(eeg,n_mod,ProgBar, IgnorePolarity, 
             idx = find(n_mod == nClusters);
             if numel(idx) > 0
                 b_model{idx} = Cluster;
-                exp_var(idx) = sum(GEV) / TotalVar;
+                exp_var{idx} = GEV' / TotalVar;
             end
         end
     end
 
     if numel(n_mod) == 1
         b_model{1} = Cluster;
-        exp_var{1} = sum(GEV) / TotalVar;
+        exp_var{1} = GEV' / TotalVar;
     end
 
     if (ProgBar == true)
