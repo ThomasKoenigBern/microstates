@@ -1,3 +1,130 @@
+% pop_CompareMSTemplates() - Interactively compare microstate topographies
+% within or across datasets. Allows for comparison of microstate
+% topographies across cluster solutions within one dataset, or comparison
+% of one cluster solution across multiple datasets. Generates an
+% interactive GUI for exploring how similar different microstate
+% topographies are and viewing shared variances between topographies.
+%
+% Usage:
+%   >> [EEG, CURRENTSET, com] = pop_CompareMSTemplates(ALLEEG,
+%       IndividualSets, MeanSets, PublishedSets,  'key1', value1, 'key2', 
+%       value2, ...)
+%
+% To compare microstate topographies across cluster solutions within one
+% dataset, pass in the index or name of one dataset within ALLEEG.
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_CompareMStemplate(ALLEEG, 1, [], [])
+%
+% To compare microstate topographies of one cluster solution across
+% multiple datasets, pass in the indices or names of datasets to compare,
+% along with the number of classes to compare across sets.
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_CompareMSTemplates(ALLEEG, 1:5, 6,
+%       'Koenig2002', 'Classes', 4)
+%
+% To generate the shared variance matrix for all microstate topographies of
+% the chosen sets to compare without displaying the GUI, use the "Filename"
+% and "gui" parameters.
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_CompareMSTemplates(ALLEEG, 1, [], [],
+%       'Filename', 'microstates/results/sharedvars.csv', 'gui', 0)
+%
+% Graphical interface:
+%
+%   "Individual sets"
+%   -> Select individual sets for comparing microstate topographies. If
+%   comparing within a dataset, only one dataset can be chosen between both
+%   individual and mean sets.
+%   -> Command line equivalent: "IndividualSets"
+%
+%   "Mean sets"
+%   -> Select mean sets for comparing microstate topographies. If comparing
+%   within a dataset, only one dataset can be chosen between both
+%   individual and mean sets.
+%   -> Command line equivalent: "MeanSets"
+%
+%   "Published sets"
+%   -> Select published sets for comparing microstate topographies. Only
+%   appears if comparing across datasets.
+%   -> Command line equivalent: "PublishedSets"
+%
+% Inputs:
+%
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
+%
+%   "IndividualSets" (optional)
+%   -> Array of individual set indices of ALLEEG to compare. Use this
+%   argument to specify any sets contained in ALLEEG that do not have child
+%   sets (e.g. not averaged across other sets). If comparing within a
+%   dataset, only one dataset can be chosen between both individual and
+%   mean sets.
+%
+%   "MeanSets" (optional)
+%   -> Array of mean set indices or mean set names in ALLEEG to compare. If
+%   specifying mean sets by name, use a string array or cell array of
+%   character vectors. Use this argument to specify any sets contained in 
+%   ALLEEG that have child sets (e.g. averaged across other sets). If 
+%   comparing within a dataset, only one dataset can be chosen between both 
+%   individual and mean sets.
+%
+%   "PublishedSets" (optional)
+%   -> String array or cell array of character vectors of published set
+%   names to compare. All setnames included in this argument should be the
+%   names of templates contained in the microstates/Templates folder.
+%   
+% Key, Value inputs (optional):
+%
+%   "Classes"
+%   -> Integer indicating which cluster solution to compare across
+%   datasets. Only used if multiple datasets are passed in using the
+%   "IndividualSets", "MeanSets", and "PublishedSets" arguments. If
+%   multiple datasets are provided and "Classes" is not provided, a GUI
+%   will appear to select the cluster solution to compare.
+%
+%   "Filename"
+%   -> Full csv, xlsx, txt, or mat filename to save the shared variance
+%   matrix between all microstate topographies from the selected set(s)
+%   chosen. If provided, the function will automatically save the full 
+%   shared variance matrix rather than providing the option to save in the 
+%   interactive GUI. Useful for scripting purposes.
+%
+%   "gui"
+%   -> 1 = show interactive GUI, 0 = do not show interactive GUI. Useful
+%   for scripting purposes, e.g. if the function is being used to generate
+%   and save a shared variance matrix and the GUI is not necessary.
+%   -> Default = 1
+%
+% Outputs:
+%
+%   "EEG" 
+%   -> EEG structure array of selected sets chosen for comparison
+% 
+%   "CURRENTSET"
+%   -> The indices of the EEGs chosen for comparison
+%
+%   "com"
+%   -> Command necessary to replicate the computation
+%
+% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+%
+% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
+% thomas.koenig@puk.unibe.ch
+%
+% This program is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program; if not, write to the Free Software
+% Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+%
 function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     
     com = '';
@@ -18,10 +145,10 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     p.FunctionName = funcName;
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
-    addOptional(p, 'IndividualSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
-    addOptional(p, 'MeanSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {'vector'}));
-    addOptional(p, 'PublishedSets', [], @(x) validateattributes(x, {'char', 'string', 'cell'}, {'vector'}));
-    addParameter(p, 'nClasses', []);
+    addOptional(p, 'IndividualSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', '<=', numel(AllEEG)}));
+    addOptional(p, 'MeanSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
+    addOptional(p, 'PublishedSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
+    addParameter(p, 'Classes', []);
     addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
     addParameter(p, 'gui', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
 
@@ -30,15 +157,22 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     IndividualSets = p.Results.IndividualSets;
     MeanSets = p.Results.MeanSets;
     PublishedSets = p.Results.PublishedSets;
-    nClasses = p.Results.nClasses;
+    nClasses = p.Results.Classes;
     Filename = p.Results.Filename;
     showGUI = p.Results.gui;
+
+    if ~isempty(IndividualSets)
+        validateattributes(IndividualSets, {'numeric'}, {'vector'});
+    end
 
     if ~isempty(MeanSets)
         if isnumeric(MeanSets)
             validateattributes(MeanSets, {'numeric'}, {'integer', 'vector', 'positive', '<=', numel(AllEEG)}, funcName, 'MeanSets');
         else
             MeanSets = convertStringsToChars(MeanSets);
+            if isa(MeanSets, 'char')
+                MeanSets = {MeanSets};
+            end
             invalidSets = ~cellfun(@(x) ischar(x) || isstring(x), MeanSets);
             if any(invalidSets)
                 invalidSetsTxt = sprintf('%i, ', find(inValidSets));
@@ -51,7 +185,11 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     end
 
     if ~isempty(PublishedSets)
+        validateattributes(PublishedSets, {'char', 'string', 'cell'}, {'vector'});
         PublishedSets = convertStringsToChars(PublishedSets);
+        if isa(PublishedSets, 'char')
+            PublishedSets = {PublishedSets};
+        end
         invalidSets = ~cellfun(@(x) ischar(x) || isstring(x), PublishedSets);
         if any(invalidSets)
             invalidSetsTxt = sprintf('%i, ', find(inValidSets));
@@ -272,8 +410,13 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             noSort = noPressed;
             if boxChecked;  guiOpts.showCompWarning1 = false;   end
             if yesPressed
-                [SelectedEEG, ~, com] = pop_SortMSTemplates(SelectedEEG, 1, 'ClassRange', MinClasses:MaxClasses);
-                if isempty(com);    return; end
+                [SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -287,14 +430,19 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
             SortedBy(contains(SortedBy, '->')) = multiSortedBys;
         end
-        if numel(unique(SortedBy)) > 1 && guiOpts.showCompWarning2
+        if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showCompWarning2
             warningMessage = ['Sorting information differs across cluster solutions. Would you like ' ...
                 'to sort all solutions according to the same template before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning2 = false;   end
             if yesPressed
-                [SelectedEEG, ~, com] = pop_SortMSTemplates(SelectedEEG, 1, 'ClassRange', MinClasses:MaxClasses);
-                if isempty(com);    return; end
+                [SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -309,8 +457,13 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning3 = false;   end
             if yesPressed
-                [SelectedEEG, ~, com] = pop_SortMSTemplates(SelectedEEG, 1, 'ClassRange', MinClasses:MaxClasses);
-                if isempty(com);    return; end
+                [SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -363,9 +516,14 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             noSort = noPressed;
             if boxChecked;  guiOpts.showCompWarning1 = false;  end
             if yesPressed
-                [nonpublishedEEG, ~, com] = pop_SortMSTemplates(SelectedEEG, nonpublishedSets, 'ClassRange', nClasses);
+                [nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
-                if isempty(com);    return; end
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -380,15 +538,20 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             SortedBy(contains(SortedBy, '->')) = multiSortedBys;
         end
 
-        if numel(unique(SortedBy)) > 1 && guiOpts.showCompWarning2
+        if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showCompWarning2
             warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning2 = false;  end
             if yesPressed
-                [nonpublishedEEG, ~, com] = pop_SortMSTemplates(SelectedEEG, nonpublishedSets, 'ClassRange', nClasses);
+                [nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
-                if isempty(com);    return; end
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -403,9 +566,14 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning3 = false;   end
             if yesPressed
-                [nonpublishedEEG, ~, com] = pop_SortMSTemplates(SelectedEEG, nonpublishedSets, 'ClassRange', nClasses);
+                [nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
-                if isempty(com);    return; end
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -439,7 +607,32 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     end
 
     if ~isempty(Filename)
-        %% export variances
+        MapCollection    = [];
+        CLabelCollection = [];
+        
+        if compWithin
+            for i = MinClasses:MaxClasses
+                MapCollection = [MapCollection; SelectedEEG.msinfo.MSMaps(i).Maps];
+                for j = 1:i  
+                    CLabelCollection  = [CLabelCollection,sprintf("%s (%i)",SelectedEEG.msinfo.MSMaps(i).Labels{j},i)];
+                end
+            end
+        else
+            for i=1:numel(SelectedEEG)
+                MapCollection = [MapCollection; SelectedEEG(i).msinfo.MSMaps(nClasses).Maps];
+                for j=1:nClasses
+                    CLabelCollection = [CLabelCollection, sprintf("%s (%s)", SelectedEEG(i).msinfo.MSMaps(nClasses).Labels{j}, SelectedEEG(i).setname)];
+                end
+            end
+        end    
+        CorrMat = corr(double(MapCollection)').^2;
+        CorrTable = array2table(CorrMat * 100,'VariableNames',CLabelCollection,'RowNames',CLabelCollection);
+
+        if ~contains(Filename, '.mat')
+            writetable(CorrTable, Filename, 'WriteRowNames', true);
+        else
+            save(Filename, 'CorrTable');
+        end
     end
 
     if showGUI
@@ -450,13 +643,23 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     CurrentSet = [IndividualSets, MeanSets];
 
     if ~compWithin
-        PublishedSetsTxt = sprintf('%s, ', string(PublishedSets));
-        PublishedSetsTxt = ['{' PublishedSetsTxt(1:end-2) '}'];
-        com = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(%s, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
-            inputname(1), mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filename, showGUI);
+        if isempty(PublishedSets)
+            PublishedSetsTxt = '[]';
+        else
+            PublishedSetsTxt = sprintf('''%s'', ', string(PublishedSets));
+            PublishedSetsTxt = ['{' PublishedSetsTxt(1:end-2) '}'];
+        end
+        compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+            mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filename, showGUI);
     else
-        com = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(%s, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
-            inputname(1), mat2str(IndividualSets), mat2str(MeanSets), Filename, showGUI);
+        compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+            mat2str(IndividualSets), mat2str(MeanSets), Filename, showGUI);
+    end
+
+    if isempty(com)
+        com = compCom;
+    else
+        com = [com newline compCom];
     end
 
 end
@@ -464,12 +667,17 @@ end
 function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
     global MSTEMPLATE;
     TemplateNames = {MSTEMPLATE.setname};
-    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
+    [minClasses, sortOrder] = sort(minClasses, 'ascend');
+    maxClasses = maxClasses(sortOrder);
+    classRangeTxt = string(minClasses);
+    diffMaxClasses = maxClasses ~= minClasses;
+    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
     TemplateNames = TemplateNames(sortOrder);
     nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
     nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
+    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
 end
 
 function isEmpty = isEmptySet(in)

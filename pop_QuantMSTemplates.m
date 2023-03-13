@@ -1,63 +1,149 @@
-% UPDATE DOCUMENTATION TO REFLECT KEY, VALUE PARAMETERS
-% 
-%pop_QuantMSTemplates() quantifies the presence of microstates in EEG data
+% pop_QuantMSTemplates() Quantifies the temporal dynamics of microstates in
+% the EEG data. Generates a window with summary statistics for tepmoral
+% dynamics extracted, along with a table of temporal dynamics statistics
+% for all sets chosen for analysis. Statistics are saved to the "stats"
+% field of "msinfo" and can be saved to a csv, txt, xlsx, 4R, or mat file.
 %
 % Usage:
-%   >> [EEGOUT, CurrentSet, com,Evol] = pop_QuantMSTemplates(AllEEG, SelectedSets, UseMeanTmpl, FitParameters, TemplateSet, TemplateName, FileName)
+%   >> [EEG, CURRENTSET, com] = pop_QuantMSTemplates(ALLEEG, SelectedSets, 
+%       'key1', value1, 'key2', value2)
 %
-% EEG lab specific:
+% To use each subject's own microstate maps for backfitting, specify
+% "TemplateSet" as "own."
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_QuantMSTemplates(ALLEEG, 1:5, 'TemplateSet',
+%       'own')
 %
-%   "AllEEG" 
-%   -> AllEEG structure with all the EEGs that may be analysed
+% To use a mean set or published set for backfitting, specify either the
+% index of the mean set in ALLEEG, the name of the mean set, or the name of
+% the published set.
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_QuantMSTemplates(ALLEEG, 1:5, 'TemplateSet',
+%       'Koenig2002')
 %
-%   "SelectedSets" 
-%   -> Index of selected EEGs. If more than one EEG is selected, the analysis
-%      will be limited to those, if not, the user is asked. 
+% To generate and save temporal dynamics statistics without displaying the
+% GUI, use the "Filename" and "gui" parameters.
+% Ex:
+%   >> [EEG, CURRENTSET] = pop_QuantMSTemplates(ALLEEG, 1:5, 'TemplateSet',
+%       'own', 'Filename', 'microstate/results/temporal_dynamics.csv',
+%       'gui', 0)
 %
-% Graphical interface / input parameters
+% Graphical interface:
 %
-%   UseMeanTmpl
-%   -> 0 if the template from the data itself is to be used
-%   -> 1 if a mean template is to be used
-%   -> 2 if a published template is to be used
+%   "Choose sets for quantifying"
+%   -> Select sets to extract temporal dynamics for
+%   -> Command line equivalent: "SelectedSets"
 %
-%   FitParameters 
-%   -> A struct with the following parameters:
-%      - nClasses: The number of classes to fit
-%      - PeakFit : Whether to fit only the GFP peaks and interpolate in
-%        between (true), or fit to the entire data (false)
-%      - b       : Window size for label smoothing (0 for none)
-%      - lambda  : Penalty function for non-smoothness
-%   + optional parameters;
-%      - SegmentSize: Chops the data into segments of SegmentSize seconds
-%        and returns the obtained dynamics in the extra output argument
-%        Evol
+%   "Name of template set"
+%   -> Name of template set whose maps will be used for backfitting and
+%   extracting temporal dynamics. Select "Own" to use each subject's own
+%   maps to quantify their own data, or select the name of a template set
+%   to use its maps to quantify all subjects.
+%   -> Command line equivalent: "TemplateSet"
 %
-%   TemplateSet
-%   -> Index of the AllEEG dataset containing the mean clusters to be used if UseMeanTmpl
-%   is true, else not relevant
+%   "Show data visualizations"
+%   -> Controls whether to generate figure with summary of extracted
+%   temporal dynamics statistics. Uncheck this if you want to skip the
+%   visualizations and save the results to a file.
+%   -> Command line equivalent: "gui"
 %
-%   TemplateName (added by Delara 10/18/22)
-%   -> Name of published template or mean map setname that should be used
-%   for quantifying. Will be used if UseMeanTmpl is 2, or if UseMeanTmpl is
-%   1 and TemplateSet is empty. If TemplateSet is not empty, this will be
-%   ignored.
+%   "Microstate fitting parameters"
+%   ------------------------------
 %
-%   Filename
-%   -> Name of the file to store the output. 
+%   "Number of classes"
+%   -> Number of classes to use for backfitting
+%   -> Command line equivalent: "FitPar.nClasses"
 %
-% Output:
+%   "Fitting only on GFP peaks"
+%   -> Controls whether to backfit maps only at global field power peaks
+%   and interpolate microstae assignments in between peaks, or to backfit
+%   maps at all timepoints.
+%   -> Command line equivalent: "FitPar.PeakFit"
 %
-%   "EEGOUT"
-%   -> EEG structure with all the quantiufied EEGs. May or may not have
-%   updated sorting depending on user choice.
+%   "Remove potentially truncated microstates"
+%   -> Controls whether to remove microstate assignments around boundary
+%   events in the EEG data
+%   -> Command line equivalent: "FitPar.BControl"
 %
-%   "CurrentSet"
-%   -> Index of the quantified EEGs.
+%   "Label smoothing window"
+%   -> Window size in ms to use for temporal smoothing of microstate
+%   assignments. Use 0 to skip temporal smoothing. Ignored if fitting only
+%   on GFP peaks.
+%   -> Command line equivalent: "FitPar.b"
+%
+%   "Non-Smoothness penality"
+%   -> Penalty for non-smoothness in the temporal smoothing algorithm.
+%   Ignored if fitting only on GFP peaks.
+%   -> Command line equivalent: "FitPar.lambda"
+%
+% Inputs:
+%
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
+%
+%   "SelectedSets" (optional)
+%   -> Array of set indices of ALLEEG for which temporal dynamics will be
+%   extracted. If not provided, a GUI will appear to choose sets.
+%
+% Key, Value inputs (optional):
+%
+%   "FitPar"
+%   -> Structure containing fields specifying parameters for backfitting.
+%   If some required fields are not included, a GUI will appear with the
+%   unincluded fields. Required fields:
+%       "FitPar.nClasses"
+%       -> Number of classes to use for backfitting
+%
+%       "FitPar.PeakFit"
+%       -> 1 = backfit maps only at global field power peaks and
+%       interpolate in between, 0 = backfit maps at all timepoints
+%
+%       "FitPar.BControl"
+%       -> 1 = Remove microstate assignments around boundary events in the
+%       EEG data, 0 = keep all microstate assignments
+%
+%       "FitPar.b"
+%       -> Window size in ms to use for temporal smoothing of microstate
+%       assignments. Use 0 to skip temporal smoothing. Ignored if fitting
+%       only on GFP peaks.
+%
+%       "FitPar.lambda"
+%       > Penalty for non-smoothness in the temporal smoothing algorithm.
+%       Ignored if fitting only on GFP peaks.
+%
+%   "TemplateSet"
+%   -> Integer, string, or character vector specifying the template set
+%   whose maps should be used for backfitting. Can be either the index of 
+%   a mean set in ALLEEG, the name of a mean set in ALLEEG, the name of a 
+%   published template set in the microstates/Templates folder, or "own" to
+%   use each subject's own maps for backfitting. If not provided, a GUI 
+%   will appear to select a template set.
+%
+%   "Filename"
+%   -> Full csv, txt, xlsx, 4R, or mat filename to save the generated table
+%   of temporal dynamics statistics for all sets chosen for analysis. If
+%   provided, the function will automatically save the statistics rather
+%   than prompting for a filename. Useful for scripting purposes.
+%
+%   "gui"
+%   -> 1 = show GUI with summary statistics of temporal dynamics, 0 = do
+%   not show GUI. Useful for scripting purposes, e.g. if the function is
+%   being used to generate and save statistics and the GUI is not necessary
+%   -> Default = 1
+%
+% Outputs:
+%
+%   "EEG" 
+%   -> EEG structure array of selected sets with temporal dynamics
+%   statistics added to the "msinfo.stats" field. Fitting parameters in the
+%   "msinfo.FitPar" field may also be updated.
+% 
+%   "CURRENTSET"
+%   -> The indices of the EEGs selected for quantification
 %
 %   "com"
 %   -> Command necessary to replicate the computation
-%              %
+%              
 % Author: Thomas Koenig, University of Bern, Switzerland, 2016
 %
 % Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
@@ -165,12 +251,10 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     meanSetnames = {AllEEG(meanSets).setname};
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
-    if ~isempty(TemplateSet)
-        if strcmp(TemplateSet, 'own')
-            TemplateMode = 'own';
+    if ~isempty(TemplateSet)        
         % If the template set is a number, make sure it is one of the
         % mean sets in ALLEEG
-        elseif isnumeric(TemplateSet)
+        if isnumeric(TemplateSet)
             if ~ismember(TemplateSet, meanSets)
                 errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
@@ -182,9 +266,11 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
                 TemplateName = meanSetnames{TemplateIndex};
             end
         % Else if the template set is a string, make sure it matches one of
-        % the mean setnames or published template setnames
+        % the mean setnames, published template setnames, or "own"
         else
-            if matches(TemplateSet, meanSetnames)
+            if matches(TemplateSet, 'own', IgnoreCase=true)
+                TemplateMode = 'own';               
+            elseif matches(TemplateSet, meanSetnames)
                 % If there are multiple mean sets with the same name
                 % provided, notify the suer
                 if numel(find(matches(meanSetnames, TemplateSet))) > 1
@@ -214,7 +300,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     else
         combinedSetnames = ['Own' meanSetnames publishedDisplayNames];
         guiElements = [guiElements ...
-            {{ 'Style', 'text', 'string', 'Name of template map', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'text', 'string', 'Name of template set', 'fontweight', 'bold'}} ...
             {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
         guiGeom = [guiGeom 1 1];
         guiGeomV = [guiGeomV 1 1];
@@ -315,7 +401,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
     end
 
-    FitPar = SetFittingParameters2(MinClasses:MaxClasses, FitPar, funcName);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName);
     if isempty(FitPar);  return; end
 
     %% Check for consistent sorting across selected sets if own templates are being used
@@ -323,7 +409,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     if strcmp(TemplateMode, 'own')
         % First check if any datasets remain unsorted
         noSort = false;
-        SortModes = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(FitPar.nClasses).SortMode, SelectedSets, 'UniformOutput', false);
+        SortModes = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(FitPar.nClasses).SortMode, 1:numel(SelectedEEG), 'UniformOutput', false);
         if any(strcmp(SortModes, 'none')) && guiOpts.showQuantWarning2
             warningMessage = ['Some datasets remain unsorted. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
@@ -331,29 +417,41 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             noSort = noPressed;
             if boxChecked;  guiOpts.showQuantWarning2 = false;  end
             if yesPressed
-                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
-                if isempty(com);    return; end
+                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
         end
 
         % Then check if there is inconsistency in sorting across datasets
-        SortedBy = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(FitPar.nClasses).SortedBy, SelectedSets, 'UniformOutput', false);
+        noSameSort = false;
+        SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(FitPar.nClasses).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
         emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
         SortedBy(emptyIdx) = [];
         if any(contains(SortedBy, '->'))
             multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
             SortedBy(contains(SortedBy, '->')) = multiSortedBys;
         end
-        if numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
+        if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
             warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            noSameSort = noPressed;
             if boxChecked;  guiOpts.showQuantWarning3 = false;  end
             if yesPressed
-                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
-                if isempty(com);    return; end
+                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -368,8 +466,13 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
             if boxChecked;  guiOpts.showQuantWarning4 = false;   end
             if yesPressed
-                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
-                if isempty(com);    return; end
+                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -380,15 +483,20 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         for set=1:numel(SelectedEEG)                 
             AllLabels = [AllLabels SelectedEEG(set).msinfo.MSMaps(FitPar.nClasses).Labels];
         end 
-        if ~noSort && numel(unique(AllLabels)) > FitPar.nClasses && guiOpts.showQuantWarning5
+        if ~noSort && ~noSameSort && numel(unique(AllLabels)) > FitPar.nClasses && guiOpts.showQuantWarning5
             warningMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
                 'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
                 'and assigned the same set of labels, or sorted using a template set with an equal number of maps. Would you like to re-sort before proceeding?'];
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
             if boxChecked;  guiOpts.showQuantWarning5 = false;   end
             if yesPressed
-                [SelectedEEG, CurrentSet, com] = pop_SortMSTemplates(AllEEG, SelectedSets, 'ClassRange', FitPar.nClasses);
-                if isempty(com);    return; end
+                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                if isempty(sortCom);    return; end
+                if isempty(com)
+                    com = sortCom;
+                else
+                    com = [com newline sortCom];
+                end
             elseif ~noPressed
                 return;
             end
@@ -585,9 +693,15 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     CurrentSet = SelectedSets;
 
     if ischar(TemplateSet) || isstring(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+        quantCom = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
     elseif isnumeric(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i)', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+        quantCom = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+    end
+
+    if isempty(com)
+        com = quantCom;
+    else
+        com = [com newline quantCom];
     end
 
 end
@@ -595,12 +709,17 @@ end
 function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
     global MSTEMPLATE;
     TemplateNames = {MSTEMPLATE.setname};
-    nClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    [nClasses, sortOrder] = sort(nClasses, 'ascend');
+    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
+    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
+    [minClasses, sortOrder] = sort(minClasses, 'ascend');
+    maxClasses = maxClasses(sortOrder);
+    classRangeTxt = string(minClasses);
+    diffMaxClasses = maxClasses ~= minClasses;
+    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
     TemplateNames = TemplateNames(sortOrder);
     nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
     nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(string(nClasses), " maps - ", TemplateNames, " - ", nSubjects);
+    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
 end
 
 function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)
@@ -640,7 +759,7 @@ function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)
             case 4
                 save(FileName,'MSStats');
             case 5
-                xlswrite(FileName,SaveStructToTable(MSStats,[],[],Labels));
+                writecell(SaveStructToTable(MSStats,[],[],Labels), FileName);
             case 6
                 SaveStructToR(MSStats,FileName);
         end
