@@ -36,7 +36,16 @@ function [SortedMaps, com] = pop_ManualSort(AllEEG, SelectedSet, SortOrder, NewL
     tempFig = figure('MenuBar', 'none', 'ToolBar', 'none', 'Visible', 'off');
     titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
     delete(tempFig);
-    figSize = get(0, 'screensize') + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
+    % Use the largest monitor available
+    monitorPositions = get(0, 'MonitorPositions');
+    if size(monitorPositions, 1) > 1
+        screenSizes = arrayfun(@(x) monitorPositions(x, 3)*monitorPositions(x,4), 1:size(monitorPositions, 1));
+        [~, i] = max(screenSizes);
+        screenSize = monitorPositions(i, :);
+    else
+        screenSize = get(0, 'ScreenSize');
+    end
+    figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
     
     ud.Scroll = false;
     % Use scrolling and uifigure

@@ -238,7 +238,16 @@ function [AllEEG, EEGout, CurrentSet, fig_h, com] = pop_ShowIndMSMaps(AllEEG, va
     tempFig = figure('MenuBar', 'none', 'ToolBar', 'none', 'Visible', 'off');
     titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
     delete(tempFig);
-    figSize = get(0, 'screensize') + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
+    % Use the largest monitor available
+    monitorPositions = get(0, 'MonitorPositions');
+    if size(monitorPositions, 1) > 1
+        screenSizes = arrayfun(@(x) monitorPositions(x, 3)*monitorPositions(x,4), 1:size(monitorPositions, 1));
+        [~, i] = max(screenSizes);
+        screenSize = monitorPositions(i, :);
+    else
+        screenSize = get(0, 'ScreenSize');
+    end
+    figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
 
     ud.minPanelWidth = expVarWidth + minGridWidth*nCols;
     ud.minPanelHeight = minGridHeight*nRows;
@@ -771,7 +780,7 @@ function Sort(~,~,fh, AllEEG)
     fh.UserData.AllMaps = EEGout.msinfo.MSMaps;
     if isempty(fh.UserData.com)
         fh.UserData.com = com;
-    else
+    elseif ~isempty(com)
         fh.UserData.com = [fh.UserData.com newline com];
     end
     fh.UserData.wasSorted = true;
@@ -858,11 +867,11 @@ end
 function ShowDynamics(~, ~, fh, AllEEG)
     AllEEG(fh.UserData.SelectedSet).msinfo.MSMaps = fh.UserData.AllMaps;
 
-    [~, ~, com] = pop_ShowIndMSDyn(AllEEG, fh.UserData.SelectedSet);
+    [~, ~, com] = pop_ShowIndMSDyn(AllEEG, fh.UserData.SelectedSet, 'TemplateSet', 'own');
 
     if isempty(fh.UserData.com)
         fh.UserData.com = com;
-    else
+    elseif ~isempty(com)
         fh.UserData.com = [fh.UserData.com newline com];
     end        
 end
@@ -883,7 +892,7 @@ function CompareCallback(~, ~, fh, AllEEG)
     
     if isempty(fh.UserData.com)
         fh.UserData.com = com;
-    else
+    elseif ~isempty(com)
         fh.UserData.com = [fh.UserData.com newline com];
     end        
 end
