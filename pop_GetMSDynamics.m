@@ -241,7 +241,11 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         % the mean setnames, published template setnames, or "own"
         else
             if matches(TemplateSet, 'own', IgnoreCase=true)
-                TemplateMode = 'own';               
+                TemplateMode = 'own';                           
+            elseif matches(TemplateSet, publishedSetnames)
+                TemplateMode = 'published';
+                TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
+                TemplateName = TemplateSet;
             elseif matches(TemplateSet, meanSetnames)
                 % If there are multiple mean sets with the same name
                 % provided, notify the suer
@@ -256,10 +260,6 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
                     TemplateName = TemplateSet;
                     TemplateSet = meanSets(TemplateIndex);
                 end
-            elseif matches(TemplateSet, publishedSetnames)
-                TemplateMode = 'published';
-                TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
-                TemplateName = TemplateSet;
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
                     'mean sets or in the microstates/Templates folder.'], TemplateSet);
