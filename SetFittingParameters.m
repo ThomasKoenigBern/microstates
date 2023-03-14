@@ -42,7 +42,7 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, AddOptions)
         guiGeomV = [guiGeomV 1];
     end
 
-    if (contains('b', FitParDefaults) || contains('lambda', FitParDefaults)) && ~FitPar.PeakFit
+    if (contains('b', FitParDefaults) || contains('lambda', FitParDefaults)) && (~FitPar.PeakFit || contains('PeakFit', FitParDefaults))
         guiElements = [guiElements, ...
             {{ 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'fontweight', 'bold', 'HorizontalAlignment', 'center'}}];
         guiGeom = [guiGeom 1];
