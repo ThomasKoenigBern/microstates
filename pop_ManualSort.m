@@ -267,7 +267,7 @@ function [MSMaps, com] = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, Sort
         SortOrder = absSortOrder;
         MSMaps(nClasses).Maps = MSMaps(nClasses).Maps(SortOrder,:).*repmat(sortOrderSign',1,size(MSMaps(nClasses).Maps,2));
         MSMaps(nClasses).Labels = NewLabels(:)';
-        MSMaps(nClasses).ColorMap = lines(nClasses);
+        MSMaps(nClasses).ColorMap = getColors(nClasses);
 %         MSMaps(nClasses).ExpVar = MSMaps(nClasses).ExpVar(SortOrder);
         MSMaps(nClasses).SortMode = 'manual';
         MSMaps(nClasses).SortedBy = 'user';
@@ -296,7 +296,12 @@ function MSMaps = sortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)
     for i=ClassRange
         if i == nClasses
             continue
-        end        
+        end    
+
+        if i >= 10
+            warning('Automatic sorting is not supported for 10 classes or greater. Please use manual sorting instead. Skipping remaining cluster solutions...');
+            break
+        end
 
         [SortedMaps, SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MSMaps(i).Maps, TemplateMaps, ~IgnorePolarity);
         MSMaps(i).Maps = squeeze(SortedMaps).*repmat(polarity',1,size(squeeze(SortedMaps), 2));
@@ -338,4 +343,64 @@ function solutionChanged(~, ~, fig)
     else
         ud.LabelsEdit.String = sprintf('%s ', string(arrayfun(@(x) {letters(x)}, 1:nClasses)));
     end
+end
+
+% Returns up to 50 maximally perceptually-distinct colors. Colors beyond 
+% initial 7 colors generated from lines() function were generated from: 
+% Tim Holy (2023). Generate maximally perceptually-distinct colors 
+% (https://www.mathworks.com/matlabcentral/fileexchange/29702-generate-maximally-perceptually-distinct-colors), 
+% MATLAB Central File Exchange. Retrieved March 14, 2023.
+function colors = getColors(n)
+    colors = [           0                     0.447                     0.741;
+                      0.85                     0.325                     0.098;
+                     0.929                     0.694                     0.125;
+                     0.494                     0.184                     0.556;
+                     0.466                     0.674                     0.188;
+                     0.301                     0.745                     0.933;
+                     0.635                     0.078                     0.184;
+         0.517241379310345         0.517241379310345                         1;
+         0.620689655172414         0.310344827586207         0.275862068965517;
+                         0                         1         0.758620689655172;
+                         0         0.517241379310345         0.586206896551724;
+                         0                         0         0.482758620689655;
+         0.586206896551724         0.827586206896552         0.310344827586207;
+          0.96551724137931         0.620689655172414         0.862068965517241;
+         0.827586206896552        0.0689655172413793                         1;
+         0.482758620689655         0.103448275862069         0.413793103448276;
+          0.96551724137931        0.0689655172413793         0.379310344827586;
+                         1         0.758620689655172         0.517241379310345;
+         0.137931034482759         0.137931034482759        0.0344827586206897;
+         0.551724137931034         0.655172413793103         0.482758620689655;
+          0.96551724137931         0.517241379310345        0.0344827586206897;
+         0.517241379310345         0.448275862068966                         0;
+         0.448275862068966          0.96551724137931                         1;
+         0.620689655172414         0.758620689655172                         1;
+         0.448275862068966         0.379310344827586         0.482758620689655;
+         0.620689655172414                         0                         0;
+                         0         0.310344827586207                         1;
+                         0         0.275862068965517         0.586206896551724;
+         0.827586206896552                         1                         0;
+         0.724137931034483         0.310344827586207         0.827586206896552;
+         0.241379310344828                         0         0.103448275862069;
+         0.931034482758621                         1         0.689655172413793;
+                         1         0.482758620689655         0.379310344827586;
+         0.275862068965517                         1         0.482758620689655;
+        0.0689655172413793         0.655172413793103         0.379310344827586;
+         0.827586206896552         0.655172413793103         0.655172413793103;
+         0.827586206896552         0.310344827586207         0.517241379310345;
+         0.413793103448276                         0         0.758620689655172;
+         0.172413793103448         0.379310344827586         0.275862068965517;
+                         0         0.586206896551724          0.96551724137931;
+        0.0344827586206897         0.241379310344828         0.310344827586207;
+         0.655172413793103         0.344827586206897        0.0344827586206897;
+         0.448275862068966         0.379310344827586         0.241379310344828;
+        0.0344827586206897         0.586206896551724                         0;
+         0.620689655172414         0.413793103448276         0.724137931034483;
+                         1                         1         0.448275862068966;
+         0.655172413793103          0.96551724137931         0.793103448275862;
+         0.586206896551724         0.689655172413793         0.724137931034483;
+         0.689655172413793         0.689655172413793        0.0344827586206897;
+         0.172413793103448                         0         0.310344827586207];
+
+    colors = colors(1:n, :);
 end
