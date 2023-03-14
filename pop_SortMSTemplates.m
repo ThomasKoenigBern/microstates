@@ -485,6 +485,11 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
                 continue
             end
 
+            if n >= 10
+                warning('Automatic sorting is not supported for 10 classes or greater. Please use manual sorting instead. Skipping remaining cluster solutions...');
+                break
+            end
+
             % find the number of template classes to use
             if n < TemplateMinClasses
                 TemplateClassesToUse = TemplateMinClasses;
@@ -592,7 +597,12 @@ function MSMaps = sortAllSolutions(MSMaps, Classes, nClasses, IgnorePolarity)
     for i=Classes       
         if i == nClasses
             continue
-        end        
+        end      
+
+        if i >= 10
+            warning('Automatic sorting is not supported for 10 classes or greater. Please use manual sorting instead. Skipping remaining cluster solutions...');
+            break
+        end
 
         [SortedMaps, SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MSMaps(i).Maps, TemplateMaps, ~IgnorePolarity);
         MSMaps(i).Maps = squeeze(SortedMaps).*repmat(polarity',1,size(squeeze(SortedMaps), 2));
