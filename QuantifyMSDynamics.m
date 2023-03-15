@@ -166,10 +166,14 @@ function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, 
 
     end
 
-    if ~isempty(info.MSMaps(info.FitPar.nClasses).SortedBy)
-        res.SortedBy = info.MSMaps(info.FitPar.nClasses).SortedBy;
+    if isempty(TemplateName)
+        if ~isempty(info.MSMaps(info.FitPar.nClasses).SortedBy)
+            res.SortedBy = info.MSMaps(info.FitPar.nClasses).SortedBy;
+        else
+            res.SortedBy = 'N/A';
+        end
     else
-        res.SortedBy = 'N/A';
+        res.SortedBy = TemplateName;
     end
     
     EpochData.Duration     = squeeze(eDuration);

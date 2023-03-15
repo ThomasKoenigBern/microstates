@@ -277,9 +277,16 @@ function [MSMaps, com] = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, Sort
         MSMaps(nClasses).Maps = MSMaps(nClasses).Maps(SortOrder,:).*repmat(sortOrderSign',1,size(MSMaps(nClasses).Maps,2));
         MSMaps(nClasses).Labels = NewLabels(:)';
         MSMaps(nClasses).ColorMap = getColors(nClasses);
-%         MSMaps(nClasses).ExpVar = MSMaps(nClasses).ExpVar(SortOrder);
-        MSMaps(nClasses).SortMode = 'manual';
-        MSMaps(nClasses).SortedBy = 'user';
+        if numel(MSMaps(nClasses).ExpVar) > 1
+            MSMaps(nClasses).ExpVar = MSMaps(nClasses).ExpVar(SortOrder);
+        end
+        if isfield(MSMaps(nClasses), 'SharedVar')
+            MSMaps(nClasses).SharedVar = MSMaps(nClasses).SharedVar(SortOrder);
+        end
+        if ~all(SortOrder == 1:nClasses)
+            MSMaps(nClasses).SortMode = 'manual';
+            MSMaps(nClasses).SortedBy = 'user';
+        end
     end
 
     % Sort all if selected
