@@ -297,7 +297,7 @@ function [AllEEG, EEGout, CurrentSet, fig_h, com] = pop_ShowIndMSMaps(AllEEG, va
             gridHeight = (fig_h.Position(4) - tabHeight)/nRows;
             if gridHeight - gridWidth > 100
                 heightDiff = fig_h.Position(4) - gridWidth*nRows + 100;
-                fig_h.Position(2) = .5*heightDiff;
+                fig_h.Position(2) = fig_h.Position(2) + .5*heightDiff;
                 fig_h.Position(4) = gridWidth*nRows + 100;
             end
         end
