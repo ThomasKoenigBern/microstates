@@ -55,7 +55,9 @@
 %   would like to use your own published template maps for sorting, add the
 %   set file containing the maps to the "microstates/Templates" folder. 
 %   The maps should be contained in the "msinfo" field of the EEG struct,
-%   and should contain unique labels and colors for each map.
+%   and should contain unique labels and colors for each map. After the
+%   grand mean maps are sorted, the individual and group level maps will be
+%   sorted by the grand mean maps.
 %
 %   Section 8 will save the individual, group level, and grand mean set
 %   files containing the microstate maps data, along with figures
