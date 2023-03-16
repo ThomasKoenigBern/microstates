@@ -280,7 +280,7 @@ function [EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
         % Else if the template set is a string, make sure it matches one of
         % the mean setnames, published template setnames, or "manual"
         else
-            if matches(TemplateSet, 'manual', IgnoreCase=true)
+            if strcmpi(TemplateSet, 'manual')
                 manualSort = true;
             elseif matches(TemplateSet, publishedSetnames)
                 usingPublished = true;

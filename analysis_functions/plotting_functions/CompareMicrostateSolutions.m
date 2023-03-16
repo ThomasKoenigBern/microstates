@@ -177,7 +177,7 @@ function CompareMapsSolutionChanged(obj, event, CompFig)
     
     ops = statset('Display','off','TolFun',0.01);
 
-    CorrMat = corr(MapCollection').^2;
+    CorrMat = MyCorr(MapCollection').^2;
 
     pro = mdscale(1-CorrMat,2,'Options',ops,'Criterion','strain');    
   

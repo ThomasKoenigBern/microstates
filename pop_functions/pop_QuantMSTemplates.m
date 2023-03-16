@@ -268,7 +268,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         % Else if the template set is a string, make sure it matches one of
         % the mean setnames, published template setnames, or "own"
         else
-            if matches(TemplateSet, 'own', IgnoreCase=true)
+            if strcmpi(TemplateSet, 'own')
                 TemplateMode = 'own';                           
             elseif matches(TemplateSet, publishedSetnames)
                 TemplateMode = 'published';

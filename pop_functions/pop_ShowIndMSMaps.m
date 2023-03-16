@@ -157,7 +157,6 @@ function [AllEEG, EEGout, CurrentSet, fig_h, com] = pop_ShowIndMSMaps(AllEEG, va
         end
     % Otherwise, prompt user to provide sets    
     else
-        global CURRENTSET;
         defaultSets = find(ismember(AvailableSets, CURRENTSET));
         if isempty(defaultSets);    defaultSets = 1;    end        
         AvailableSetnames = {AllEEG(AvailableSets).setname};

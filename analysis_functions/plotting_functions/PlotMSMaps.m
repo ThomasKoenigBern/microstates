@@ -56,7 +56,8 @@ function PlotMSMaps(fh, classes)
             % Make the axes if they do not exist
             if isempty(UserData.Axes{y_pos, x_pos})
                 ax = axes('Parent', UserData.MapLayout);
-                ax.Layout.Tile = tilenum(UserData.MapLayout, y_pos, x_pos);
+                tilenum = y_pos*nCols - nCols + x_pos;
+                ax.Layout.Tile = tilenum;
                 UserData.Axes{y_pos, x_pos} = ax;
             end
 

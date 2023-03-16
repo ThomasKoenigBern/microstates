@@ -383,7 +383,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         sharedVars = zeros(numel(SelectedSets), n);
         for index = 1:length(SelectedSets)
             for class = 1:n
-                var = corr(squeeze(MapsToSort(index,class,:)), BestMeanMap(class, :)').^2;
+                var = MyCorr(squeeze(MapsToSort(index,class,:)), BestMeanMap(class, :)').^2;
                 if var < .5
                     var = 1 - var;
                 end

@@ -625,7 +625,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
                 end
             end
         end    
-        CorrMat = corr(double(MapCollection)').^2;
+        CorrMat = MyCorr(double(MapCollection)').^2;
         CorrTable = array2table(CorrMat * 100,'VariableNames',CLabelCollection,'RowNames',CLabelCollection);
 
         if ~contains(Filename, '.mat')
