@@ -266,7 +266,7 @@ pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', FittingTemplate, 'FitPa
 
 %% 10. Export microstate maps to Ragu
 if numel(which('Ragu')) > 1
-    pop_RaguMSTemplates(ALLEEG, AllSubjects, FitPar.nClasses);
+    pop_RaguMSTemplates(ALLEEG, AllSubjects, 'Classes', FitPar.nClasses);
 end
 
 eeglab redraw
