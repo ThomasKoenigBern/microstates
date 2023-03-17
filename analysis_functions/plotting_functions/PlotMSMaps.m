@@ -108,6 +108,9 @@ function PlotMSMaps(fh, classes)
             end
             uimenu(contextMenu, 'Text', 'Plot map in new window', 'MenuSelectedFcn', {@plotIndMap, UserData.Axes{y_pos, x_pos}});
             UserData.Axes{y_pos, x_pos}.ContextMenu = contextMenu;
+            for child=1:numel(UserData.Axes{y_pos, x_pos}.Children)
+                UserData.Axes{y_pos, x_pos}.Children(child).ContextMenu = contextMenu;
+            end            
 
             if showProgress
                 mapsPlotted = mapsPlotted + 1;
