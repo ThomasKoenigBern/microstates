@@ -496,7 +496,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     end
 
     % Remove sets that were not clustered
-    AllEEG(FailedSets)       = [];
+%    AllEEG(FailedSets)       = [];
     SelectedSets(FailedSets) = [];
 
     %% Sorting
