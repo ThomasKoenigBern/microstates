@@ -210,7 +210,8 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
     
     if isempty(AvailableSets)
         errordlg2(['No valid sets for quantifying found.'], 'Quantify microstates error');
@@ -318,7 +319,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         end
 
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Quantify microstates');
+             'title','Quantify microstate dynamics');
 
         if isempty(res); return; end
         
@@ -572,7 +573,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         
         if isempty(FileName)
             statsFig = figure('Name', figName, 'WindowStyle', 'modal', 'NumberTitle', 'off', ...
-            'Position', [100 100 1350 600]);
+            'Position', [100 100 1350 600], 'ToolBar', 'none');
             statsFig.CloseRequestFcn = 'uiresume();';
             statsFig.UserData.FileName = '';
             plotsPanel = uipanel(statsFig, 'Units', 'normalized', 'Position', [0 0.1 1 0.9]);
@@ -581,7 +582,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
                 'Callback', {@outputStats, FileName, MSStats, Labels, statsFig});
         else
             statsFig = figure('Name', figName, 'NumberTitle', 'off', ...
-            'Position', [100 100 1350 600]);
+            'Position', [100 100 1350 600], 'ToolBar', 'none');
             plotsPanel = uipanel(statsFig, 'Units', 'normalized', ...
                 'Position', [0 0 1 1], 'BorderType', 'none');
         end

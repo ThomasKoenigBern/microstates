@@ -206,20 +206,20 @@ eeglab redraw
 % Sort the grand mean maps by the specified published template(s)
 disp('Sorting grand mean maps by published templates...');
 for i=1:numel(TemplateNames)
-    [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, GrandMeanIdx, 'TemplateSet', TemplateNames{i}, 'Classes', SortClasses{i}, 'IgnorePolarity', ClustPar.IgnorePolarity);
+    [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, GrandMeanIdx, 'TemplateSet', TemplateNames{i}, 'Classes', SortClasses{i}, 'IgnorePolarity', ClustPar.IgnorePolarity);
     [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 end
 % Relabel maps with alphabetic labels
 letters = 'A':'Z';
 labels = arrayfun(@(x) {letters(x)}, 1:26);
 for i=ClustPar.MinClasses:ClustPar.MaxClasses
-    [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, GrandMeanIdx, 'TemplateSet', 'manual', 'Classes', i, 'SortOrder', 1:i, 'NewLabels', labels(1:i));
+    [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, GrandMeanIdx, 'TemplateSet', 'manual', 'Classes', i, 'SortOrder', 1:i, 'NewLabels', labels(1:i));
     [ALLEEG, EEG, CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 end
 
 % Sort the individual and group level maps by the grand mean maps
 disp('Sorting subject and group level maps by grand mean maps...');
-[EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:numel(ALLEEG)-1, 'TemplateSet', GrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'IgnorePolarity', ClustPar.IgnorePolarity);
+[ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:numel(ALLEEG)-1, 'TemplateSet', GrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'IgnorePolarity', ClustPar.IgnorePolarity);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
 %% 8. Save set files with microstates data and figures with microstate plots

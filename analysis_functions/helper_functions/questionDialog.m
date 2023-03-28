@@ -57,6 +57,6 @@ function selection = questionDialog(question, title, options)
     
     function btnPressed(src, event, fig)
         fig.UserData.selection = src.String;
-        uiresume(selectDlg);
+        uiresume(fig);
     end
 end
