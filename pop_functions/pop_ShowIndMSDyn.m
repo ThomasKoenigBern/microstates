@@ -176,7 +176,8 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
     
     if isempty(AvailableSets)
         errordlg2(['No valid sets for plotting dynamics found.'], 'Plot microstate dynamics error');
@@ -275,7 +276,7 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     if ~isempty(guiElements)
 
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Plot microstates dynamics');
+             'title','Plot microstate dynamics');
 
         if isempty(res); return; end
         
@@ -360,7 +361,8 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     toolkit = java.awt.Toolkit.getDefaultToolkit();
     jframe = javax.swing.JFrame;
     insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
-    tempFig = figure('MenuBar', 'none', 'ToolBar', 'none', 'Visible', 'off');
+    tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);
+    pause(0.2);
     titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
     delete(tempFig);
     % Use the largest monitor available
@@ -373,7 +375,7 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
         screenSize = get(0, 'ScreenSize');
     end
     figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
-    fig_h = figure('MenuBar', 'none', 'ToolBar', 'none', 'NumberTitle', 'off', 'Position', figSize);
+    fig_h = figure('ToolBar', 'none', 'MenuBar', 'figure', 'NumberTitle', 'off', 'Position', figSize);
     tabGroup = uitabgroup(fig_h, 'Units', 'normalized', 'Position', [0 0 1 1]);
 
     %% Plot dynamics
@@ -552,9 +554,10 @@ function PlotMSDyn(obj, ~, setTab, varargin)
     set(slider,'Value',ud.Start);
         
     Data2Show = find(ud.Time >= ud.Start & ud.Time <= (ud.Start + ud.XRange));
-    Fit = zeros(ud.nClasses,numel(Data2Show));
+    Fit = nan(ud.nClasses,numel(Data2Show));
     for c = 1:ud.nClasses
-        idx = ud.Assignment(Data2Show,ud.Segment) == c;
+        idx = ud.Assignment(Data2Show,ud.Segment) == c;        
+        idx = [0; idx(1:end-1)] | idx;
         Fit(c,idx) = ud.gfp(1,Data2Show(1,idx),ud.Segment);
     end
     
@@ -572,7 +575,7 @@ function PlotMSDyn(obj, ~, setTab, varargin)
     xlabel(ud.ax, 'Latency', 'FontSize', 11);
     ylabel(ud.ax, 'GFP', 'FontSize', 11);
     
-    title(ud.ax, sprintf('Segment %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses), 'FontSize', 11)
+    title(ud.ax, sprintf('Epoch %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses), 'FontSize', 11)
     nPoints = numel(ud.Time);
     dt = ud.Time(2) - ud.Time(1);
     % Show the markers;
