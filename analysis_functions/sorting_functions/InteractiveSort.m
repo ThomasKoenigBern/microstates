@@ -566,7 +566,7 @@ function Sort(~,~,fh, AllEEG)
                 if UserData.SelTemplate.Value <= numel(MeanIdx)
                     TemplateSet = MeanIdx(UserData.SelTemplate.Value);
                 else
-                    TemplateSet = TemplateNames{UserData.SelTemplate.Value};
+                    TemplateSet = TemplateNames{UserData.SelTemplate.Value - numel(MeanIdx)};
                 end
             end
 

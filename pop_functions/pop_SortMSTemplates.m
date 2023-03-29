@@ -436,10 +436,10 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
             NewLabelsTxt = ['{' NewLabelsTxt(1:end-2) '}'];
             if SortAll
                 com = sprintf(['[ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, %i, ''IgnorePolarity'', %i, ''TemplateSet'', ''manual'', ''Classes'', %i, ''SortOrder'', ' ...
-                    '%s, ''NewLabels'', %s, ''SortAll'', %i);'], SelectedSet, IgnorePolarity, Classes, mat2str(SortOrder), NewLabelsTxt, SortAll);
+                    '%s, ''NewLabels'', %s, ''SortAll'', %i);'], SelectedSets, IgnorePolarity, Classes, mat2str(SortOrder), NewLabelsTxt, SortAll);
             else
                 com = sprintf(['[ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, %i, ''TemplateSet'', ''manual'', ''Classes'', %i, ''SortOrder'', ' ...
-                    '%s, ''NewLabels'', %s);'], SelectedSet, Classes, mat2str(SortOrder), NewLabelsTxt);
+                    '%s, ''NewLabels'', %s);'], SelectedSets, Classes, mat2str(SortOrder), NewLabelsTxt);
             end
 
             return;
@@ -620,13 +620,6 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
 
     end
 
-    %% Clear dependent sorting
-    MeanIdx = find(arrayfun(@(x) isfield(AllEEG(x).msinfo, 'children'), SelectedSets));
-    if ~isempty(MeanIdx)
-        [~, childSetnames] = FindChildSets(AllEEG, MeanIdx);
-        AllEEG = ClearDataSortedByParent(AllEEG, childSetnames, Classes);
-    end
-    
     EEGout = AllEEG(SelectedSets);
     CurrentSet = SelectedSets;
 
