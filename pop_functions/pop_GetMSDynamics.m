@@ -354,12 +354,17 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
             errorMessage = ['No overlap in microstate classes found between all selected sets.'];
             errordlg2(errorMessage, 'Obtain microstate dynamics error');
         end
+
+        GFPPeaks = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.GFPPeaks, SelectedSets);
+        PeakFit = all(GFPPeaks == 1);
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+
+        PeakFit = ChosenTemplate.msinfo.ClustPar.GFPPeaks;
     end
 
-    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, true);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, PeakFit, true);
     if isempty(FitPar);  return; end
 
     %% Obtain dynamics

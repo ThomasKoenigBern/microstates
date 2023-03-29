@@ -397,12 +397,23 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             errordlg2(errorMessage, 'Quantify microstates error');
             return;
         end
+
+        GFPPeaks = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.GFPPeaks, SelectedSets);
+        IgnorePolarity = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.IgnorePolarity, SelectedSets);
+        if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0)) || ~(all(IgnorePolarity == 1) || all(IgnorePolarity == 0))
+            errordlg2(['Microstate clustering parameters differ between selected sets. Sets selected for quantification must ' ...
+                'have consistent parameters for ignoring polarity and clustering on GFP peaks.'], 'Quantify microstate dynamics error');
+            return;
+        end
+        PeakFit = all(GFPPeaks == 1);
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+
+        PeakFit = ChosenTemplate.msinfo.ClustPar.GFPPeaks;
     end
 
-    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, PeakFit);
     if isempty(FitPar);  return; end
 
     %% Check for consistent sorting across selected sets if own templates are being used
@@ -501,7 +512,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             elseif ~noPressed
                 return;
             end
-        end
+        end        
     end
 
     if isfield(FitPar,'SingleEpochFileTemplate')
@@ -556,8 +567,48 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     end
     close(h);
 
+    EEGout = SelectedEEG;
+    CurrentSet = SelectedSets;
+
     % Set labels for output
     Labels = arrayfun(@(x) sprintf('MS %i.%i', FitPar.nClasses, x), 1:FitPar.nClasses, 'UniformOutput', false);
+
+    %% Generate output file
+    if isempty(FileName)
+        [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
+        if FName == 0
+            return;
+        end
+        FileName = fullfile(PName,FName);
+    else
+        idx = 1;
+        if contains(FileName,'.mat')
+            idx = 4;
+        end
+        if contains(FileName,'.xls')
+            idx = 5;
+        end
+        if contains(FileName,'.4R')
+            idx = 6;
+        end
+    end
+
+    if ~isempty(FileName)   
+        switch idx
+            case 1
+                SaveStructToTable(MSStats,FileName,',',Labels);
+            case 2
+                SaveStructToTable(MSStats,FileName,';',Labels);
+            case 3
+                SaveStructToTable(MSStats,FileName,sprintf('\t'),Labels);
+            case 4
+                save(FileName,'MSStats');
+            case 5
+                writecell(SaveStructToTable(MSStats,[],[],Labels), FileName);
+            case 6
+                SaveStructToR(MSStats,FileName);
+        end
+    end
 
     %% Show GUI with summary statistics
     if showGUI
@@ -571,23 +622,10 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             x = categorical(x, Labels);
         end
         
-        if isempty(FileName)
-            statsFig = figure('Name', figName, 'WindowStyle', 'modal', 'NumberTitle', 'off', ...
-            'Position', [100 100 1350 600], 'ToolBar', 'none');
-            statsFig.CloseRequestFcn = 'uiresume();';
-            statsFig.UserData.FileName = '';
-            plotsPanel = uipanel(statsFig, 'Units', 'normalized', 'Position', [0 0.1 1 0.9]);
-            uicontrol('Style', 'pushbutton', 'String', 'Export microstate statistics', ...
-                'Units', 'normalized', 'Position', [.42 .02 .16 .06], ...
-                'Callback', {@outputStats, FileName, MSStats, Labels, statsFig});
-        else
-            statsFig = figure('Name', figName, 'NumberTitle', 'off', ...
-            'Position', [100 100 1350 600], 'ToolBar', 'none');
-            plotsPanel = uipanel(statsFig, 'Units', 'normalized', ...
-                'Position', [0 0 1 1], 'BorderType', 'none');
-        end
+        statsFig = figure('Name', figName, 'NumberTitle', 'off', 'Units', 'normalized', ...
+        'Position', [.1 .1 .8 .8], 'ToolBar', 'none');
         
-        t = tiledlayout(plotsPanel, 2, 3);
+        t = tiledlayout(statsFig, 2, 3);
         t.TileSpacing = 'tight';
         t.Padding = 'compact';
     
@@ -674,24 +712,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         end
         h2.XLabel = 'To';
         h2.YLabel = 'From';
-
-        if isempty(FileName)
-            uiwait(statsFig);
-            FileName = statsFig.UserData.FileName;
-            delete(statsFig);
-        else
-            FileName = outputStats([], [], FileName, MSStats, Labels);
-        end
-    else
-        % Generate output file
-        FileName = outputStats([], [], FileName, MSStats, Labels);
-        if FileName == 0
-            return;
-        end
-    end
-
-    EEGout = SelectedEEG;
-    CurrentSet = SelectedSets;
+    end        
 
     if ischar(TemplateSet) || isstring(TemplateSet)
         quantCom = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
@@ -721,55 +742,6 @@ function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
     nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
     nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
     DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
-end
-
-function FileName = outputStats(src, event, FileName, MSStats, Labels, fig)
-    if isempty(FileName)
-        [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
-        if FName == 0
-            if nargin > 5
-                fig.UserData.FileName = '';
-                return;
-            else
-                FileName = 0;
-                return;
-            end
-        end
-        FileName = fullfile(PName,FName);
-    else
-        idx = 1;
-        if contains(FileName,'.mat')
-            idx = 4;
-        end
-        if contains(FileName,'.xls')
-            idx = 5;
-        end
-        if contains(FileName,'.4R')
-            idx = 6;
-        end
-    end
-
-    if ~isempty(FileName)   
-        switch idx
-            case 1
-                SaveStructToTable(MSStats,FileName,',',Labels);
-            case 2
-                SaveStructToTable(MSStats,FileName,';',Labels);
-            case 3
-                SaveStructToTable(MSStats,FileName,sprintf('\t'),Labels);
-            case 4
-                save(FileName,'MSStats');
-            case 5
-                writecell(SaveStructToTable(MSStats,[],[],Labels), FileName);
-            case 6
-                SaveStructToR(MSStats,FileName);
-        end
-    end
-
-    if nargin > 5
-        src.Enable = 'off';
-        fig.UserData.FileName = FileName;
-    end
 end
 
 function isEmpty = isEmptySet(in)
