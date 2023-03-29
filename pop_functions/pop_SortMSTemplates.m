@@ -620,6 +620,13 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
 
     end
 
+    %% Clear dependent sorting
+    MeanIdx = find(arrayfun(@(x) isfield(AllEEG(x).msinfo, 'children'), SelectedSets));
+    if ~isempty(MeanIdx)
+        [~, childSetnames] = FindChildSets(AllEEG, MeanIdx);
+        AllEEG = ClearDataSortedByParent(AllEEG, childSetnames, Classes);
+    end
+    
     EEGout = AllEEG(SelectedSets);
     CurrentSet = SelectedSets;
 

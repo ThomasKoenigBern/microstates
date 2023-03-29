@@ -418,7 +418,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             noSort = noPressed;
             if boxChecked;  guiOpts.showQuantWarning2 = false;  end
             if yesPressed
-                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -446,7 +446,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             noSameSort = noPressed;
             if boxChecked;  guiOpts.showQuantWarning3 = false;  end
             if yesPressed
-                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -467,7 +467,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
             if boxChecked;  guiOpts.showQuantWarning4 = false;   end
             if yesPressed
-                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -491,7 +491,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
             if boxChecked;  guiOpts.showQuantWarning5 = false;   end
             if yesPressed
-                [SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
+                [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;

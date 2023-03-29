@@ -1,4 +1,4 @@
-function childIdx = FindChildSets(AllEEG, MeanSets)  
+function [childIdx, childSetnames] = FindChildSets(AllEEG, MeanSets)  
     childIdx = [];
 
     for s=1:numel(MeanSets)
@@ -20,5 +20,5 @@ function childIdx = FindChildSets(AllEEG, MeanSets)
     end
 
     childIdx = sort(childIdx, 'ascend');
-
+    childSetnames = {AllEEG(childIdx).setname};
 end
