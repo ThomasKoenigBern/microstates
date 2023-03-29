@@ -36,7 +36,7 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
         end
 
         guiElements = [guiElements, ...
-            {{ 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit','Value', PeakFit, 'Enable', enablePeakFit, 'Callback', @peakFitChanged }}];
+            {{ 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit','Value', PeakFit, 'Enable', 'off', 'Callback', @peakFitChanged }}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
     end

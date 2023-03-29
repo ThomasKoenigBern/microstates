@@ -351,6 +351,12 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
         end
 
         GFPPeaks = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.GFPPeaks, SelectedSets);
+        IgnorePolarity = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.IgnorePolarity, SelectedSets);
+        if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0)) || ~(all(IgnorePolarity == 1) || all(IgnorePolarity == 0))
+            errordlg2(['Microstate clustering parameters differ between selected sets. Sets selected for backfitting should ' ...
+                'have consistent parameters for ignoring polarity and clustering on GFP peaks.'], 'Plot microstate dynamics error');
+            return;
+        end
         PeakFit = all(GFPPeaks == 1);
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
