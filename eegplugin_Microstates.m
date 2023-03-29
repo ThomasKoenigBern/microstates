@@ -150,6 +150,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_FindMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
     comCombineMSTemplates  = [try_strings.no_check '[ALLEEG, EEG, LASTCOM]                  = pop_CombMSTemplates(ALLEEG);'                        catch_strings.new_and_hist];
     comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]      = pop_SortMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
+    comDetectOutliers      = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]      = pop_DetectOutliers(ALLEEG);'                         catch_strings.store_and_hist];
     comCompareMaps         = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]      = pop_CompareMSTemplates(ALLEEG);'                     catch_strings.store_and_hist];
     comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_GetMSDynamics(ALLEEG);'                          catch_strings.new_and_hist];
     comQuantMSTemplates    = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_QuantMSTemplates(ALLEEG);'                       catch_strings.store_and_hist];
@@ -164,6 +165,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     uimenu( toolssubmenu, 'Label', 'Identify individual template maps',                         'CallBack', comFindMSTemplates,     'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Identify group level or grand mean template maps',          'CallBack', comCombineMSTemplates,  'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Edit & sort microstate maps',                               'CallBack', comSortMSTemplates,     'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Outlier detection',                                         'Callback', comDetectOutliers,      'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Quantify microstate dynamics',                              'CallBack', comQuantMSTemplates,    'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',       'CallBack', comGetMSDynamics,       'userdata', 'study:on', 'Separator', 'on');    
 
