@@ -125,7 +125,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [AllEEG, EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
+function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     
     com = '';
     global EEG;
@@ -640,7 +640,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, vara
     end
 
     if showGUI
-        Filename = CompareMicrostateSolutions(inputEEG, nClasses, Filename);
+        Filenames = CompareMicrostateSolutions(inputEEG, nClasses, Filename);
     end
     
     EEGout = SelectedEEG(nonpublishedSets);
@@ -653,11 +653,33 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, vara
             PublishedSetsTxt = sprintf('''%s'', ', string(PublishedSets));
             PublishedSetsTxt = ['{' PublishedSetsTxt(1:end-2) '}'];
         end
-        compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
-            mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filename, showGUI);
+        if isempty(Filenames)
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, showGUI);
+        else
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{1}, showGUI);
+        end
+        if numel(Filenames) > 1
+            for i=2:numel(Filenames)
+                compCom = [compCom newline ...
+                    sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+                    mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{i}, showGUI)];
+            end
+        end
     else
-        compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
-            mat2str(IndividualSets), mat2str(MeanSets), Filename, showGUI);
+        if isempty(Filenames)
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), showGUI);
+        else
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI);
+        end
+        for i=2:numel(Filenames)
+            compCom = [compCom newline ...
+                sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI)];
+        end
     end
 
     if isempty(com)

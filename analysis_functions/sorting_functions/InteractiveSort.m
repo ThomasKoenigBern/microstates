@@ -686,9 +686,8 @@ function CompareCallback(~, ~, fh, AllEEG)
         [EEGout, ~, com] = pop_CompareMSTemplates(AllEEG, [], fh.UserData.SelectedSet, []);
     end
 
-    % If the command contains multiple lines, we know sorting occurred
-    % within the function, so we should replot the maps
-    if contains(com, newline)
+    % If the command contains sorting function calls, we should replot the maps
+    if contains(com, 'pop_Sort')
         fh.UserData.AllMaps = EEGout.msinfo.MSMaps;
         fh.UserData.wasSorted = true;
         PlotMSMaps(fh, fh.UserData.ClustPar.MinClasses:fh.UserData.ClustPar.MaxClasses);  
