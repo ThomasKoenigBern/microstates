@@ -1,10 +1,11 @@
 function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename)
 
-    CompFigHandle = figure('Units', 'normalized', 'Position', [0.2 0.1 0.6 0.8]);
+    CompFigHandle = figure('Units', 'normalized', 'Position', [0.2 0.1 0.6 0.8], ...
+        'Name', 'Compare template maps', 'NumberTitle', 'off', 'MenuBar', 'none', 'ToolBar', 'none');
 
     CompFigHandle.UserData.SelectedEEG = SelectedEEG;
     CompFigHandle.UserData.nClasses = nClasses;
-    CompFigHandle.UserData.Filename = Filename;
+    CompFigHandle.UserData.Filename = [];
     
     CompFigHandle.UserData.CompAxis  = subplot('Position',[0.13 0.21 0.61 0.74],'Parent',CompFigHandle);
     CompFigHandle.UserData.XPMapAxis = subplot('Position',[0.61 0.03 0.10 0.10],'Parent',CompFigHandle);
@@ -63,7 +64,6 @@ function ExportCorrs(obj, ~, fh)
 
     [FName, PName, idx] = uiputfile({'*.csv', 'Comma separated file'; '*.txt', 'Tab delimited file'; '*.xlsx', 'Excel file'; '*.mat', 'Matlab Table'}, 'Save shared variance matrix');
     if FName == 0
-        fh.UserData.Filename = '';
         return;
     end
     
@@ -73,9 +73,8 @@ function ExportCorrs(obj, ~, fh)
     else
         save(Filename, 'CorrTable');
     end
-    fh.UserData.Filename = Filename;
 
-    obj.Enable = 'off';
+    fh.UserData.Filename = [fh.UserData.Filename {Filename}];
 end
 
 function CompareMapsSolutionCorrsToggle(~, ~,fh)

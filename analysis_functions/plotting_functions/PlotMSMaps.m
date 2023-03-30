@@ -9,9 +9,14 @@ function PlotMSMaps(fh, classes)
         classesToPlot = UserData.ClustPar.MinClasses:UserData.ClustPar.MaxClasses;
         classesToUpdate = classes;
     else
-        ClassRange = UserData.ClustPar.MinClasses:UserData.ClustPar.MaxClasses;
-        classesToPlot = ClassRange(ismember(ClassRange, classes));
-        classesToUpdate = classesToPlot;
+        if isfield(UserData, 'ClustPar')
+            ClassRange = UserData.ClustPar.MinClasses:UserData.ClustPar.MaxClasses;
+            classesToPlot = ClassRange(ismember(ClassRange, classes));
+            classesToUpdate = classesToPlot;
+        else
+            classesToPlot = classes;
+            classesToUpdate = classes;
+        end
     end
     nRows = numel(classesToPlot);
     nCols = max(classesToPlot);

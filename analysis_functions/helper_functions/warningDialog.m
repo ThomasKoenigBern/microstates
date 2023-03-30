@@ -58,6 +58,6 @@ function [yesPressed, noPressed, boxChecked] = warningDialog(msg, title)
         elseif strcmp(src.String, 'No')
             fig.UserData.noPressed = true;
         end
-        uiresume(warnDlg);
+        uiresume(fig);
     end
 end

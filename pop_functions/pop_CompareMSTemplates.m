@@ -207,13 +207,15 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableIndSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableIndSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
     AvailableMeanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
     AvailablePublishedSets = 1:numel(MSTEMPLATE);
     AvailableSets = [AvailableIndSets, AvailableMeanSets, AvailablePublishedSets];
 
     if isempty(AvailableSets)
         errordlg2(['No valid sets for comparing found.'], 'Compare microstate maps error');
+        return;
     end
 
     % Validate individual sets
@@ -342,7 +344,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
         end
 
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Compare microstate maps');
+             'title','Compare template maps');
 
         if isempty(res); return; end
 
@@ -376,6 +378,8 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
                 PublishedSetIndices = sortOrder(outstruct.PublishedSets(outstruct.PublishedSets ~= 1) - 1);
             end
         end
+
+        SelectedSets = [IndividualSets(:); MeanSets(:); PublishedSetIndices(:)];
     elseif numel(SelectedSets) == 1
         compWithin = 1;
     else
@@ -410,7 +414,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             noSort = noPressed;
             if boxChecked;  guiOpts.showCompWarning1 = false;   end
             if yesPressed
-                [SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -436,7 +440,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning2 = false;   end
             if yesPressed
-                [SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -457,7 +461,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning3 = false;   end
             if yesPressed
-                [SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -492,7 +496,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
                 { {'Style', 'text', 'string', 'Select cluster solution to compare'} ...
                   {'Style', 'listbox', 'string', classChoices, 'Tag', 'nClasses'}}, ...
-                  'title', 'Sort microstate maps');
+                  'title', 'Compare template maps');
             
             if isempty(res); return; end
     
@@ -516,7 +520,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             noSort = noPressed;
             if boxChecked;  guiOpts.showCompWarning1 = false;  end
             if yesPressed
-                [nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
+                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
                 if isempty(sortCom);    return; end
                 if isempty(com)
@@ -544,7 +548,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning2 = false;  end
             if yesPressed
-                [nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
+                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
                 if isempty(sortCom);    return; end
                 if isempty(com)
@@ -566,7 +570,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning3 = false;   end
             if yesPressed
-                [nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
+                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
                 if isempty(sortCom);    return; end
                 if isempty(com)
@@ -636,7 +640,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     end
 
     if showGUI
-        Filename = CompareMicrostateSolutions(inputEEG, nClasses, Filename);
+        Filenames = CompareMicrostateSolutions(inputEEG, nClasses, Filename);
     end
     
     EEGout = SelectedEEG(nonpublishedSets);
@@ -649,11 +653,33 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             PublishedSetsTxt = sprintf('''%s'', ', string(PublishedSets));
             PublishedSetsTxt = ['{' PublishedSetsTxt(1:end-2) '}'];
         end
-        compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
-            mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filename, showGUI);
+        if isempty(Filenames)
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, showGUI);
+        else
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{1}, showGUI);
+        end
+        if numel(Filenames) > 1
+            for i=2:numel(Filenames)
+                compCom = [compCom newline ...
+                    sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+                    mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{i}, showGUI)];
+            end
+        end
     else
-        compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
-            mat2str(IndividualSets), mat2str(MeanSets), Filename, showGUI);
+        if isempty(Filenames)
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), showGUI);
+        else
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI);
+        end
+        for i=2:numel(Filenames)
+            compCom = [compCom newline ...
+                sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+                mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI)];
+        end
     end
 
     if isempty(com)
@@ -728,29 +754,4 @@ function Answer = DoesItHaveChildren(in)
     else
         Answer = true;
     end
-end
-
-function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
-    containsChild = false;
-    if isempty(SetsToSearch)
-        return;
-    end
-    
-    % find which sets have children
-    HasChildren = arrayfun(@(x) isfield(AllEEG(x).msinfo, 'children'), SetsToSearch);
-    % if none of the sets to search have children, the child set could not
-    % be found
-    if ~any(HasChildren)
-        return;
-    end
-
-    % search the children of all the mean sets for the child set name
-    containsChild = any(arrayfun(@(x) matches(childSetName, AllEEG(x).msinfo.children), SetsToSearch(HasChildren)));
-
-    % if the child cannot be found, search the children of the children
-    if ~containsChild
-        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
-        containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
-    end
-
 end

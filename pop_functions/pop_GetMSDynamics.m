@@ -182,10 +182,11 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
     
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for extracting dynamics found.'], 'Obtain microstate dynamics error');
+        errordlg2(['No valid sets for extracting dynamics found.'], 'Obtain microstate activation time series error');
         return;
     end
 
@@ -199,7 +200,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
             errorMessage = ['Dynamics cannot be extracted for the following sets: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, mean sets, existing dynamics sets, ' ...
                 'or sets without microstate maps.'];
-            errordlg2(errorMessage, 'Obtain microstate dynamics error');
+            errordlg2(errorMessage, 'Obtain microstate activation time series error');
             return;
         end
     % Otherwise, add set selection gui elements
@@ -230,7 +231,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
             if ~ismember(TemplateSet, meanSets)
                 errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
-                errordlg2([errorMessage], 'Obtain microstate dynamics error');
+                errordlg2([errorMessage], 'Obtain microstate activation time series error');
                 return;
             else
                 TemplateMode = 'mean';
@@ -252,7 +253,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
                 if numel(find(matches(meanSetnames, TemplateSet))) > 1
                     errorMessage = sprintf(['There are multiple mean sets with the name "%s." ' ...
                         'Please specify the set number instead ot the set name.'], TemplateSet);
-                    errordlg2([errorMessage], 'Obtain microstate dynamics error');
+                    errordlg2([errorMessage], 'Obtain microstate activation time series error');
                     return;
                 else
                     TemplateMode = 'mean';
@@ -263,7 +264,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
                     'mean sets or in the microstates/Templates folder.'], TemplateSet);
-                errordlg2([errorMessage], 'Obtain microstate dynamics error');
+                errordlg2([errorMessage], 'Obtain microstate activation time series error');
                 return;
             end
         end
@@ -281,7 +282,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     %% Prompt user to choose SelectedSets and TemplateSet if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Get microstate dynamics');
+             'title','Obtain microstate activation time series');
 
         if isempty(res); return; end
         
@@ -308,7 +309,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     end
 
     if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Obtain microstate dynamics error');
+        errordlg2('You must select at least one set of microstate maps','Obtain microstate activation time series error');
         return;
     end
 
@@ -337,7 +338,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
             warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
                 'the following sets: %s. Are you sure you would like to proceed?'], ...
                 TemplateName, txt);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Obtain microstate dynamics warning');
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Obtain microstate activation time series warning');
             if boxChecked;  guiOpts.showGetWarning = false;     end
             if ~yesPressed; return;                             end
         end
@@ -351,14 +352,25 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         MaxClasses = min(AllMaxClasses);
         if MaxClasses < MinClasses
             errorMessage = ['No overlap in microstate classes found between all selected sets.'];
-            errordlg2(errorMessage, 'Obtain microstate dynamics error');
+            errordlg2(errorMessage, 'Obtain microstate activation time series error');
         end
+
+        GFPPeaks = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.GFPPeaks, SelectedSets);
+        IgnorePolarity = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.IgnorePolarity, SelectedSets);
+        if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0)) || ~(all(IgnorePolarity == 1) || all(IgnorePolarity == 0))
+            errordlg2(['Microstate clustering parameters differ between selected sets. Sets selected for backfitting should ' ...
+                'have consistent parameters for ignoring polarity and clustering on GFP peaks.'], 'Obtain microstate activation time series error');
+            return;
+        end
+        PeakFit = all(GFPPeaks == 1);
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+
+        PeakFit = ChosenTemplate.msinfo.ClustPar.GFPPeaks;
     end
 
-    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, true);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, PeakFit, true);
     if isempty(FitPar);  return; end
 
     %% Obtain dynamics

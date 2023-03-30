@@ -176,7 +176,8 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
     
     if isempty(AvailableSets)
         errordlg2(['No valid sets for plotting dynamics found.'], 'Plot microstate dynamics error');
@@ -275,7 +276,7 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
     if ~isempty(guiElements)
 
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Plot microstates dynamics');
+             'title','Plot microstate dynamics');
 
         if isempty(res); return; end
         
@@ -348,19 +349,31 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
             errorMessage = ['No overlap in microstate classes found between all selected sets.'];
             errordlg2(errorMessage, 'Quantify microstates error');
         end
+
+        GFPPeaks = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.GFPPeaks, SelectedSets);
+        IgnorePolarity = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.IgnorePolarity, SelectedSets);
+        if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0)) || ~(all(IgnorePolarity == 1) || all(IgnorePolarity == 0))
+            errordlg2(['Microstate clustering parameters differ between selected sets. Sets selected for backfitting should ' ...
+                'have consistent parameters for ignoring polarity and clustering on GFP peaks.'], 'Plot microstate dynamics error');
+            return;
+        end
+        PeakFit = all(GFPPeaks == 1);
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
+
+        PeakFit = ChosenTemplate.msinfo.ClustPar.GFPPeaks;
     end
 
-    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, PeakFit);
     if isempty(FitPar);  return; end
 
     % Get usable screen size
     toolkit = java.awt.Toolkit.getDefaultToolkit();
     jframe = javax.swing.JFrame;
     insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
-    tempFig = figure('MenuBar', 'none', 'ToolBar', 'none', 'Visible', 'off');
+    tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);
+    pause(0.2);
     titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
     delete(tempFig);
     % Use the largest monitor available
@@ -373,7 +386,7 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
         screenSize = get(0, 'ScreenSize');
     end
     figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
-    fig_h = figure('MenuBar', 'none', 'ToolBar', 'none', 'NumberTitle', 'off', 'Position', figSize);
+    fig_h = figure('ToolBar', 'none', 'MenuBar', 'figure', 'NumberTitle', 'off', 'Position', figSize);
     tabGroup = uitabgroup(fig_h, 'Units', 'normalized', 'Position', [0 0 1 1]);
 
     %% Plot dynamics
@@ -463,25 +476,21 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
 
             minusY = .3; 
             plusY  = .47;
-        end
+        end        
 
-        set(setTab,'userdata',ud);
-        PlotMSDyn([], [], setTab);
-
-        uicontrol(setTab, 'Style', 'pushbutton', 'String', '|<<','Units','Normalized','Position', [0.05 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  ,-Inf}, 'FontSize', 9);
-        uicontrol(setTab, 'Style', 'pushbutton', 'String',  '<<','Units','Normalized','Position', [0.15 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  ,-10000 });
-	    uicontrol(setTab, 'Style', 'pushbutton', 'String',   '<','Units','Normalized','Position', [0.25 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  , -1000 });
-        uicontrol(setTab, 'Style', 'pushbutton', 'String', '>'  ,'Units','Normalized','Position', [0.35 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  ,  1000});
-        uicontrol(setTab, 'Style', 'pushbutton', 'String', '>>' ,'Units','Normalized','Position', [0.45 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  , 10000 });
-        uicontrol(setTab, 'Style', 'pushbutton', 'String', '>>|','Units','Normalized','Position', [0.55 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  , Inf});
-        uicontrol(setTab, 'Style', 'pushbutton', 'String', '<>' ,'Units','Normalized','Position', [0.75 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'ScaleX', -1000});
-        uicontrol(setTab, 'Style', 'pushbutton', 'String', '><' ,'Units','Normalized','Position', [0.85 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'ScaleX',  1000});
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', '|<<','Units','Normalized','Position', [0.05 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  ,-Inf});        
+        ud.EpochLabel = uicontrol(setTab, 'Style', 'Text', 'String', sprintf('Epoch %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses), 'Units', 'normalized', 'Position', [.14 .01 .2 .03], 'FontSize', 11, 'FontWeight', 'bold');
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', '>>|','Units','Normalized','Position', [0.35 0.005 0.08 0.04], 'Callback', {@PlotMSDyn, setTab, 'Move'  , Inf});
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', 'Horz. zoom in' ,'Units','Normalized','Position', [0.61 0.005 0.15 0.04], 'Callback', {@PlotMSDyn, setTab, 'ScaleX', -1000});
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', 'Horz. zoom out' ,'Units','Normalized','Position', [0.78 0.005 0.15 0.04], 'Callback', {@PlotMSDyn, setTab, 'ScaleX',  1000});
         uicontrol(setTab, 'Style', 'slider'    ,'Min',ud.Time(1),'Max',ud.Time(end),'Value',ud.Time(1) ,'Units','Normalized','Position', [0.05 0.06 0.88 0.03], ...
             'BackgroundColor', [.6 .6 .6], 'Callback', {@PlotMSDyn, setTab, 'Slider',  1});
     
         uicontrol(setTab, 'Style', 'pushbutton', 'String', '-'   ,'Units','Normalized','Position', [0.94 minusY 0.05 0.15], 'Callback', {@PlotMSDyn, setTab, 'ScaleY', 1/0.75});
         uicontrol(setTab, 'Style', 'pushbutton', 'String', '+'   ,'Units','Normalized','Position', [0.94 plusY  0.05 0.15], 'Callback', {@PlotMSDyn, setTab, 'ScaleY',   0.75});                  
 
+        set(setTab,'userdata',ud);
+        PlotMSDyn([], [], setTab);
     end
 
     EEGout = SelectedEEG;
@@ -552,9 +561,10 @@ function PlotMSDyn(obj, ~, setTab, varargin)
     set(slider,'Value',ud.Start);
         
     Data2Show = find(ud.Time >= ud.Start & ud.Time <= (ud.Start + ud.XRange));
-    Fit = zeros(ud.nClasses,numel(Data2Show));
+    Fit = nan(ud.nClasses,numel(Data2Show));
     for c = 1:ud.nClasses
-        idx = ud.Assignment(Data2Show,ud.Segment) == c;
+        idx = ud.Assignment(Data2Show,ud.Segment) == c;        
+        idx = [0; idx(1:end-1)] | idx;
         Fit(c,idx) = ud.gfp(1,Data2Show(1,idx),ud.Segment);
     end
     
@@ -572,7 +582,7 @@ function PlotMSDyn(obj, ~, setTab, varargin)
     xlabel(ud.ax, 'Latency', 'FontSize', 11);
     ylabel(ud.ax, 'GFP', 'FontSize', 11);
     
-    title(ud.ax, sprintf('Segment %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses), 'FontSize', 11)
+    ud.EpochLabel.String = sprintf('Epoch %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses);
     nPoints = numel(ud.Time);
     dt = ud.Time(2) - ud.Time(1);
     % Show the markers;

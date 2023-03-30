@@ -1,6 +1,12 @@
-function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, AddOptions)
+function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, AddOptions)
     
-    if nargin < 4;  AddOptions = false; end
+    if nargin < 5;  AddOptions = false; end
+
+    if PeakFit
+        enablePeakFit = 'off';
+    else
+        enablePeakFit = 'on';
+    end
 
     % Initial validation
     [FitPar, FitParDefaults] = checkFitPar(funcName, PossibleNs, FitPar);
@@ -30,7 +36,7 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, AddOptions)
         end
 
         guiElements = [guiElements, ...
-            {{ 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit','Value', FitPar.PeakFit }}];
+            {{ 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit','Value', PeakFit, 'Enable', 'off', 'Callback', @peakFitChanged }}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
     end
@@ -44,22 +50,22 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, AddOptions)
 
     if (contains('b', FitParDefaults) || contains('lambda', FitParDefaults)) && (~FitPar.PeakFit || contains('PeakFit', FitParDefaults))
         guiElements = [guiElements, ...
-            {{ 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'fontweight', 'bold', 'HorizontalAlignment', 'center'}}];
+            {{ 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'Tag', 'SmoothingLabel', 'fontweight', 'bold', 'HorizontalAlignment', 'center', 'Enable', enablePeakFit}}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
 
         if contains('b', FitParDefaults)
             guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Label smoothing window (ms)', 'fontweight', 'bold' }} ...
-                {{ 'Style', 'edit', 'string', num2str(FitPar.b) 'tag' 'b'}}];
+                {{ 'Style', 'text', 'string', 'Label smoothing window (ms)', 'Tag', 'bLabel', 'fontweight', 'bold', 'Enable', enablePeakFit }} ...
+                {{ 'Style', 'edit', 'string', num2str(FitPar.b) 'tag', 'b', 'Enable', enablePeakFit}}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
 
         if contains('lambda', FitParDefaults)
             guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Non-Smoothness penalty', 'fontweight', 'bold' }} ...
-                {{ 'Style', 'edit', 'string', num2str(FitPar.lambda) 'tag' 'lambda' }}];
+                {{ 'Style', 'text', 'string', 'Non-Smoothness penalty', 'Tag', 'lambdaLabel', 'fontweight', 'bold', 'Enable', enablePeakFit }} ...
+                {{ 'Style', 'edit', 'string', num2str(FitPar.lambda) 'tag', 'lambda', 'Enable', enablePeakFit }}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
@@ -123,6 +129,28 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, AddOptions)
         FitPar = checkFitPar(funcName, PossibleNs, FitPar);
     end
 
+end
+
+function peakFitChanged(obj, event)
+    smoothingLabel  = findobj(obj.Parent, 'Tag', 'SmoothingLabel');
+    bLabel          = findobj(obj.Parent, 'Tag', 'bLabel');
+    b               = findobj(obj.Parent, 'Tag', 'b');
+    lambdaLabel     = findobj(obj.Parent, 'Tag', 'lambdaLabel');
+    lambda          = findobj(obj.Parent, 'Tag', 'lambda');
+
+    if obj.Value
+        smoothingLabel.Enable = 'off';
+        bLabel.Enable = 'off';
+        b.Enable = 'off';
+        lambdaLabel.Enable = 'off';
+        lambda.Enable = 'off';
+    else
+        smoothingLabel.Enable = 'on';
+        bLabel.Enable = 'on';
+        b.Enable = 'on';
+        lambdaLabel.Enable = 'on';
+        lambda.Enable = 'on';
+    end
 end
 
 function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, varargin)
