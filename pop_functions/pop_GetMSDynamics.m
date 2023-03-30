@@ -192,7 +192,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
 
     % If the user has provided sets, check their validity
     if ~isempty(SelectedSets)
-        SelectedSets = unique(SelectedSets);
+        SelectedSets = unique(SelectedSets, 'stable');
         isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));

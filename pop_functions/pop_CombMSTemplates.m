@@ -133,7 +133,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     if ~isempty(SelectedSets)
         % First check for empty sets, dynamics sets, or any sets without
         % microstate maps
-        SelectedSets = unique(SelectedSets);
+        SelectedSets = unique(SelectedSets, 'stable');
         isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
