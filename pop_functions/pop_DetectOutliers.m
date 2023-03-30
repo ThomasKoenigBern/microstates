@@ -302,6 +302,8 @@ function autoSelectNext(src, event, fig_h)
     critDist = ACR(p, n, pval);
     [maxDist, idx] = max(dist);
 
+    ud.ToExclude = setIdx(idx);
+
     if maxDist > critDist
         % Update plot
         cla(ud.outlierPlot);
