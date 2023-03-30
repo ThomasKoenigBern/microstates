@@ -123,7 +123,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin
     manualBtn = uibutton(btnLayout, 'Text', 'Manual select next', 'ButtonPushedFcn', {@manualSelectNext, fig_h});
     manualBtn.Layout.Row = 2;
     autoBtn = uibutton(btnLayout, 'Text', 'Auto select next', 'ButtonPushedFcn', {@autoSelectNext, fig_h});
-    allBtn = uibutton(btnLayout, 'Text', 'Auto select all');
+    allBtn = uibutton(btnLayout, 'Text', 'Auto select all', 'ButtonPushedFcn', {@autoSelectAllFMCD, fig_h});
     pLayout = uigridlayout(btnLayout, [1 2]);
     pLayout.Padding = [0 0 0 0];
     pLayout.ColumnWidth = {40, '1x'};
@@ -377,6 +377,51 @@ function selectionChanged(src, event, fig_h)
     % Plot microstate maps
     ud.MapPanel.Visible = 'on';
     ud.AllMaps = ud.MSMaps{idx};
+    fig_h.UserData = ud;
+    PlotMSMaps(fig_h, ud.nClasses);
+end
+
+function autoSelectAllFMCD(src, event, fig_h)
+    ud = fig_h.UserData;
+
+    pval = str2double(ud.pEdit.Value);
+    setIdx = find(strcmp(ud.setsTable.Data(:,2), " "));
+    [~,p] = size(ud.points); % p = dims
+
+    % Calculate robust Mahalanobis distance using Fast-MCD
+    [~, ~, dist] = robustcov(ud.points, "Method", "fmcd", "OutlierFraction", 0.25);
+
+    % Calculate critical distance and compare with max
+    outliers = dist > sqrt(chi2inv(1 - pval, p));
+
+    for idx = 1:numel(outliers)
+        if outliers(idx)
+            % Outlier detected
+            ud.ToExclude = setIdx(idx);
+            fig_h.UserData = ud;
+            exclude(src, event, fig_h);
+        end
+    end
+
+    % Update plot
+    cla(ud.outlierPlot);
+    plot(ud.outlierPlot, ud.points(:,1), ud.points(:,2), '+k');
+    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+    axis(ud.outlierPlot, 'equal');
+    axis(ud.outlierPlot, 'tight');
+    axis(ud.outlierPlot, 'square');
+
+    % Update buttons
+    ud.keepBtn.Enable = 'on';
+    ud.excludeBtn.Enable = 'on';
+
+    % Select set in table
+    ud.setsTable.Selection = setIdx(idx);
+    scroll(ud.setsTable, 'row', setIdx(idx));
+
+    % Plot maps of selected set
+    ud.MapPanel.Visible = 'on';
+    ud.AllMaps = ud.MSMaps{setIdx(idx)};
     fig_h.UserData = ud;
     PlotMSMaps(fig_h, ud.nClasses);
 end
