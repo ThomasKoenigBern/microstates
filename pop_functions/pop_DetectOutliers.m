@@ -168,70 +168,13 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin
 
 end
 
-function cellChanged(src, event, fig_h)
-    ud = fig_h.UserData;
-
-    if strcmp(event.EditData, 'Keep')
-        tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);            
-    else
-        tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);            
-    end
-    addStyle(src, tblStyle, 'cell', event.Indices);
-
-    % If the set was not previously kept/excluded, update the plot
-    if strcmp(event.PreviousData, " ")
-        ud.setsTable.Data(event.Indices, 2) = event.EditData;
-        fig_h.UserData = ud;
-        updatePlot(fig_h);
-
-        % Update buttons
-        ud.keepBtn.Enable = 'off';
-        ud.excludeBtn.Enable = 'off';
-
-        % Hide maps
-        ud.MapPanel.Visible = 'off';        
-    end
-
-    ud.setsTable.Selection = [];
-end
-
-function selectionChanged(src, event, fig_h)
-    ud = fig_h.UserData;
-
-    setIdx = find(strcmp(ud.setsTable.Data(:,2), " "));
-    idx = event.Selection;    
-    plotIdx = find(setIdx == idx);
-
-    % Update plot if the selected set is not kept/excluded
-    if ~isempty(plotIdx)
-        cla(ud.outlierPlot);
-        plot(ud.outlierPlot, ud.points(:,1), ud.points(:,2), '+k');
-        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-        axis(ud.outlierPlot, 'equal');
-        axis(ud.outlierPlot, 'tight');
-        axis(ud.outlierPlot, 'square');
-    
-        hold(ud.outlierPlot, 'on')
-        plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'r');
-        hold(ud.outlierPlot, 'off')
-    end
-
-    % Update buttons
-    ud.keepBtn.Enable = 'on';
-    ud.excludeBtn.Enable = 'on';
-
-    % Plot microstate maps
-    ud.MapPanel.Visible = 'on';
-    ud.AllMaps = ud.MSMaps{idx};
-    fig_h.UserData = ud;
-    PlotMSMaps(fig_h, ud.nClasses);
-end
-
 function updatePlot(fig_h)
     ud = fig_h.UserData;
 
-    % Get data from the sets that have not been kept/excluded yet    
-    setIdx = strcmp(ud.setsTable.Data(:,2), " ");
+    % Get data from the sets that have not been excluded yet and sets that
+    % have been marked to keep
+    setIdx = ~strcmp(ud.setsTable.Data(:,2), "Exclude");        % set indices to plot   
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
     data = ud.data(setIdx,:);
     
     Centering = eye(size(data,1)) - 1/size(data,1);
@@ -241,14 +184,18 @@ function updatePlot(fig_h)
     ud.points = v;
 
     cla(ud.outlierPlot);
-    plot(ud.outlierPlot, v(:,1), v(:,2), '+k');
+    % Plot unexamined sets in black and sets marked to keep in green
+    hold(ud.outlierPlot, 'on');
+    plot(ud.outlierPlot, v(~keepIdx,1), v(~keepIdx,2), '+k');
+    plot(ud.outlierPlot, v(keepIdx,1), v(keepIdx,2), '+g');
+    hold(ud.outlierPlot, 'off');
 
-    ud.max = max(abs(v)*1.05, [], 'all');
+    ud.max = max(abs(v)*1.1, [], 'all');
     axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-    axis(ud.outlierPlot, 'equal');
-    axis(ud.outlierPlot, 'tight');
     axis(ud.outlierPlot, 'square');
-
+    ud.outlierPlot.XAxisLocation = 'origin';
+    ud.outlierPlot.YAxisLocation = 'origin';
+    
     fig_h.UserData = ud;
 end
 
@@ -262,23 +209,32 @@ function  manualSelectNext(src, event, fig_h)
     coords(:,2) = ud.points(:,2) - y;
     [~, idx] = min(sum(coords.^2, 2));
 
-    setIdx = find(strcmp(ud.setsTable.Data(:,2), " "));
+    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
     ud.ToExclude = setIdx(idx);
 
     % Update plot
     cla(ud.outlierPlot);
-    plot(ud.outlierPlot, ud.points(:,1), ud.points(:,2), '+k');
-    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-    axis(ud.outlierPlot, 'equal');
-    axis(ud.outlierPlot, 'tight');
-    axis(ud.outlierPlot, 'square');
-
     hold(ud.outlierPlot, 'on')
-    plot(ud.outlierPlot, ud.points(idx,1), ud.points(idx,2), 'or', 'MarkerFaceColor', 'r');
+    plot(ud.outlierPlot, ud.points(~keepIdx,1), ud.points(~keepIdx,2), '+k');
+    plot(ud.outlierPlot, ud.points(keepIdx,1), ud.points(keepIdx,2), '+g');
+    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+    axis(ud.outlierPlot, 'square');
+    ud.outlierPlot.XAxisLocation = 'origin';
+    ud.outlierPlot.YAxisLocation = 'origin';
+    
+    if strcmp(ud.setsTable.Data(setIdx(idx),2), "Keep")
+        color = 'g';
+    else
+        color = 'r';
+    end
+    plot(ud.outlierPlot, ud.points(idx,1), ud.points(idx,2), 'or', 'MarkerFaceColor', color);
     hold(ud.outlierPlot, 'off')
 
     % Update buttons
-    ud.keepBtn.Enable = 'on';
+    if ~strcmp(ud.setsTable.Data(setIdx(idx),2), "Keep")
+        ud.keepBtn.Enable = 'on';
+    end
     ud.excludeBtn.Enable = 'on';
 
     % Select set in table
@@ -296,25 +252,33 @@ function autoSelectNext(src, event, fig_h)
     ud = fig_h.UserData;
 
     pval = str2double(ud.pEdit.Value);
-    setIdx = find(strcmp(ud.setsTable.Data(:,2), " "));
-    dist = mahal(ud.points, ud.points);
-    [n,p] = size(ud.points);
-    critDist = ACR(p, n, pval);
+    % Only consider Mahalanobis distances for unexamined sets (not marked
+    % to keep or exclude)
+    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
+    points = ud.points(~keepIdx, :);
+    dist = mahal(points, points);
+
+    % But include sets marked to keep in ACR computation
+    n = numel(setIdx);
+    critDist = ACR(2, n, pval);
     [maxDist, idx] = max(dist);
 
+    setIdx = setIdx(~keepIdx);
     ud.ToExclude = setIdx(idx);
 
     if maxDist > critDist
         % Update plot
         cla(ud.outlierPlot);
-        plot(ud.outlierPlot, ud.points(:,1), ud.points(:,2), '+k');
-        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-        axis(ud.outlierPlot, 'equal');
-        axis(ud.outlierPlot, 'tight');
-        axis(ud.outlierPlot, 'square');
-    
         hold(ud.outlierPlot, 'on')
-        plot(ud.outlierPlot, ud.points(idx,1), ud.points(idx,2), 'or', 'MarkerFaceColor', 'r');
+        plot(ud.outlierPlot, ud.points(~keepIdx,1), ud.points(~keepIdx,2), '+k');
+        plot(ud.outlierPlot, ud.points(keepIdx,1), ud.points(keepIdx,2), '+g');
+        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+        axis(ud.outlierPlot, 'square');
+        ud.outlierPlot.XAxisLocation = 'origin';
+        ud.outlierPlot.YAxisLocation = 'origin';
+                    
+        plot(ud.outlierPlot, points(idx,1), points(idx,2), 'or', 'MarkerFaceColor', 'r');
         hold(ud.outlierPlot, 'off')
 
         % Update buttons
@@ -335,6 +299,88 @@ function autoSelectNext(src, event, fig_h)
     end
 end
 
+function cellChanged(src, event, fig_h)
+    if strcmp(event.EditData, 'Keep')
+        tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);            
+    else
+        tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);            
+    end
+    addStyle(src, tblStyle, 'cell', event.Indices);
+
+    % Update the plot
+    updatePlot(fig_h);
+    ud = fig_h.UserData;
+
+    % Update buttons
+    if strcmp(event.EditData, 'Keep')
+        ud.keepBtn.Enable = 'off';
+        ud.excludeBtn.Enable = 'on';
+    else
+        ud.keepBtn.Enable = 'on';
+        ud.excludeBtn.Enable = 'off';        
+    end
+
+    % Highlight set if it is marked to keep
+    if strcmp(event.EditData, 'Keep')
+        setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
+        plotIdx = find(setIdx == event.Indices(1));
+        hold(ud.outlierPlot, 'on');
+        plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'g');
+        hold(ud.outlierPlot, 'off');
+    end
+end
+
+function selectionChanged(src, event, fig_h)
+    ud = fig_h.UserData;
+
+    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
+    idx = event.Selection;    
+    plotIdx = find(setIdx == idx);
+
+    ud.ToExclude = idx;
+
+    % Update plot
+    cla(ud.outlierPlot);
+    hold(ud.outlierPlot, 'on')
+    plot(ud.outlierPlot, ud.points(~keepIdx,1), ud.points(~keepIdx,2), '+k');
+    plot(ud.outlierPlot, ud.points(keepIdx,1), ud.points(keepIdx,2), '+g');
+    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+    axis(ud.outlierPlot, 'square');
+    ud.outlierPlot.XAxisLocation = 'origin';
+    ud.outlierPlot.YAxisLocation = 'origin';
+
+    % Highlight set marker if set is not already excluded
+    if ~isempty(plotIdx)
+        if strcmp(ud.setsTable.Data(idx,2), "Keep")
+            color = 'g';
+        else
+            color = 'r';
+        end
+        plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', color);
+        hold(ud.outlierPlot, 'off')
+    end
+
+    % Update buttons
+    if ~strcmp(ud.setsTable.Data(idx,2), "Keep")
+        ud.keepBtn.Enable = 'on';
+    else
+        ud.keepBtn.Enable = 'off';
+    end
+
+    if ~strcmp(ud.setsTable.Data(idx,2), "Exclude")
+        ud.excludeBtn.Enable = 'on';
+    else
+        ud.excludeBtn.Enable = 'off';
+    end
+
+    % Plot microstate maps
+    ud.MapPanel.Visible = 'on';
+    ud.AllMaps = ud.MSMaps{idx};
+    fig_h.UserData = ud;
+    PlotMSMaps(fig_h, ud.nClasses);
+end
+
 function exclude(src, event, fig_h)
     ud = fig_h.UserData;
 
@@ -342,14 +388,10 @@ function exclude(src, event, fig_h)
     ud.setsTable.Data(ud.ToExclude, 2) = 'Exclude';
     tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);
     addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude 2]);
-    ud.setsTable.Selection = [];
 
     % Update buttons
-    ud.keepBtn.Enable = 'off';
+    ud.keepBtn.Enable = 'on';
     ud.excludeBtn.Enable = 'off';
-
-    % Hide maps
-    ud.MapPanel.Visible = 'off';
 
     fig_h.UserData = ud;
 
@@ -364,19 +406,23 @@ function keep(src, event, fig_h)
     ud.setsTable.Data(ud.ToExclude, 2) = 'Keep';
     tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);
     addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude 2]);
-    ud.setsTable.Selection = [];
 
-    % Update buttons
+    % Update buttons   
     ud.keepBtn.Enable = 'off';
-    ud.excludeBtn.Enable = 'off';
-
-    % Hide maps
-    ud.MapPanel.Visible = 'off';
+    ud.excludeBtn.Enable = 'on';
 
     fig_h.UserData = ud;
 
     % Update plot
     updatePlot(fig_h);
+    ud = fig_h.UserData;
+
+    % Highlight set
+    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
+    plotIdx = find(setIdx == ud.ToExclude);
+    hold(ud.outlierPlot, 'on');
+    plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'g');
+    hold(ud.outlierPlot, 'off');
 end
 
 function isEmpty = isEmptySet(in)
