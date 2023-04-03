@@ -1,5 +1,5 @@
 
-function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
+function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     
     com = '';
     global EEG;
@@ -69,8 +69,13 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin
     % Prompt user to provide number of classes if necessary
     AllMinClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MinClasses, 1:numel(SelectedEEG));
     AllMaxClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MaxClasses, 1:numel(SelectedEEG));
-    MinClasses = min(AllMinClasses);
-    MaxClasses = max(AllMaxClasses);
+    MinClasses = max(AllMinClasses);
+    MaxClasses = min(AllMaxClasses);
+    if MaxClasses < MinClasses
+        errorMessage = ['No overlap in microstate classes found between all selected sets.'];
+        errordlg2(errorMessage, 'Outlier detection error');
+        return;
+    end
     if contains('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
         classChoices = sprintf('%i Classes|', classRange);
@@ -91,34 +96,102 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin
             errordlg2(errorMessage, 'Outlier detection error');
             return;
         end
+    end
+
+    %% Check for consistent sorting across sets
+    % First check if any datasets remain unsorted
+    SortModes = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortMode, 1:numel(SelectedEEG), 'UniformOutput', false);
+    if any(strcmp(SortModes, 'none'))
+        errorMessage = ['Some datasets remain unsorted. Please sort all ' ...
+            'sets according to the same template before performing outlier detection.'];
+        errordlg2(errorMessage, 'Outlier detection error');
+        return;
+    end
+
+    % Then check if there is inconsistency in sorting across datasets
+    SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
+    emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
+    SortedBy(emptyIdx) = [];
+    if any(contains(SortedBy, '->'))
+        multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
+        SortedBy(contains(SortedBy, '->')) = multiSortedBys;
+    end
+    if ~numel(unique(SortedBy)) > 1
+        errorMessage = ['Sorting information differs across datasets. Please sort all ' ...
+            'sets according to the same template before performing outlier detection.'];
+        errordlg2(errorMessage, 'Outlier detection error');
+        return;
+    end
+
+    % Check for unassigned labels
+    Colors = cell2mat(arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false)');
+    if any(arrayfun(@(x) all(Colors(x,:) == [.75 .75 .75]), 1:size(Colors,1)))
+        errorMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, each set must either be ' ...
+            'manually sorted and assigned new labels, or sorted by a template set with equal (ideally) or greater number of maps. Please ' ...
+            're-sort sets such that all maps have a label before performing outlier detection.'];
+        errordlg2(errorMessage, 'Outlier detection error');
+        return;
+    end
+
+    % Check for consistent labels 
+    AllLabels = {};
+    for set=1:numel(SelectedEEG)                 
+        AllLabels = [AllLabels SelectedEEG(set).msinfo.MSMaps(nClasses).Labels];
+    end 
+    if numel(unique(AllLabels)) > nClasses
+        errorMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
+            'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
+            'and assigned the same set of labels, or sorted using a template set with an equal number of maps. Please re-sort sets to achieve consistency ' ...
+            'before performing outlier detection.'];
+        errordlg2(errorMessage, 'Outlier detection error');
+        return;
     end        
 
-    %% Create outlier detection GUI
+    EEGout = SelectedEEG;
+    CurrentSet = SelectedSets;
 
+    %% Create outlier detection GUI
+    
     fig_h = uifigure('Name', 'Outlier detection', 'Units', 'normalized', ...
     'Position', [.2 .1 .6 .8], 'HandleVisibility', 'on');
-    
-    horzLayout = uigridlayout(fig_h, [2 1]);
+        
+    vertLayout1 = uigridlayout(fig_h, [1 2]);
+    vertLayout1.ColumnWidth = {'1x', 300};
+    vertLayout1.ColumnSpacing = 0;
+    horzLayout = uigridlayout(vertLayout1, [2 1]);
     horzLayout.RowHeight = {'1x', 150};
-    vertLayout = uigridlayout(horzLayout, [1 3]);
-    vertLayout.ColumnWidth = {115, '1x', 200};
-    vertLayout.Padding = [0 0 0 0];
-    vertLayout.ColumnSpacing = 0;
-    btnLayout = uigridlayout(vertLayout, [12 1]);
+    horzLayout.Padding = [0 0 0 0];
+    vertLayout2 = uigridlayout(horzLayout, [1 2]);
+    vertLayout2.ColumnWidth = {115, '1x'};
+    btnLayout = uigridlayout(vertLayout2, [12 1]);
     btnLayout.Padding = [0 0 0 0];
     btnLayout.RowHeight = {'1x', 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, '1x'};
     
-    ud.outlierPlot = axes(vertLayout);
+    ud.outlierPlot = axes(vertLayout2);
     axis(ud.outlierPlot, 'equal');
     axis(ud.outlierPlot, 'tight');
     axis(ud.outlierPlot, 'square');
     
+    setLayout = uigridlayout(vertLayout1, [2 1]);
+    setLayout.RowHeight = {30, '1x'};
+    setLayout.Padding = [0 0 0 0];
+    
+    mapSelectLayout = uigridlayout(setLayout, [1 2]);
+    mapSelectLayout.ColumnWidth = {80, '1x'};
+    mapSelectLayout.Padding = [0 0 0 0];
+    uilabel(mapSelectLayout, 'Text', 'Select map', 'FontWeight', 'bold');
+    
+    % Get unique map labels
+    MapLabels = unique(AllLabels);
+    ud.selMap = uidropdown(mapSelectLayout, 'Items', MapLabels, 'ItemsData', 2:numel(MapLabels)+1, 'ValueChangedFcn', {@mapChanged, fig_h});
+    
     setnames = {SelectedEEG.setname};
     opts = {'Keep', 'Exclude'};
-    ud.setsTable = uitable(vertLayout, 'Data', [setnames', repmat(" ", numel(SelectedSets), 1)], 'RowName', [], 'SelectionType', 'row', ...
-        'ColumnName', {'Subject', 'Status'}, 'ColumnFormat', repmat({opts}, 1, numel(SelectedSets)), 'ColumnEditable', [false true], ...
+    % Find indices with missing maps and populate table data
+    tblData = [setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
+    ud.setsTable = uitable(setLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', ...
+        'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
-    ud.setsTable.Layout.Column = 3;
     
     manualBtn = uibutton(btnLayout, 'Text', 'Manual select next', 'ButtonPushedFcn', {@manualSelectNext, fig_h});
     manualBtn.Layout.Row = 2;
@@ -136,46 +209,45 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin
     plusBtn.Layout.Row = 10;
     minusBtn = uibutton(btnLayout, 'Text', '-');
     
-    ud.MapPanel = uipanel(horzLayout, 'BorderType', 'none');
+    ud.MapPanel = uipanel(horzLayout, 'BorderType', 'none', 'Visible', 'off');
     ud.MapPanel.Layout.Row = 2;
+    ud.MapAxes = axes(ud.MapPanel, 'Position', [0 0 .9 .8]);
     
-    % Add fields for plotting
-    ud.Edit = false;
-    ud.Scroll = false;
-    ud.Visible = true;
     ud.chanlocs = SelectedEEG(1).chanlocs;
-    ud.MSMaps = cell(1, numel(SelectedSets));
-    
+    ud.MSMaps = [];
     ud.nClasses = nClasses;
-    nChan = SelectedEEG(1).nbchan;
-    ud.data = nan(numel(SelectedSets), ud.nClasses*nChan);
-    % Extract concatenated microstate vectors from all selected sets
+    ud.nChan = SelectedEEG(1).nbchan;
+    % Extract microstate maps of the specified solution from all selected sets
     for i=1:numel(SelectedSets)
-        if SelectedEEG(i).nbchan ~= nChan
+        if SelectedEEG(i).nbchan ~= ud.nChan
             errordlg2('Number of channels differs between selected datasets', 'Outlier detection error');
             return;
         end
-    
-        maps = SelectedEEG(i).msinfo.MSMaps(ud.nClasses).Maps;
-        ud.data(i,:) = reshape(maps, [1 ud.nClasses*nChan]);   
-    
-        ud.MSMaps{i} = SelectedEEG(i).msinfo.MSMaps;
+        ud.MSMaps = [ud.MSMaps SelectedEEG(i).msinfo.MSMaps(ud.nClasses)];
     end
     
     fig_h.UserData = ud;
     
-    updatePlot(fig_h);
+    mapChanged(ud.selMap, [], fig_h);
 
 end
 
 function updatePlot(fig_h)
     ud = fig_h.UserData;
 
+    mapCol = ud.selMap.Value;
+    mapLabel = ud.selMap.Items{mapCol-1};
+
     % Get data from the sets that have not been excluded yet and sets that
-    % have been marked to keep
-    setIdx = ~strcmp(ud.setsTable.Data(:,2), "Exclude");        % set indices to plot   
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
-    data = ud.data(setIdx,:);
+    % have been marked to keep for the currently selected map
+    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
+    
+    data = nan(numel(setIdx), ud.nChan);
+    for i=1:numel(setIdx)
+        mapIdx = find(strcmp(ud.MSMaps(setIdx(i)).Labels, mapLabel));
+        data(i,:) = ud.MSMaps(i).Maps(mapIdx, :);
+    end
     
     Centering = eye(size(data,1)) - 1/size(data,1);
     data = Centering*data;
@@ -202,6 +274,9 @@ end
 function  manualSelectNext(src, event, fig_h)
     ud = fig_h.UserData;
 
+    mapCol = ud.selMap.Value;
+    mapLabel = ud.selMap.Items{mapCol-1};
+
     set(0, 'CurrentFigure', fig_h);
     [x,y] = ginput(1);
 
@@ -209,8 +284,8 @@ function  manualSelectNext(src, event, fig_h)
     coords(:,2) = ud.points(:,2) - y;
     [~, idx] = min(sum(coords.^2, 2));
 
-    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
+    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
     ud.ToExclude = setIdx(idx);
 
     % Update plot
@@ -223,7 +298,7 @@ function  manualSelectNext(src, event, fig_h)
     ud.outlierPlot.XAxisLocation = 'origin';
     ud.outlierPlot.YAxisLocation = 'origin';
     
-    if strcmp(ud.setsTable.Data(setIdx(idx),2), "Keep")
+    if strcmp(ud.setsTable.Data(setIdx(idx),mapCol), "Keep")
         color = 'g';
     else
         color = 'r';
@@ -232,30 +307,42 @@ function  manualSelectNext(src, event, fig_h)
     hold(ud.outlierPlot, 'off')
 
     % Update buttons
-    if ~strcmp(ud.setsTable.Data(setIdx(idx),2), "Keep")
+    if ~strcmp(ud.setsTable.Data(setIdx(idx),mapCol), "Keep")
         ud.keepBtn.Enable = 'on';
+    else
+        ud.keepBtn.Enable = 'off';
     end
     ud.excludeBtn.Enable = 'on';
 
     % Select set in table
-    ud.setsTable.Selection = setIdx(idx);
+    ud.setsTable.Selection = [setIdx(idx) mapCol];
     scroll(ud.setsTable, 'row', setIdx(idx));
 
-    % Plot maps of selected set
+    % Plot map of selected set    
+    mapIdx = find(strcmp(ud.MSMaps(setIdx(idx)).Labels, mapLabel));
+    X = cell2mat({ud.chanlocs.X});
+    Y = cell2mat({ud.chanlocs.Y});
+    Z = cell2mat({ud.chanlocs.Z});
+    Background = ud.MSMaps(setIdx(idx)).ColorMap(mapIdx,:);
+    dspCMap3(ud.MapAxes, double(ud.MSMaps(setIdx(idx)).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
+    title(ud.MapAxes, ud.MSMaps(setIdx(idx)).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
+    ud.MapAxes.Position = [0 0 .9 .9];
     ud.MapPanel.Visible = 'on';
-    ud.AllMaps = ud.MSMaps{setIdx(idx)};
+
     fig_h.UserData = ud;
-    PlotMSMaps(fig_h, ud.nClasses);
 end
 
 function autoSelectNext(src, event, fig_h)
     ud = fig_h.UserData;
 
+    mapCol = ud.selMap.Value;
+    mapLabel = ud.selMap.Items{mapCol-1};
+
     pval = str2double(ud.pEdit.Value);
     % Only consider Mahalanobis distances for unexamined sets (not marked
     % to keep or exclude)
-    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
+    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
     points = ud.points(~keepIdx, :);
     dist = mahal(points, points);
 
@@ -286,26 +373,33 @@ function autoSelectNext(src, event, fig_h)
         ud.excludeBtn.Enable = 'on';
 
         % Select set in table
-        ud.setsTable.Selection = setIdx(idx);
+        ud.setsTable.Selection = [setIdx(idx) mapCol];
         scroll(ud.setsTable, 'row', setIdx(idx));
 
-        % Plot maps of selected set
+        % Plot map of selected set    
+        mapIdx = find(strcmp(ud.MSMaps(setIdx(idx)).Labels, mapLabel));
+        X = cell2mat({ud.chanlocs.X});
+        Y = cell2mat({ud.chanlocs.Y});
+        Z = cell2mat({ud.chanlocs.Z});
+        Background = ud.MSMaps(setIdx(idx)).ColorMap(mapIdx,:);
+        dspCMap3(ud.MapAxes, double(ud.MSMaps(setIdx(idx)).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
+        title(ud.MapAxes, ud.MSMaps(setIdx(idx)).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
+        ud.MapAxes.Position = [0 0 .9 .9];
         ud.MapPanel.Visible = 'on';
-        ud.AllMaps = ud.MSMaps{setIdx(idx)};
+
         fig_h.UserData = ud;
-        PlotMSMaps(fig_h, ud.nClasses);
     else
         msgbox('No (further) outliers detected.');
     end
 end
 
-function cellChanged(src, event, fig_h)
+function cellChanged(tbl, event, fig_h)
     if strcmp(event.EditData, 'Keep')
         tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);            
     else
         tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);            
     end
-    addStyle(src, tblStyle, 'cell', event.Indices);
+    addStyle(tbl, tblStyle, 'cell', event.Indices);
 
     % Update the plot
     updatePlot(fig_h);
@@ -322,7 +416,8 @@ function cellChanged(src, event, fig_h)
 
     % Highlight set if it is marked to keep
     if strcmp(event.EditData, 'Keep')
-        setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
+        mapCol = ud.selMap.Value;
+        setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
         plotIdx = find(setIdx == event.Indices(1));
         hold(ud.outlierPlot, 'on');
         plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'g');
@@ -330,12 +425,20 @@ function cellChanged(src, event, fig_h)
     end
 end
 
-function selectionChanged(src, event, fig_h)
+function selectionChanged(tbl, event, fig_h)
     ud = fig_h.UserData;
 
-    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
-    idx = event.Selection;    
+    if event.Selection(2) ~= ud.selMap.Value && event.Selection(2) ~= 1
+        tbl.Selection = event.PreviousSelection;
+        return;
+    end
+
+    mapCol = ud.selMap.Value;
+    mapLabel = ud.selMap.Items{mapCol-1};
+
+    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
+    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
+    idx = event.Selection(1);    
     plotIdx = find(setIdx == idx);
 
     ud.ToExclude = idx;
@@ -352,7 +455,7 @@ function selectionChanged(src, event, fig_h)
 
     % Highlight set marker if set is not already excluded
     if ~isempty(plotIdx)
-        if strcmp(ud.setsTable.Data(idx,2), "Keep")
+        if strcmp(ud.setsTable.Data(idx,mapCol), "Keep")
             color = 'g';
         else
             color = 'r';
@@ -374,20 +477,29 @@ function selectionChanged(src, event, fig_h)
         ud.excludeBtn.Enable = 'off';
     end
 
-    % Plot microstate maps
+    % Plot map of selected set    
+    mapIdx = find(strcmp(ud.MSMaps(setIdx(idx)).Labels, mapLabel));
+    X = cell2mat({ud.chanlocs.X});
+    Y = cell2mat({ud.chanlocs.Y});
+    Z = cell2mat({ud.chanlocs.Z});
+    Background = ud.MSMaps(setIdx(idx)).ColorMap(mapIdx,:);
+    dspCMap3(ud.MapAxes, double(ud.MSMaps(setIdx(idx)).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
+    title(ud.MapAxes, ud.MSMaps(setIdx(idx)).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
+    ud.MapAxes.Position = [0 0 .9 .9];
     ud.MapPanel.Visible = 'on';
-    ud.AllMaps = ud.MSMaps{idx};
+
     fig_h.UserData = ud;
-    PlotMSMaps(fig_h, ud.nClasses);
 end
 
 function exclude(src, event, fig_h)
     ud = fig_h.UserData;
 
+    mapCol = ud.selMap.Value;
+
     % Update table
-    ud.setsTable.Data(ud.ToExclude, 2) = 'Exclude';
+    ud.setsTable.Data(ud.ToExclude, mapCol) = 'Exclude';
     tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);
-    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude 2]);
+    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude mapCol]);
 
     % Update buttons
     ud.keepBtn.Enable = 'on';
@@ -402,10 +514,12 @@ end
 function keep(src, event, fig_h)
     ud = fig_h.UserData;
 
+    mapCol = ud.selMap.Value;
+
     % Update table
-    ud.setsTable.Data(ud.ToExclude, 2) = 'Keep';
+    ud.setsTable.Data(ud.ToExclude, mapCol) = 'Keep';
     tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);
-    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude 2]);
+    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude mapCol]);
 
     % Update buttons   
     ud.keepBtn.Enable = 'off';
@@ -418,11 +532,44 @@ function keep(src, event, fig_h)
     ud = fig_h.UserData;
 
     % Highlight set
-    setIdx = find(~strcmp(ud.setsTable.Data(:,2), "Exclude"));  % sets indices to plot
+    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
     plotIdx = find(setIdx == ud.ToExclude);
     hold(ud.outlierPlot, 'on');
     plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'g');
     hold(ud.outlierPlot, 'off');
+end
+
+function mapChanged(src, event, fig_h)
+    ud = fig_h.UserData;
+
+    mapCol = src.Value;
+
+    % Set focus on the column corresponding to the currently selected map
+    % and gray out the other columns
+    unselectedStyle = uistyle('BackgroundColor', [.75 .75 .75], 'FontColor', [.95 .95 .95], 'FontWeight', 'normal');
+    selectedStyle = uistyle('BackgroundColor', [1 1 1], 'FontColor', [0 0 0], 'FontWeight', 'bold');
+    cols = 2:numel(src.Items)+1;
+    addStyle(ud.setsTable, unselectedStyle, 'column', cols(cols ~= mapCol));
+    addStyle(ud.setsTable, selectedStyle, 'column', mapCol);
+
+    % Add back coloring to the column of the currently selected map
+    keepStyle = uistyle('BackgroundColor', [.77 .96 .79]);
+    excludeStyle = uistyle('BackgroundColor', [.97 .46 .46]);
+    keepIdx = find(strcmp(ud.setsTable.Data(:, mapCol), "Keep"));
+    addStyle(ud.setsTable, keepStyle, 'cell', [keepIdx repmat(mapCol, numel(keepIdx), 1)]);
+    excludeIdx = find(strcmp(ud.setsTable.Data(:, mapCol), "Exclude"));
+    addStyle(ud.setsTable, excludeStyle, 'cell', [excludeIdx repmat(mapCol, numel(excludeIdx), 1)]);
+
+    % Make only the column of the currently selected map editable
+    editable = false(1, numel(src.Items)+1);
+    editable(mapCol) = true;
+    ud.setsTable.ColumnEditable = editable;
+
+    scroll(ud.setsTable, 'column', mapCol);
+    ud.MapPanel.Visible = 'off';
+    ud.setsTable.Selection = [];
+
+    updatePlot(fig_h);
 end
 
 function isEmpty = isEmptySet(in)
