@@ -247,16 +247,16 @@ function CompareMapsSolutionChanged(obj, event, CompFig)
     Z = cell2mat({FigAxes.SelectedEEG(1).chanlocs.Z});
 
     axes(FigAxes.XPMapAxis);
-    dspCMap2(FigAxes.XPMapAxis, DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap3(FigAxes.XPMapAxis, DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     axes(FigAxes.XNMapAxis);
-    dspCMap2(FigAxes.XNMapAxis, -DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap3(FigAxes.XNMapAxis, -DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     axes(FigAxes.YPMapAxis);
-    dspCMap2(FigAxes.YPMapAxis, DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap3(FigAxes.YPMapAxis, DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     axes(FigAxes.YNMapAxis);
-    dspCMap2(FigAxes.YNMapAxis, -DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
+    dspCMap3(FigAxes.YNMapAxis, -DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
 
     CompFig.UserData = FigAxes;
     
