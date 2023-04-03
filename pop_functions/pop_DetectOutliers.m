@@ -122,7 +122,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin
     
     manualBtn = uibutton(btnLayout, 'Text', 'Manual select next', 'ButtonPushedFcn', {@manualSelectNext, fig_h});
     manualBtn.Layout.Row = 2;
-    autoBtn = uibutton(btnLayout, 'Text', 'Auto select next', 'ButtonPushedFcn', {@autoSelectNext, fig_h});
+    autoBtn = uibutton(btnLayout, 'Text', 'Auto select next', 'ButtonPushedFcn', {@autoSelectNextFMCD, fig_h});
     allBtn = uibutton(btnLayout, 'Text', 'Auto select all', 'ButtonPushedFcn', {@autoSelectAllFMCD, fig_h});
     pLayout = uigridlayout(btnLayout, [1 2]);
     pLayout.Padding = [0 0 0 0];
@@ -163,9 +163,19 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin
     end
     
     fig_h.UserData = ud;
-    
+
+    initPlot(fig_h);
+end
+
+function initPlot(fig_h)
     updatePlot(fig_h);
 
+    % Store original points before anything is excluded
+    ud = fig_h.UserData;
+    if size(ud.points,1) == size(ud.data,1)
+        ud.ur_points = ud.points;
+    end
+    fig_h.UserData = ud;
 end
 
 function updatePlot(fig_h)
@@ -299,6 +309,110 @@ function autoSelectNext(src, event, fig_h)
     end
 end
 
+function autoSelectNextFMCD(src, event, fig_h)
+    ud = fig_h.UserData;
+
+    pval = str2double(ud.pEdit.Value);
+    [~,p] = size(ud.points); % p = dims
+
+    % Consider Mahalanobis distances of all points
+    excludeIdx = strcmp(ud.setsTable.Data(:,2), "Exclude");
+    keepIdx = strcmp(ud.setsTable.Data(:,2), "Keep");
+    setIdx = find(~excludeIdx);  % sets indices to plot
+    keepPlotIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
+    points = ud.ur_points;
+
+    % Calculate robust Mahalanobis distance using Fast-MCD
+    [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
+
+    % Calculate critical distance and compare with furthest point that has
+    % not been marked to keep or exclude
+    critDist = sqrt(chi2inv(1 - pval, p));
+    maxDist = 0;
+    maxIdx = 0;
+    for idx = 1:numel(dist)
+        if dist(idx) > maxDist && ~excludeIdx(idx) && ~keepIdx(idx)
+            maxDist = dist(idx);
+            maxIdx = idx;
+        end
+    end
+
+    if maxDist > critDist
+        ud.ToExclude = idx;
+
+        % Update plot
+        cla(ud.outlierPlot);
+        hold(ud.outlierPlot, 'on')
+        plot(ud.outlierPlot, ud.points(~keepPlotIdx,1), ud.points(~keepPlotIdx,2), '+k');
+        plot(ud.outlierPlot, ud.points(keepPlotIdx,1), ud.points(keepPlotIdx,2), '+g');
+        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+        axis(ud.outlierPlot, 'square');
+        ud.outlierPlot.XAxisLocation = 'origin';
+        ud.outlierPlot.YAxisLocation = 'origin';
+                    
+        plot(ud.outlierPlot, points(maxIdx,1), points(maxIdx,2), 'or', 'MarkerFaceColor', 'r');
+        hold(ud.outlierPlot, 'off')
+
+        % Update buttons
+        ud.keepBtn.Enable = 'on';
+        ud.excludeBtn.Enable = 'on';
+
+        % Select set in table
+        ud.setsTable.Selection = setIdx(maxIdx);
+        scroll(ud.setsTable, 'row', setIdx(maxIdx));
+
+        % Plot maps of selected set
+        ud.MapPanel.Visible = 'on';
+        ud.AllMaps = ud.MSMaps{setIdx(maxIdx)};
+        fig_h.UserData = ud;
+        PlotMSMaps(fig_h, ud.nClasses);
+    else
+        msgbox('No (further) outliers detected.');
+    end
+end
+
+function autoSelectAllFMCD(src, event, fig_h)
+    ud = fig_h.UserData;
+
+    pval = str2double(ud.pEdit.Value);
+    [~,p] = size(ud.points); % p = dims
+
+    % Consider Mahalanobis distances of all points
+    excludeIdx = strcmp(ud.setsTable.Data(:,2), "Exclude");
+    keepIdx = strcmp(ud.setsTable.Data(:,2), "Keep");
+    setIdx = find(~excludeIdx);  % sets indices to plot
+    keepPlotIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
+    points = ud.ur_points;
+
+    % Calculate robust Mahalanobis distance using Fast-MCD
+    [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
+
+    % Calculate critical distance and compare with all points
+    outliers = dist > sqrt(chi2inv(1 - pval, p));
+
+    for idx = 1:numel(outliers)
+        if outliers(idx) && ~keepIdx(idx)
+            % Outlier detected
+            ud.ToExclude = idx;
+            fig_h.UserData = ud;
+            exclude(src, event, fig_h);
+        end
+    end
+
+    % Update plot
+    cla(ud.outlierPlot);
+    hold(ud.outlierPlot, 'on')
+    plot(ud.outlierPlot, ud.points(~keepPlotIdx,1), ud.points(~keepPlotIdx,2), '+k');
+    plot(ud.outlierPlot, ud.points(keepPlotIdx,1), ud.points(keepPlotIdx,2), '+g');
+    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+    axis(ud.outlierPlot, 'square');
+    ud.outlierPlot.XAxisLocation = 'origin';
+    ud.outlierPlot.YAxisLocation = 'origin';
+    hold(ud.outlierPlot, 'off')
+
+    fig_h.UserData = ud;
+end
+
 function cellChanged(src, event, fig_h)
     if strcmp(event.EditData, 'Keep')
         tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);            
@@ -377,51 +491,6 @@ function selectionChanged(src, event, fig_h)
     % Plot microstate maps
     ud.MapPanel.Visible = 'on';
     ud.AllMaps = ud.MSMaps{idx};
-    fig_h.UserData = ud;
-    PlotMSMaps(fig_h, ud.nClasses);
-end
-
-function autoSelectAllFMCD(src, event, fig_h)
-    ud = fig_h.UserData;
-
-    pval = str2double(ud.pEdit.Value);
-    setIdx = find(strcmp(ud.setsTable.Data(:,2), " "));
-    [~,p] = size(ud.points); % p = dims
-
-    % Calculate robust Mahalanobis distance using Fast-MCD
-    [~, ~, dist] = robustcov(ud.points, "Method", "fmcd", "OutlierFraction", 0.25);
-
-    % Calculate critical distance and compare with max
-    outliers = dist > sqrt(chi2inv(1 - pval, p));
-
-    for idx = 1:numel(outliers)
-        if outliers(idx)
-            % Outlier detected
-            ud.ToExclude = setIdx(idx);
-            fig_h.UserData = ud;
-            exclude(src, event, fig_h);
-        end
-    end
-
-    % Update plot
-    cla(ud.outlierPlot);
-    plot(ud.outlierPlot, ud.points(:,1), ud.points(:,2), '+k');
-    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-    axis(ud.outlierPlot, 'equal');
-    axis(ud.outlierPlot, 'tight');
-    axis(ud.outlierPlot, 'square');
-
-    % Update buttons
-    ud.keepBtn.Enable = 'on';
-    ud.excludeBtn.Enable = 'on';
-
-    % Select set in table
-    ud.setsTable.Selection = setIdx(idx);
-    scroll(ud.setsTable, 'row', setIdx(idx));
-
-    % Plot maps of selected set
-    ud.MapPanel.Visible = 'on';
-    ud.AllMaps = ud.MSMaps{setIdx(idx)};
     fig_h.UserData = ud;
     PlotMSMaps(fig_h, ud.nClasses);
 end
