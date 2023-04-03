@@ -60,7 +60,19 @@
 function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 
     global MSTEMPLATE;
-    global showMessage;
+    global guiOpts;
+    guiOpts.showCombWarning = true;
+    guiOpts.showSortWarning = true;
+    guiOpts.showGetWarning = true;
+    guiOpts.showQuantWarning1 = true;
+    guiOpts.showQuantWarning2 = true;
+    guiOpts.showQuantWarning3 = true;
+    guiOpts.showQuantWarning4 = true;
+    guiOpts.showQuantWarning5 = true;
+    guiOpts.showDynWarning = true;
+    guiOpts.showCompWarning1 = true;
+    guiOpts.showCompWarning2 = true;
+    guiOpts.showCompWarning3 = true;
 
     VersionNumber = '1.3';
     vers = ['Microstates' VersionNumber];
@@ -128,72 +140,41 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     templatepath = fullfile(pluginpath,'Templates');
 
     Templates = dir(fullfile(templatepath,'*.set'));
-       
+    MSTemplate = [];   
     for t = 1: numel(Templates)
-        MSTemplate(t) = pop_loadset('filename',Templates(t).name,'filepath',templatepath);
+        MSTemplate = eeg_store(MSTemplate,pop_loadset('filename',Templates(t).name,'filepath',templatepath));
     end
     
     MSTEMPLATE = MSTemplate;
-    showMessage = 1;
     
-    comFindMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_FindMSTemplates(ALLEEG,[]);'                         catch_strings.store_and_hist]; % ok
-    comCombineMSTemplates  = [try_strings.no_check '[EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,false);'                      catch_strings.new_and_hist];
-    comCombineMSMeans      = [try_strings.no_check '[EEG LASTCOM] = pop_CombMSTemplates(ALLEEG,CURRENTSET,true );'                      catch_strings.new_and_hist];
-    comSortMSTemplates     = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],false);'                   catch_strings.store_and_hist];
-    comSortMSMeans         = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],true) ;'                   catch_strings.store_and_hist];
-    comSortMSTemplatesT    = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],false,-1);'                catch_strings.store_and_hist];
-    comSortMSMeansT        = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_SortMSTemplates(ALLEEG,[],true, -1) ;'               catch_strings.store_and_hist];
-        
-    comGetIndMSDynamics    = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,false);'                    catch_strings.new_and_hist];
-    comGetMeanMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true);'                     catch_strings.new_and_hist];
-    comGetTMplMSDynamics   = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_GetMSDynamics(ALLEEG,EEG,true,[],-1);'               catch_strings.new_and_hist];
-    comQuantMSTemplatesS   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0);'                      catch_strings.store_and_hist];
-    comQuantMSTemplatesM   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],1);'                      catch_strings.store_and_hist];
-    comQuantMSTemplatesT   = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],2);'                      catch_strings.store_and_hist];
-    comQuantMSDataVis      = [try_strings.no_check '[EEG CURRENTSET LASTCOM] = pop_QuantMSTemplates(ALLEEG,[],0, [], [], 1);'           catch_strings.store_and_hist];
-
-    comRaguMSTemplates     = [try_strings.no_check '[           LASTCOM] = pop_RaguMSTemplates(ALLEEG,CURRENTSET       );'          catch_strings.add_to_hist];
-    %    comBootStrapMSNumber   = [try_strings.no_check '[           LASTCOM] = pop_BootstrapMSNumber(ALLEEG,CURRENTSET);'       catch_strings.add_to_hist];
+    comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_FindMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
+    comCombineMSTemplates  = [try_strings.no_check '[ALLEEG, EEG, LASTCOM]                  = pop_CombMSTemplates(ALLEEG);'                        catch_strings.new_and_hist];
+    comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]      = pop_SortMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
+    comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_DetectOutliers(ALLEEG);'                         catch_strings.store_and_hist];
+    comCompareMaps         = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_CompareMSTemplates(ALLEEG);'                     catch_strings.store_and_hist];
+    comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_GetMSDynamics(ALLEEG);'                          catch_strings.new_and_hist];
+    comQuantMSTemplates    = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_QuantMSTemplates(ALLEEG);'                       catch_strings.store_and_hist];
+    comRaguMSTemplates     = [try_strings.no_check 'LASTCOM                                 = pop_RaguMSTemplates(ALLEEG);'                        catch_strings.add_to_hist];
     
-    comShowIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG, nan,false ,ALLEEG);'      catch_strings.add_to_hist];
-    comEditIndMSMaps       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSMaps(EEG, nan,true  ,ALLEEG);'      catch_strings.store_and_hist];
-    comShowIndMSDyn        = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,false);'             catch_strings.store_and_hist];
-    comShowIndMSDynM       = [try_strings.no_check '[ALLEEG EEG LASTCOM] = pop_ShowIndMSDyn(ALLEEG,EEG,true);'              catch_strings.store_and_hist];
+    comShowIndMSMaps       = [try_strings.no_check '[~, LASTCOM]                            = pop_ShowIndMSMaps(ALLEEG);'                          catch_strings.add_to_hist];
+    comShowIndMSDyn       =  [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_ShowIndMSDyn(ALLEEG);'                           catch_strings.store_and_hist];
 
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates 1.3 Beta','userdata','study:on','Separator','on');
 
-    plotmenu = findobj(fig, 'tag', 'plot');
-%    uimenu( plotmenu, 'label', 'Plot microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','on');
-    uimenu( plotmenu, 'label', 'Display microstate maps'                       ,'CallBack',comShowIndMSMaps,'Separator','off');
-    uimenu( plotmenu, 'label', 'Edit & sort microstate maps'                   ,'CallBack',comEditIndMSMaps,'Separator','off');
-    uimenu( plotmenu, 'label', 'Plot microstate dynamics (Own template'                   ,'CallBack',comShowIndMSDyn,'Separator','on');
-    uimenu( plotmenu, 'label', 'Plot microstate dynamics (Mean template)'   ,'CallBack',comShowIndMSDynM);
-
-    % create menus if necessary
-    % -------------------------
-    uimenu( toolssubmenu, 'Label', 'Identify  microstate  maps'                           , 'CallBack', comFindMSTemplates,    'position', 1, 'userdata', 'study:on');
-
-    uimenu( toolssubmenu, 'Label', 'Compute mean microstate maps across individuals'       , 'CallBack', comCombineMSTemplates, 'position', 2, 'userdata', 'study:on','Separator','on');
-    uimenu( toolssubmenu, 'Label', 'Compute grand mean microstate maps across means'       , 'CallBack', comCombineMSMeans    , 'position', 3, 'userdata', 'study:on');
-
-    uimenu( toolssubmenu, 'Label', 'Sort individual microstate maps according to mean'     , 'CallBack', comSortMSTemplates, 'position', 5, 'userdata', 'study:on','Separator','on');
-    uimenu(toolssubmenu, 'label',  'Sort individual microstate maps according to published template' , 'CallBack', comSortMSTemplatesT,'position', 6, 'userdata', 'study:on');
-
-    uimenu( toolssubmenu, 'Label', 'Sort mean microstate maps according to a grand mean'    , 'CallBack', comSortMSMeans    , 'position', 7, 'userdata', 'study:on','Separator','on');    
-    uimenu(toolssubmenu, 'label',  'Sort mean microstate maps according to published template'       , 'CallBack', comSortMSMeansT,    'position',8, 'userdata', 'study:on');
-
-    uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (own template maps)'  , 'CallBack'       , comGetIndMSDynamics    ,   'position',  9, 'Separator','on');
-    uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (mean template maps)' , 'CallBack'       , comGetMeanMSDynamics   ,   'position',  10);
-    uimenu( toolssubmenu, 'Label', 'Obtain microstate dynamics (published template maps)' , 'CallBack'  , comGetTMplMSDynamics   ,   'position',  11);
-    
-    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (own template maps)'  , 'CallBack', comQuantMSTemplatesS,   'position', 12, 'userdata', 'study:on', 'Separator','on');
-    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (mean template maps)' , 'CallBack', comQuantMSTemplatesM,   'position', 13, 'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Quantify microstates in dataset (published template maps)', 'CallBack', comQuantMSTemplatesT,   'position', 14, 'userdata', 'study:on');
-
-    uimenu( toolssubmenu, 'Label', 'Display microstate data visualizations (own template maps)'  , 'CallBack', comQuantMSDataVis,   'position', 16, 'Separator','on');
+    uimenu( toolssubmenu, 'Label', 'Identify individual template maps',                         'CallBack', comFindMSTemplates,     'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Identify group level or grand mean template maps',          'CallBack', comCombineMSTemplates,  'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Edit & sort microstate maps',                               'CallBack', comSortMSTemplates,     'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Outlier detection',                                         'Callback', comDetectOutliers,      'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Quantify microstate dynamics',                              'CallBack', comQuantMSTemplates,    'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',       'CallBack', comGetMSDynamics,       'userdata', 'study:on', 'Separator', 'on');    
 
     if numel(which('Ragu')) > 0
-        uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,   'position', 19,'Separator','on');
+        uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,'Separator','on', 'userdata', 'study:on');
     end
+    
+    plotmenu = findobj(fig, 'tag', 'plot');
+    uimenu( plotmenu, 'Label', 'Plot microstate maps',      'CallBack', comShowIndMSMaps,'userdata', 'study:on', 'Separator','on');
+    uimenu( plotmenu, 'Label', 'Plot microstate dynamics',  'CallBack', comShowIndMSDyn, 'userdata', 'study:on');    
+    uimenu( plotmenu, 'Label', 'Compare template maps',     'CallBack', comCompareMaps,  'userdata', 'study:on');  
 end
