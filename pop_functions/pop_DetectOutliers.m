@@ -338,7 +338,7 @@ function autoSelectNextFMCD(src, event, fig_h)
     end
 
     if maxDist > critDist
-        ud.ToExclude = idx;
+        ud.ToExclude = maxIdx;
 
         % Update plot
         cla(ud.outlierPlot);
@@ -358,12 +358,12 @@ function autoSelectNextFMCD(src, event, fig_h)
         ud.excludeBtn.Enable = 'on';
 
         % Select set in table
-        ud.setsTable.Selection = setIdx(maxIdx);
-        scroll(ud.setsTable, 'row', setIdx(maxIdx));
+        ud.setsTable.Selection = maxIdx;
+        scroll(ud.setsTable, 'row', maxIdx);
 
         % Plot maps of selected set
         ud.MapPanel.Visible = 'on';
-        ud.AllMaps = ud.MSMaps{setIdx(maxIdx)};
+        ud.AllMaps = ud.MSMaps{maxIdx};
         fig_h.UserData = ud;
         PlotMSMaps(fig_h, ud.nClasses);
     else
