@@ -186,7 +186,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     ud.selMap = uidropdown(mapSelectLayout, 'Items', MapLabels, 'ItemsData', 2:numel(MapLabels)+1, 'ValueChangedFcn', {@mapChanged, fig_h});
     
     setnames = {SelectedEEG.setname};
-    opts = {'Keep', 'Exclude'};
+    opts = {'Keep', 'Exclude', 'Highlight'};
     % Find indices with missing maps and populate table data
     tblData = [setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
     ud.setsTable = uitable(setLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', ...
@@ -229,13 +229,6 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     fig_h.UserData = ud;
     
     mapChanged(ud.selMap, [], fig_h);
-
-    % Store original points before anything is excluded
-    ud = fig_h.UserData;
-    if size(ud.points,1) == size(ud.data,1)
-        ud.ur_points = ud.points;
-    end
-    fig_h.UserData = ud;
 end
 
 function updatePlot(fig_h)
@@ -252,7 +245,7 @@ function updatePlot(fig_h)
     data = nan(numel(setIdx), ud.nChan);
     for i=1:numel(setIdx)
         mapIdx = find(strcmp(ud.MSMaps(setIdx(i)).Labels, mapLabel));
-        data(i,:) = ud.MSMaps(i).Maps(mapIdx, :);
+        data(i,:) = ud.MSMaps(setIdx(i)).Maps(mapIdx, :);
     end
     
     Centering = eye(size(data,1)) - 1/size(data,1);
@@ -273,6 +266,11 @@ function updatePlot(fig_h)
     axis(ud.outlierPlot, 'square');
     ud.outlierPlot.XAxisLocation = 'origin';
     ud.outlierPlot.YAxisLocation = 'origin';
+
+    % Store original points before anything is excluded
+    if size(ud.points,1) == size(ud.MSMaps,2)
+        ud.ur_points(mapCol-1,:,:) = ud.points;
+    end
     
     fig_h.UserData = ud;
 end
@@ -402,15 +400,20 @@ end
 function autoSelectNextFMCD(src, event, fig_h)
     ud = fig_h.UserData;
 
+    mapCol = ud.selMap.Value;
+    mapLabel = ud.selMap.Items{mapCol-1};
+
     pval = str2double(ud.pEdit.Value);
     [~,p] = size(ud.points); % p = dims
 
-    % Consider Mahalanobis distances of all points
-    excludeIdx = strcmp(ud.setsTable.Data(:,2), "Exclude");
-    keepIdx = strcmp(ud.setsTable.Data(:,2), "Keep");
+    % Pre-calculate indices for plotting
+    excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");
+    keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
     setIdx = find(~excludeIdx);  % sets indices to plot
-    keepPlotIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
-    points = ud.ur_points;
+    plotKeepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");      % set indices to plot in green
+    
+    % Consider Mahalanobis distances of all points
+    points = squeeze(ud.ur_points(mapCol-1,:,:));
 
     % Calculate robust Mahalanobis distance using Fast-MCD
     [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
@@ -433,14 +436,14 @@ function autoSelectNextFMCD(src, event, fig_h)
         % Update plot
         cla(ud.outlierPlot);
         hold(ud.outlierPlot, 'on')
-        plot(ud.outlierPlot, ud.points(~keepPlotIdx,1), ud.points(~keepPlotIdx,2), '+k');
-        plot(ud.outlierPlot, ud.points(keepPlotIdx,1), ud.points(keepPlotIdx,2), '+g');
+        plot(ud.outlierPlot, ud.points(~plotKeepIdx,1), ud.points(~plotKeepIdx,2), '+k');
+        plot(ud.outlierPlot, ud.points(plotKeepIdx,1), ud.points(plotKeepIdx,2), '+g');
         axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
         axis(ud.outlierPlot, 'square');
         ud.outlierPlot.XAxisLocation = 'origin';
         ud.outlierPlot.YAxisLocation = 'origin';
                     
-        plot(ud.outlierPlot, points(maxIdx,1), points(maxIdx,2), 'or', 'MarkerFaceColor', 'r');
+        plot(ud.outlierPlot, ud.points(find(setIdx==maxIdx),1), ud.points(find(setIdx==maxIdx),2), 'or', 'MarkerFaceColor', 'r');
         hold(ud.outlierPlot, 'off')
 
         % Update buttons
@@ -448,14 +451,21 @@ function autoSelectNextFMCD(src, event, fig_h)
         ud.excludeBtn.Enable = 'on';
 
         % Select set in table
-        ud.setsTable.Selection = maxIdx;
+        ud.setsTable.Selection = [maxIdx mapCol];
         scroll(ud.setsTable, 'row', maxIdx);
 
-        % Plot maps of selected set
+        % Plot map of selected set    
+        mapIdx = find(strcmp(ud.MSMaps(maxIdx).Labels, mapLabel));
+        X = cell2mat({ud.chanlocs.X});
+        Y = cell2mat({ud.chanlocs.Y});
+        Z = cell2mat({ud.chanlocs.Z});
+        Background = ud.MSMaps(maxIdx).ColorMap(mapIdx,:);
+        dspCMap3(ud.MapAxes, double(ud.MSMaps(maxIdx).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
+        title(ud.MapAxes, ud.MSMaps(maxIdx).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
+        ud.MapAxes.Position = [0 0 .9 .9];
         ud.MapPanel.Visible = 'on';
-        ud.AllMaps = ud.MSMaps{maxIdx};
+
         fig_h.UserData = ud;
-        PlotMSMaps(fig_h, ud.nClasses);
     else
         msgbox('No (further) outliers detected.');
     end
@@ -464,15 +474,15 @@ end
 function autoSelectAllFMCD(src, event, fig_h)
     ud = fig_h.UserData;
 
+    mapCol = ud.selMap.Value;
+
     pval = str2double(ud.pEdit.Value);
     [~,p] = size(ud.points); % p = dims
 
     % Consider Mahalanobis distances of all points
-    excludeIdx = strcmp(ud.setsTable.Data(:,2), "Exclude");
-    keepIdx = strcmp(ud.setsTable.Data(:,2), "Keep");
-    setIdx = find(~excludeIdx);  % sets indices to plot
-    keepPlotIdx = strcmp(ud.setsTable.Data(setIdx,2), "Keep");      % set indices to plot in green
-    points = ud.ur_points;
+    excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");
+    keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
+    points = squeeze(ud.ur_points(mapCol-1,:,:));
 
     % Calculate robust Mahalanobis distance using Fast-MCD
     [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
@@ -481,24 +491,14 @@ function autoSelectAllFMCD(src, event, fig_h)
     outliers = dist > sqrt(chi2inv(1 - pval, p));
 
     for idx = 1:numel(outliers)
-        if outliers(idx) && ~keepIdx(idx)
+        if outliers(idx) && ~excludeIdx(idx) && ~keepIdx(idx)
             % Outlier detected
             ud.ToExclude = idx;
             fig_h.UserData = ud;
-            exclude(src, event, fig_h);
+            highlight(src, event, fig_h);
+            ud = fig_h.UserData;
         end
     end
-
-    % Update plot
-    cla(ud.outlierPlot);
-    hold(ud.outlierPlot, 'on')
-    plot(ud.outlierPlot, ud.points(~keepPlotIdx,1), ud.points(~keepPlotIdx,2), '+k');
-    plot(ud.outlierPlot, ud.points(keepPlotIdx,1), ud.points(keepPlotIdx,2), '+g');
-    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-    axis(ud.outlierPlot, 'square');
-    ud.outlierPlot.XAxisLocation = 'origin';
-    ud.outlierPlot.YAxisLocation = 'origin';
-    hold(ud.outlierPlot, 'off')
 
     fig_h.UserData = ud;
 end
@@ -507,8 +507,10 @@ end
 function cellChanged(tbl, event, fig_h)
     if strcmp(event.EditData, 'Keep')
         tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);            
-    else
-        tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);            
+    elseif strcmp(event.EditData, 'Exclude')
+        tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);
+    elseif strcmp(event.EditData, 'Highlight')
+        tblStyle = uistyle('BackgroundColor', [.99 .99 .59]);
     end
     addStyle(tbl, tblStyle, 'cell', event.Indices);
 
@@ -648,6 +650,23 @@ function keep(src, event, fig_h)
     hold(ud.outlierPlot, 'on');
     plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'g');
     hold(ud.outlierPlot, 'off');
+end
+
+function highlight(src, event, fig_h)
+    ud = fig_h.UserData;
+
+    mapCol = ud.selMap.Value;
+
+    % Update table
+    ud.setsTable.Data(ud.ToExclude, mapCol) = 'Highlight';
+    tblStyle = uistyle('BackgroundColor', [.99 .99 .59]);
+    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude mapCol]);
+
+    % Update buttons   
+    ud.keepBtn.Enable = 'on';
+    ud.excludeBtn.Enable = 'on';
+
+    fig_h.UserData = ud;
 end
 
 function mapChanged(src, event, fig_h)
