@@ -674,7 +674,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         end
         ymax = occAx.YLim(2)*1.1;
         ylim(occAx, [0 ymax]);
-        title(occAx, 'Occurence (segments/s)');
+        title(occAx, 'Mean Occurence (segments/s)');
     
         % Coverage
         covAx = nexttile(t, 5);
@@ -689,33 +689,33 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         title(covAx, 'Coverage (%)');
     
         % GFP
-    %     gfpAx = nexttile(t);
-    %     if numel(SelectedSets) == 1
-    %         bar(gfpAx, x, MSStats.MeanGFP);
-    %     else
-    %         GFPs = cell2mat(arrayfun(@(x) double(MSStats(x).MeanGFP), 1:numel(SelectedSets), 'UniformOutput', false));
-    %         swarmchart(gfpAx, x, GFPs, 25, [0 0.4470 0.7410],'filled');
-    %     end
-%         ymax = gfpAx.YLim(2)*1.1;
-%         ylim(gfpAx, [0 ymax]);
-    %     title(gfpAx, 'Mean GFP');
+        gfpAx = nexttile(t);
+        if numel(SelectedSets) == 1
+            bar(gfpAx, x, MSStats.MeanGFP);
+        else
+            GFPs = cell2mat(arrayfun(@(x) double(MSStats(x).MeanGFP), 1:numel(SelectedSets), 'UniformOutput', false));
+            swarmchart(gfpAx, x, GFPs, 25, [0 0.4470 0.7410],'filled');
+        end
+        ymax = gfpAx.YLim(2)*1.1;
+        ylim(gfpAx, [0 ymax]);
+        title(gfpAx, 'Mean GFP');
     
         % Transition matrix
-        nexttile(t, 3);
-        if numel(SelectedSets) == 1
-            h = heatmap(t, Labels, Labels, MSStats.OrgTM, 'GridVisible', 'off');
-            h.Title = 'Transition Matrix';
-        else
-            avgTM = zeros(FitPar.nClasses);
-            for s=1:numel(SelectedSets)
-                avgTM = avgTM + MSStats(s).OrgTM;
-            end
-            avgTM = avgTM/numel(SelectedSets);
-            h = heatmap(t, Labels, Labels, avgTM, 'GridVisible', 'off');
-            h.Title = 'Average Transition Matrix';
-        end
-        h.XLabel = 'To';
-        h.YLabel = 'From';
+%         nexttile(t, 3);
+%         if numel(SelectedSets) == 1
+%             h = heatmap(t, Labels, Labels, MSStats.OrgTM, 'GridVisible', 'off');
+%             h.Title = 'Transition Matrix';
+%         else
+%             avgTM = zeros(FitPar.nClasses);
+%             for s=1:numel(SelectedSets)
+%                 avgTM = avgTM + MSStats(s).OrgTM;
+%             end
+%             avgTM = avgTM/numel(SelectedSets);
+%             h = heatmap(t, Labels, Labels, avgTM, 'GridVisible', 'off');
+%             h.Title = 'Average Transition Matrix';
+%         end
+%         h.XLabel = 'To';
+%         h.YLabel = 'From';
     
         % Delta transition matrix
         nexttile(t, 6);
