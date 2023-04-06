@@ -252,7 +252,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     if ~isempty(SelectedSets)
         % Check for empty sets, dynamics sets, or any sets without
         % microstate maps
-        SelectedSets = unique(SelectedSets);
+        SelectedSets = unique(SelectedSets, 'stable');
         isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
@@ -489,18 +489,15 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     end
 
     %% Verify compatibility between selected sets to sort and template set
-    % If one of the selected sets is the same as the template set, remove
-    % it from SelectedSets
-    if matches(ChosenTemplate.setname, {AllEEG(SelectedSets).setname})
-        SelectedSets(matches({AllEEG(SelectedSets).setname}, ChosenTemplate.setname)) = [];
-    end
-
     % If the template set chosen is a mean set, make sure it is a parent
     % set of all the selected sets
     if ~usingPublished
         warningSetnames = {};
-        for index = 1:length(SelectedSets)
+        for index = 1:length(SelectedSets)          
             sIndex = SelectedSets(index);
+            if matches(AllEEG(sIndex).setname, ChosenTemplate.setname)
+                continue
+            end
             containsChild = checkSetForChild(AllEEG, meanSets(TemplateIndex), AllEEG(sIndex).setname);
             if ~containsChild
                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
@@ -525,6 +522,10 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     for index = 1:length(SelectedSets)
         fprintf('Sorting dataset %i of %i\n', index, numel(SelectedSets));
         sIndex = SelectedSets(index);
+
+        if matches(AllEEG(sIndex).setname, ChosenTemplate.setname)
+            continue
+        end
 
         if ~any(ismember(Classes, AllEEG(sIndex).msinfo.ClustPar.MinClasses:AllEEG(sIndex).msinfo.ClustPar.MaxClasses))
             continue

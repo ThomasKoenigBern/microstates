@@ -68,7 +68,7 @@ function PlotMSMaps(fh, classes)
 
             % Plot map and add title
             Background = UserData.AllMaps(classesToUpdate(y)).ColorMap(x_pos,:);
-            dspCMap2(UserData.Axes{y_pos, x_pos}, double(UserData.AllMaps(classesToUpdate(y)).Maps(x_pos,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
+            dspCMap3(UserData.Axes{y_pos, x_pos}, double(UserData.AllMaps(classesToUpdate(y)).Maps(x_pos,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
             UserData.Axes{y_pos, x_pos}.Toolbar.Visible = 'off';
             title(UserData.Axes{y_pos, x_pos}, UserData.AllMaps(classesToUpdate(y)).Labels(x_pos), ...
                 'FontSize', 9, 'Interpreter','none');

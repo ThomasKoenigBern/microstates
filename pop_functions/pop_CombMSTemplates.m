@@ -104,12 +104,14 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'MeanName', 'GrandMean', @(x) validateattributes(x, strClass, strAttributes));
+    addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'vector'}));
 
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
     IgnorePolarity = p.Results.IgnorePolarity;
     MeanName = p.Results.MeanName;
+    Classes = p.Results.Classes;
 
     %% SelectedSets validation
     % First make sure there are enough sets to combine (at least 2)
@@ -133,7 +135,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     if ~isempty(SelectedSets)
         % First check for empty sets, dynamics sets, or any sets without
         % microstate maps
-        SelectedSets = unique(SelectedSets);
+        SelectedSets = unique(SelectedSets, 'stable');
         isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
@@ -305,6 +307,11 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     msinfo.children = children;
     msinfo.ClustPar = AllEEG(SelectedSets(1)).msinfo.ClustPar;
    
+    if ~isempty(Classes)
+        MinClasses = min(Classes);
+        MaxClasses = max(Classes);
+    end
+
     %% Create combined maps
     for n = MinClasses:MaxClasses
         MapsToSort = nan(numel(SelectedSets),n,numel(tmpchanlocs));
@@ -361,7 +368,8 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     sortCom = '';
     if SortMaps        
         newEEG = pop_newset(AllEEG, EEGout, numel(AllEEG), 'gui', 'off');
-        [AllEEG, EEGout, ~, sortCom] = pop_SortMSTemplates(newEEG, numel(newEEG), 'TemplateSet', 'manual');
+        [newEEG, EEGout, ~, sortCom] = pop_SortMSTemplates(newEEG, numel(newEEG), 'TemplateSet', 'manual');
+        AllEEG = eeg_store(AllEEG, newEEG(1:end-1), 1:numel(newEEG)-1);
     end
 
     %% Command string generation

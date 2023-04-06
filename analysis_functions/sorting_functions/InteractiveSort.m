@@ -118,27 +118,31 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
             EEGout = AllEEG(SelectedSet);
             CurrentSet = SelectedSet;
             com = ud.com;
+
+            sortCom = '';
+            if hasChildren            
+                if strcmp(selection, 'Clear dependent sorting')
+                    AllEEG = ClearDataSortedByParent(AllEEG, AllEEG(SelectedSet).msinfo.children);
+                elseif strcmp(selection, 'Sort dependent sets by this set')
+                    childIdx = FindChildSets(AllEEG, SelectedSet);
+                    if ~isempty(childIdx)
+                        IgnorePolarity = AllEEG(SelectedSet).msinfo.ClustPar.IgnorePolarity;
+                        Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
+                        [AllEEG, childEEG, childIdx, sortCom] = pop_SortMSTemplates(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
+                            'IgnorePolarity', IgnorePolarity, 'Classes', Classes);
+                        AllEEG = eeg_store(AllEEG, childEEG, childIdx);
+                    else
+                        disp('Could not find dependent sets for resorting');
+                    end
+                end
+            end
+
+            if ~isempty(sortCom)
+                com = [com newline sortCom];
+            end
         else
             disp('Changes abandoned');
-        end
-
-        sortCom = '';
-        if hasChildren            
-            if strcmp(selection, 'Clear dependent sorting')
-                AllEEG = ClearDataSortedByParent(AllEEG, AllEEG(SelectedSet).msinfo.children);
-            elseif strcmp(selection, 'Sort dependent sets by this set')
-                childIdx = FindChildSets(AllEEG, SelectedSet);
-                IgnorePolarity = AllEEG(SelectedSet).msinfo.ClustPar.IgnorePolarity;
-                Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
-                [AllEEG, childEEG, childIdx, sortCom] = pop_SortMSTemplates(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
-                    'IgnorePolarity', IgnorePolarity, 'Classes', Classes);
-                AllEEG = eeg_store(AllEEG, childEEG, childIdx);
-            end
-        end
-
-        if ~isempty(sortCom)
-            com = [com newline sortCom];
-        end
+        end                
     end
     
 end

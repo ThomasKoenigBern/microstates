@@ -108,7 +108,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     if ~isempty(SelectedSets)
         % Check for empty sets, dynamics sets, or any sets without
         % microstate maps
-        SelectedSets = unique(SelectedSets);
+        SelectedSets = unique(SelectedSets, 'stable');
         isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));

@@ -145,9 +145,9 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     p.FunctionName = funcName;
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
-    addOptional(p, 'IndividualSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', '<=', numel(AllEEG)}));
-    addOptional(p, 'MeanSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
-    addOptional(p, 'PublishedSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
+    addParameter(p, 'IndividualSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', '<=', numel(AllEEG)}));
+    addParameter(p, 'MeanSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
+    addParameter(p, 'PublishedSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
     addParameter(p, 'Classes', []);
     addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
     addParameter(p, 'gui', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
@@ -220,7 +220,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
 
     % Validate individual sets
     if ~isempty(IndividualSets)
-        IndividualSets = unique(IndividualSets);
+        IndividualSets = unique(IndividualSets, 'stable');
         isValid = ismember(IndividualSets, AvailableIndSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', IndividualSets(~isValid));
@@ -236,7 +236,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     % Validate mean sets
     MeanSetnames = {AllEEG(AvailableMeanSets).setname};
     if ~isempty(MeanSets)
-        MeanSets = unique(MeanSets);
+        MeanSets = unique(MeanSets, 'stable');
         if isnumeric(MeanSets)
             isValid = ismember(MeanSets, AvailableMeanSets);
             if any(~isValid)
@@ -267,7 +267,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
     % Validate PublishedSets
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     if ~isempty(PublishedSets)
-        PublishedSets = unique(PublishedSets);
+        PublishedSets = unique(PublishedSets, 'stable');
         isValid = ismember(PublishedSets, publishedSetnames);
         if any(~isValid)
             invalidSetsTxt = sprintf('%s, ', PublishedSets(~isValid));
@@ -654,30 +654,30 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             PublishedSetsTxt = ['{' PublishedSetsTxt(1:end-2) '}'];
         end
         if isempty(Filenames)
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, showGUI);
         else
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{1}, showGUI);
         end
         if numel(Filenames) > 1
             for i=2:numel(Filenames)
                 compCom = [compCom newline ...
-                    sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, %s, ''nClasses'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+                    sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
                     mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{i}, showGUI)];
             end
         end
     else
         if isempty(Filenames)
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), showGUI);
         else
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI);
         end
         for i=2:numel(Filenames)
             compCom = [compCom newline ...
-                sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+                sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI)];
         end
     end
