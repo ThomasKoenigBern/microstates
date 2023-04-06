@@ -1,32 +1,54 @@
 % pop_QuantMSTemplates() Quantifies the temporal dynamics of microstates in
-% the EEG data. Generates a window with summary statistics for tepmoral
-% dynamics extracted, along with a table of temporal dynamics statistics
-% for all sets chosen for analysis. Statistics are saved to the "stats"
-% field of "msinfo" and can be saved to a csv, txt, xlsx, 4R, or mat file.
+% individual EEG datasets. Generates and outputs a structure array of
+% temporal dynamics parameters for all sets chosen for analysis in the
+% "MSStats" output, with the option to save the array to a csv, txt, xlsx,
+% 4R, or mat file. Includes the option to generate plots with summary
+% statistics for the temporal dynamics extracted. Statistics for each
+% subject included in the analysis are also saved to the "stats" field of
+% "msinfo" in the corresponding EEG set.
 %
 % Usage:
-%   >> [EEG, CURRENTSET, com] = pop_QuantMSTemplates(ALLEEG, SelectedSets, 
-%       'key1', value1, 'key2', value2)
+%   >> [EEG, CURRENTSET, MSStats, fig_h] = pop_QuantMSTemplates(ALLEEG, 
+%       SelectedSets, 'key1', value1, 'key2', value2)
 %
 % To use each subject's own microstate maps for backfitting, specify
 % "TemplateSet" as "own."
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_QuantMSTemplates(ALLEEG, 1:5, 'TemplateSet',
-%       'own')
+%   >> [EEG, CURRENTSET, MSStats, fig_h] = pop_QuantMSTemplates(ALLEEG, 1:5,
+%       'TemplateSet', 'own')
 %
 % To use a mean set or published set for backfitting, specify either the
 % index of the mean set in ALLEEG, the name of the mean set, or the name of
 % the published set.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_QuantMSTemplates(ALLEEG, 1:5, 'TemplateSet',
-%       'Koenig2002')
+%   >> [EEG, CURRENTSET, MSStats, fig_h] = pop_QuantMSTemplates(ALLEEG, 1:5, 
+%       'TemplateSet', 'Koenig2002')
 %
-% To generate and save temporal dynamics statistics without displaying the
-% GUI, use the "Filename" and "gui" parameters.
+% To automatically save temporal dynamics statistics to a file without
+% using the file explorer, use the "Filename" argument. To control the
+% appearance of the window with plotted temporal parameters, use the "gui"
+% argument.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_QuantMSTemplates(ALLEEG, 1:5, 'TemplateSet',
-%       'own', 'Filename', 'microstate/results/temporal_dynamics.csv',
-%       'gui', 0)
+%   >> [EEG, CURRENTSET, MSStats, fig_h] = pop_QuantMSTemplates(ALLEEG, 1:5, 
+%       'TemplateSet', 'own', 'Filename', 
+%       'microstate/results/temporal_dynamics.csv', 'gui', 0)
+%
+% To generate temporal dynamics without saving them to a file, specify
+% "Filename" as "none" (e.g. if you would like to use the MSStats output
+% but do not need the information saved to a file).
+% Ex:
+%   >> [EEG, CURRENTSET, MSStats, fig_h] = pop_QuantMSTemplates(ALLEEG, 1:5,
+%   'TemplateSet', 'own', 'Filename', 'none', 'gui', 0);
+%
+% The figure with plotted temporal dynamics parameters can also be 
+% generated but not displayed. This option is useful if you would like to 
+% save the plots in a script but avoid the window appearing. To generate an 
+% invisible figure, set the "Visible" argument to 0.
+% Ex:
+%   >> [EEG, CURRENTSET, MSStats, fig_h] = pop_QuantMSTemplates(ALLEEG, 1:5,
+%   'TemplateSet', 'own', 'Filename', 'none', 'gui', 1, 'Visible', 0);
+%   saveas(fig_h, 'temporal_dynamics.png');
+%   close(fig_h);
 %
 % Graphical interface:
 %
@@ -123,7 +145,9 @@
 %   -> Full csv, txt, xlsx, 4R, or mat filename to save the generated table
 %   of temporal dynamics statistics for all sets chosen for analysis. If
 %   provided, the function will automatically save the statistics rather
-%   than prompting for a filename. Useful for scripting purposes.
+%   than prompting for a filename. Useful for scripting purposes. If you
+%   would not like to save the temporal dynamics to a file, specify as
+%   "none" to avoid the file explorer popping up.
 %
 %   "gui"
 %   -> 1 = show GUI with summary statistics of temporal dynamics, 0 = do
@@ -131,15 +155,27 @@
 %   being used to generate and save statistics and the GUI is not necessary
 %   -> Default = 1
 %
+%   "Visible"
+%   -> 1 = Show GUI with plotted temporal dynamics, 0 = keep GUI hidden.
+%   Useful for scripting purposes to generate and save figures from the
+%   returned figure handle without the figures popping up. Ignored if "gui"
+%   is 0.
+%
 % Outputs:
 %
 %   "EEG" 
 %   -> EEG structure array of selected sets with temporal dynamics
 %   statistics added to the "msinfo.stats" field. Fitting parameters in the
-%   "msinfo.FitPar" field may also be updated.
+%   "msinfo.FitPar" field or sorting information may also be updated.
 % 
 %   "CURRENTSET"
 %   -> The indices of the EEGs selected for quantification
+%
+%   "MSStats"
+%   -> Structure array containing temporal dynamics parameters for each
+%   dataset selected for the analysis. Each field corresponds to a
+%   different temporal parameter, and each element in the array corresponds
+%   to a dataset.
 %
 %   "com"
 %   -> Command necessary to replicate the computation
@@ -163,7 +199,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, varargin)
+function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTemplates(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
@@ -173,6 +209,8 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     global CURRENTSET;
     EEGout = EEG;
     CurrentSet = CURRENTSET;
+    MSStats = [];
+    statsFig = [];
 
     guiElements = {};
     guiGeom = {};
@@ -190,6 +228,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
     addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
     addParameter(p, 'gui', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
+    addParameter(p, 'Visible', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
     
     parse(p, AllEEG, varargin{:});
 
@@ -204,6 +243,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     TemplateSet = p.Results.TemplateSet;
     FileName = p.Results.Filename;
     showGUI = p.Results.gui;
+    Visible = p.Results.Visible;
 
     %% SelectedSets validation
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
@@ -380,7 +420,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
                 'the following sets: %s. Are you sure you would like to proceed?'], ...
                 TemplateName, txt);
-            [yesPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
             if boxChecked;  guiOpts.showQuantWarning1 = false;     end
             if ~yesPressed; return;                             end
         end
@@ -398,8 +438,8 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             return;
         end
 
-        GFPPeaks = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.GFPPeaks, SelectedSets);
-        IgnorePolarity = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.IgnorePolarity, SelectedSets);
+        GFPPeaks = arrayfun(@(x) logical(AllEEG(x).msinfo.ClustPar.GFPPeaks), SelectedSets);
+        IgnorePolarity = arrayfun(@(x) logical(AllEEG(x).msinfo.ClustPar.IgnorePolarity), SelectedSets);
         if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0)) || ~(all(IgnorePolarity == 1) || all(IgnorePolarity == 0))
             errordlg2(['Microstate clustering parameters differ between selected sets. Sets selected for quantification must ' ...
                 'have consistent parameters for ignoring polarity and clustering on GFP peaks.'], 'Quantify microstate dynamics error');
@@ -523,6 +563,7 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
 
     %% Quantify
     h = waitbar(0, sprintf('Working on %s', SelectedEEG(1).setname), 'Name', 'Quantifying microstates, please wait...');
+    h.Children.Title.Interpreter = 'none';
     for s = 1:numel(SelectedSets)
         waitbar((s-1) / numel(SelectedSets),h,sprintf('Working on %s',SelectedEEG(s).setname));
 
@@ -539,12 +580,12 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         else
             msinfo = ChosenTemplate.msinfo;
         end
-        Maps = NormDimL2(msinfo.MSMaps(FitPar.nClasses).Maps, 2);
+        Maps = L2NormDim(msinfo.MSMaps(FitPar.nClasses).Maps, 2);
         
         if strcmp(TemplateMode, 'own')
             [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar,msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, [], IndGEVs, SingleEpochFileTemplate);
+                [tempStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, [], IndGEVs, SingleEpochFileTemplate);
             end
         else
             [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(SelectedEEG(s).chanlocs,ChosenTemplate.chanlocs);
@@ -559,56 +600,21 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
                 [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar, msinfo.ClustPar.IgnorePolarity);
             end
             if ~isempty(MSClass)
-                [MSStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate);
+                [tempStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate);
             end
         end
-        SelectedEEG(s).msinfo.stats = MSStats(s);
+        SelectedEEG(s).msinfo.stats = tempStats(s);
         EpochData(s) = SSEpochData;
     end
     close(h);
+
+    MSStats = tempStats;
 
     EEGout = SelectedEEG;
     CurrentSet = SelectedSets;
 
     % Set labels for output
-    Labels = arrayfun(@(x) sprintf('MS %i.%i', FitPar.nClasses, x), 1:FitPar.nClasses, 'UniformOutput', false);
-
-    %% Generate output file
-    if isempty(FileName)
-        [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
-        if FName == 0
-            return;
-        end
-        FileName = fullfile(PName,FName);
-    else
-        idx = 1;
-        if contains(FileName,'.mat')
-            idx = 4;
-        end
-        if contains(FileName,'.xls')
-            idx = 5;
-        end
-        if contains(FileName,'.4R')
-            idx = 6;
-        end
-    end
-
-    if ~isempty(FileName)   
-        switch idx
-            case 1
-                SaveStructToTable(MSStats,FileName,',',Labels);
-            case 2
-                SaveStructToTable(MSStats,FileName,';',Labels);
-            case 3
-                SaveStructToTable(MSStats,FileName,sprintf('\t'),Labels);
-            case 4
-                save(FileName,'MSStats');
-            case 5
-                writecell(SaveStructToTable(MSStats,[],[],Labels), FileName);
-            case 6
-                SaveStructToR(MSStats,FileName);
-        end
-    end
+    Labels = arrayfun(@(x) sprintf('MS %i.%i', FitPar.nClasses, x), 1:FitPar.nClasses, 'UniformOutput', false);    
 
     %% Show GUI with summary statistics
     if showGUI
@@ -621,9 +627,14 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
             x = repmat(Labels, 1, numel(SelectedSets));
             x = categorical(x, Labels);
         end
-        
+
+        if Visible
+            figVisible = 'on';
+        else
+            figVisible = 'off';
+        end        
         statsFig = figure('Name', figName, 'NumberTitle', 'off', 'Units', 'normalized', ...
-        'Position', [.1 .1 .8 .8], 'ToolBar', 'none');
+        'Position', [.1 .1 .8 .8], 'ToolBar', 'none', 'WindowStyle', 'modal', 'Visible', figVisible);
         
         t = tiledlayout(statsFig, 2, 3);
         t.TileSpacing = 'tight';
@@ -634,9 +645,11 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         if numel(SelectedSets) == 1
             bar(gevAx, x, MSStats.IndExpVar*100);
         else
-            IndGEVs = cell2mat(arrayfun(@(x) MSStats(x).IndExpVar*100, 1:numel(SelectedSets), 'UniformOutput', false));
+            IndGEVs = cell2mat(arrayfun(@(x) double(MSStats(x).IndExpVar*100), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(gevAx, x, IndGEVs, 25, [0 0.4470 0.7410],'filled');
         end
+        ymax = gevAx.YLim(2)*1.1;
+        ylim(gevAx, [0 ymax]);
         title(gevAx, 'Explained Variance (%)');
     
         % Duration
@@ -644,9 +657,11 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         if numel(SelectedSets)  == 1
             bar(durAx, x, MSStats.Duration*1000);
         else
-            Durations = cell2mat(arrayfun(@(x) MSStats(x).Duration*1000, 1:numel(SelectedSets), 'UniformOutput', false));
+            Durations = cell2mat(arrayfun(@(x) double(MSStats(x).Duration*1000), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(durAx, x, Durations, 25, [0 0.4470 0.7410],'filled');
         end
+        ymax = durAx.YLim(2)*1.1;
+        ylim(durAx, [0 ymax]);
         title(durAx, 'Mean Duration (ms)');
     
         % Occurrence
@@ -654,9 +669,11 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         if numel(SelectedSets) == 1
             bar(occAx, x, MSStats.Occurrence);
         else
-            Occurrences = cell2mat(arrayfun(@(x) MSStats(x).Occurrence, 1:numel(SelectedSets), 'UniformOutput', false));
+            Occurrences = cell2mat(arrayfun(@(x) double(MSStats(x).Occurrence), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(occAx, x, Occurrences, 25, [0 0.4470 0.7410],'filled');
         end
+        ymax = occAx.YLim(2)*1.1;
+        ylim(occAx, [0 ymax]);
         title(occAx, 'Occurence (segments/s)');
     
         % Coverage
@@ -664,9 +681,11 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         if numel(SelectedSets) == 1
             bar(covAx, x, MSStats.Contribution*100);
         else
-            Coverages = cell2mat(arrayfun(@(x) MSStats(x).Contribution*100, 1:numel(SelectedSets), 'UniformOutput', false));
+            Coverages = cell2mat(arrayfun(@(x) double(MSStats(x).Contribution*100), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(covAx, x, Coverages, 25, [0 0.4470 0.7410],'filled');
         end
+        ymax = covAx.YLim(2)*1.1;
+        ylim(covAx, [0 ymax]);
         title(covAx, 'Coverage (%)');
     
         % GFP
@@ -674,9 +693,11 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
     %     if numel(SelectedSets) == 1
     %         bar(gfpAx, x, MSStats.MeanGFP);
     %     else
-    %         GFPs = cell2mat(arrayfun(@(x) MSStats(x).MeanGFP, 1:numel(SelectedSets), 'UniformOutput', false));
+    %         GFPs = cell2mat(arrayfun(@(x) double(MSStats(x).MeanGFP), 1:numel(SelectedSets), 'UniformOutput', false));
     %         swarmchart(gfpAx, x, GFPs, 25, [0 0.4470 0.7410],'filled');
     %     end
+%         ymax = gfpAx.YLim(2)*1.1;
+%         ylim(gfpAx, [0 ymax]);
     %     title(gfpAx, 'Mean GFP');
     
         % Transition matrix
@@ -712,12 +733,56 @@ function [EEGout, CurrentSet, com, EpochData] = pop_QuantMSTemplates(AllEEG, var
         end
         h2.XLabel = 'To';
         h2.YLabel = 'From';
-    end        
+
+        if Visible && isempty(FileName)
+            uiwait(statsFig);
+        end
+    end 
+
+    %% Generate output file
+    if ~strcmp(FileName, 'none')
+        if isempty(FileName)
+            [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
+            if FName == 0
+                FileName = 'none';
+            else
+                FileName = fullfile(PName,FName);
+            end
+        else
+            idx = 1;
+            if contains(FileName,'.mat')
+                idx = 4;
+            end
+            if contains(FileName,'.xls')
+                idx = 5;
+            end
+            if contains(FileName,'.4R')
+                idx = 6;
+            end
+        end
+    
+        if ~strcmp(FileName, 'none')
+            switch idx
+                case 1
+                    SaveStructToTable(MSStats,FileName,',',Labels);
+                case 2
+                    SaveStructToTable(MSStats,FileName,';',Labels);
+                case 3
+                    SaveStructToTable(MSStats,FileName,sprintf('\t'),Labels);
+                case 4
+                    save(FileName,'MSStats');
+                case 5
+                    writecell(SaveStructToTable(MSStats,[],[],Labels), FileName);
+                case 6
+                    SaveStructToR(MSStats,FileName);
+            end
+        end
+    end
 
     if ischar(TemplateSet) || isstring(TemplateSet)
-        quantCom = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+        quantCom = sprintf('[EEG, CURRENTSET, MSStats, fig_h, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
     elseif isnumeric(TemplateSet)
-        quantCom = sprintf('[EEG, CURRENTSET, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+        quantCom = sprintf('[EEG, CURRENTSET, MSStats, fig_h, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
     end
 
     if isempty(com)
