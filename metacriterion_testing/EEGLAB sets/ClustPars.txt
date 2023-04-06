@@ -1,7 +1,0 @@
-4-10 clusters
-10 restarts
-k-means clustering
-GFP peaks only
-Polarity invariant
-Using all input maps
-Normalize maps before clustering
