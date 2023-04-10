@@ -1,4 +1,4 @@
-function PlotElectrode(x,y,r,Label,Gray,zl,ax,fs)
+function handles = PlotElectrode(x,y,r,Label,Gray,zl,ax,fs)
 
 % Copyright 2009-2011 Thomas Koenig
 % distributed under the terms of the GNU AFFERO General Public License
@@ -25,8 +25,10 @@ if (zl == Inf)
     zl = 100;
 end
 
+
+
 plot(ax,xc,yc,'k-','LineWidth',1);
-patch(ax,xc,yc,ones(size(xc))*zl+1000,[Gray Gray Gray],'FaceColor',[Gray Gray Gray]);
+handles(1) = patch(ax,xc,yc,ones(size(xc))*zl+1000,[Gray Gray Gray],'FaceColor',[Gray Gray Gray]);
 
 if isempty(Label)
     return
@@ -44,3 +46,4 @@ else
 end
 
 set(h,'FontWeight','demi');
+handles(2) = h;
