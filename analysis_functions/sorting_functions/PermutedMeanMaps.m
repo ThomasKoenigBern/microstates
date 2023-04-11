@@ -116,7 +116,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
                     for k = 1:nMaps
                          data = squeeze(SortedMaps(:,k,:));
                          [pc1,~] = eigs(data'*data,1);
-                         MeanMap(1,k,:) = NormDimL2(pc1',2);
+                         MeanMap(1,k,:) = L2NormDim(pc1',2);
                     end
 %                    break;
                 else
@@ -133,7 +133,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
                 for k = 1:nMaps
                      data = squeeze(SortedMaps(:,k,:));
                      [pc1,~] = eigs(data'*data,1);
-                     MeanMap(1,k,:) = NormDimL2(pc1',2);
+                     MeanMap(1,k,:) = L2NormDim(pc1',2);
                 end
                 break;
             end
@@ -193,7 +193,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
         indMaps = [indMaps squeeze(in(s, :, :))'];
     end
 
-    Cov = NormDimL2(MeanMap, 2)*indMaps;
+    Cov = L2NormDim(MeanMap, 2)*indMaps;
     if ~RespectPolarity
         Cov = abs(Cov);
     end

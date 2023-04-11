@@ -24,11 +24,11 @@ function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBased
     for i=1:nSubjects
         in(i, :, :) = squeeze(in(i, :, :)) * newRef;
     end
-    in = NormDimL2(in, 3);
+    in = L2NormDim(in, 3);
     SortedMaps = in;
 
     MeanMap= MeanMap * newRef;
-    MeanMap = NormDimL2(MeanMap, 2);
+    MeanMap = L2NormDim(MeanMap, 2);
 
     [nSubjects,nMapsToSort,nChannels] = size(in);
     nTemplateMaps = size(MeanMap,1);

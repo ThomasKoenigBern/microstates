@@ -12,10 +12,10 @@ function [b_model,exp_var] = eeg_computeAAHC(eeg,n_mod,ProgBar, IgnorePolarity, 
     eeg = eeg*h;									% Average reference of data 
 
     % Initally, all maps are clusters
-    Cluster = NormDimL2(eeg,2);
+    Cluster = L2NormDim(eeg,2);
     
     if Normalize == true
-        eeg = NormDimL2(eeg,2);
+        eeg = L2NormDim(eeg,2);
     end
     
     GEV = sum(eeg.*Cluster,2);
@@ -58,9 +58,9 @@ function [b_model,exp_var] = eeg_computeAAHC(eeg,n_mod,ProgBar, IgnorePolarity, 
             ClusterMembers = Assignment == ClusterToUpdate(f);
             if (IgnorePolarity == true)
                 [pc1,~] = eigs(cov(eeg(ClusterMembers,:)),1);
-                Cluster(ClusterToUpdate(f),:) = NormDimL2(pc1',2);
+                Cluster(ClusterToUpdate(f),:) = L2NormDim(pc1',2);
             else
-                Cluster(ClusterToUpdate(f),:) = NormDimL2(mean(eeg(ClusterMembers,:),1),2);
+                Cluster(ClusterToUpdate(f),:) = L2NormDim(mean(eeg(ClusterMembers,:),1),2);
             end
             % So now we go and see how things fit
             NewFit = Cluster(ClusterToUpdate(f),:)* eeg(ClusterMembers,:)'; % 1 x nFrames

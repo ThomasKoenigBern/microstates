@@ -60,7 +60,7 @@ if contains(flags,'e')
 end
 
 if contains(flags,'n')
-    eeg = NormDim(eeg,2);
+    eeg = L2NormDim(eeg,2);
 end
 
 best_fit = 0;
@@ -96,7 +96,7 @@ for run = 1:reruns
 
     idx = randperm(max_n);
     model = eeg(idx(1:n_mod),:);
-    model   = NormDim(model,2)*newRef;					% Average Reference, equal variance of model
+    model   = L2NormDim(model,2)*newRef;					% Average Reference, equal variance of model
 
     o_ind   = zeros(max_n,1);							% Some initialization
 %	ind     =  ones(max_n,1);
@@ -143,7 +143,7 @@ for run = 1:reruns
                 model(i,:) = v(:,1)';
             end
         end
-		model   = NormDim(model,2)*newRef;						% Average Reference, equal variance of model
+		model   = L2NormDim(model,2)*newRef;						% Average Reference, equal variance of model
         covmat = eeg*model';							% Get the unsigned covariance 
         if pmode
             if UseEMD == true
@@ -160,7 +160,6 @@ for run = 1:reruns
         end
     end % while any
 
-    % average reference eeg in case it was not already done
     covmat    = org_data*model';							% Get the unsigned covariance 
     if pmode
         if UseEMD == true
@@ -197,7 +196,7 @@ end % for run = 1:reruns
 IndGEVnum = zeros(1, n_mod);
 for i = 1:n_mod
     clustMembers = (b_ind == i);
-    IndGEVnum(i) = sum((b_loading(clustMembers)/sqrt(n_chan)).^2);
+    IndGEVnum(i) = sum(b_loading(clustMembers).^2);
 end
 exp_var = IndGEVnum/sum(vecnorm(org_data').^2);
 

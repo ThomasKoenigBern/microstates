@@ -112,7 +112,7 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
             end
 
             % Normalized maps * voltage vectors at GFP peaks
-            Cov = NormDimL2(Maps,2) * TheEEGData(:,IsIn,s);
+            Cov = L2NormDim(Maps,2) * TheEEGData(:,IsIn,s);
             if IgnorePolarity == true
                 Cov = abs(Cov);
             end
@@ -171,7 +171,7 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
                 clustMembers = (Winner == c);
                 if any(clustMembers)
                     %  sum of squared max fits
-                    mfit = NormDimL2(Maps(c,:),2) * TheEEGData(:,clustMembers,s);
+                    mfit = L2NormDim(Maps(c,:),2) * TheEEGData(:,clustMembers,s);
                     IndGEVnum(c) = IndGEVnum(c) + sum(mfit.^2);
                     % sum of squared L2 norms of all voltage vectors in
                     % this cluster
@@ -201,7 +201,7 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
         end
 
     end
-    IndGEVs = IndGEVnum/IndGEVdenom;
+    IndGEVs = IndGEVnum/IndGEVdenom; 
 end
 
 

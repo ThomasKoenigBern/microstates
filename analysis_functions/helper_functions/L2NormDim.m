@@ -1,4 +1,4 @@
-function out = NormDimL2(in,dim)
+function out = L2NormDim(in,dim)
 
 % Copyright 2009-2011 Thomas Koenig
 % distributed under the terms of the GNU AFFERO General Public License
