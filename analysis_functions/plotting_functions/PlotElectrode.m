@@ -1,4 +1,4 @@
-function PlotElectrode(x,y,r,Label,Gray,zl,fs)
+function handles = PlotElectrode(x,y,r,Label,Gray,zl,ax,fs)
 
 % Copyright 2009-2011 Thomas Koenig
 % distributed under the terms of the GNU AFFERO General Public License
@@ -10,6 +10,9 @@ if (r == 1)
     return
 end
 
+if nargin < 7
+    ax = gca;
+end
 
 w = 1:361;
 
@@ -22,22 +25,25 @@ if (zl == Inf)
     zl = 100;
 end
 
-plot(xc,yc,'k-','LineWidth',1);
-patch(xc,yc,ones(size(xc))*zl+1000,[Gray Gray Gray],'FaceColor',[Gray Gray Gray]);
+
+
+plot(ax,xc,yc,'k-','LineWidth',1);
+handles(1) = patch(ax,xc,yc,ones(size(xc))*zl+1000,[Gray Gray Gray],'FaceColor',[Gray Gray Gray]);
 
 if isempty(Label)
     return
 end
 
-h = text(x,y,ones(size(x))*zl+1002,Label);
+h = text(ax,x,y,ones(size(x))*zl+1002,Label);
 
 
 set(h,'HorizontalAlignment','center');
 set(h,'VerticalAlignment','middle');
-if (nargin < 7)
-    set(h,'FontSize',r * 0.7);
+if (nargin < 8)
+    set(h,'FontSize',r * 3);
 else
     set(h,'FontSize',fs);
 end
 
 set(h,'FontWeight','demi');
+handles(2) = h;

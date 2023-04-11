@@ -138,9 +138,31 @@ function com = pop_RaguMSTemplates(AllEEG, varargin)
             return;
         end
     end
+    rd = MsMapsAndDesign4Ragu(AllEEG(SelectedSets), Classes);
+ %    rd = SaveMSMapsForRagu(AllEEG(SelectedSets), Classes);
 
-    rd = SaveMSMapsForRagu(AllEEG(SelectedSets), Classes);
-    Ragu(rd);
+    Output = Randomizer_Design([], [], [],rd);
+    if isempty(Output)
+        return;
+    end
+
+    rd = get(Output,'UserData');
+
+    close(Output);
+
+    Output = Randomizer_IndFeatures([], [], [],rd);
+    if isempty(Output)
+        return;
+    end
+
+    rd = get(Output,'UserData');
+
+    close(Output);
+
+    rd = Randomizer_ComputeTanova(rd);
+ 
+    Randomizer_ShowTanovaResults(rd);
+    %Ragu(rd);
 
     com = sprintf('com = pop_RaguMSTemplates(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
 end
