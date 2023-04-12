@@ -495,15 +495,23 @@ function algorithmChanged(obj, ~)
     normalizeBox = findobj(obj.Parent, 'Tag', 'Normalize');
 
     if obj.Value == 1
-        restartsLabel.Enable = 'on';
-        restartsEdit.Enable  = 'on';
-        normalizeBox.Value = 1;
-        normalizeBox.Enable  = 'on';
+        if ~isempty(restartsLabel)
+            restartsLabel.Enable = 'on';
+            restartsEdit.Enable  = 'on';
+        end
+        if ~isempty(normalizeBox)
+            normalizeBox.Value = 1;
+            normalizeBox.Enable  = 'on';
+        end
     else
-        restartsLabel.Enable = 'off';
-        restartsEdit.Enable  = 'off';
-        normalizeBox.Value = 0;
-        normalizeBox.Enable  = 'off';
+        if ~isempty(restartsLabel)
+            restartsLabel.Enable = 'off';
+            restartsEdit.Enable  = 'off';
+        end
+        if ~isempty(normalizeBox)
+            normalizeBox.Value = 0;
+            normalizeBox.Enable  = 'off';
+        end
     end
 end
 

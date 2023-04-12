@@ -2,7 +2,7 @@
 % published template, or manual indexing.
 %
 % Usage: 
-%   >> [EEG, CURRENTSET, com] = pop_SortMSTemplates(ALLEEG, 
+%   >> [ALLEEG, EEG, CURRENTSET, com] = pop_SortMSTemplates(ALLEEG, 
 %       SelectedSets, 'key1', value1, 'key2', value2, ...)
 %
 % To sort maps by a template set, specify either the index of a mean set,
@@ -10,17 +10,17 @@
 % parameter.
 %
 % Ex: mean set index
-%   >> [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:5, 'TemplateSet',
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:5, 'TemplateSet',
 %       6, 'IgnorePolarity', 1, 'Classes', 4:7)
 %
 % Ex: mean set name
-%   >> [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:5, 'TemplateSet',
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:5, 'TemplateSet',
 %   'GrandMean', 'IgnorePolarity', 1, 'Classes', 4:7)
 %
 % Ex: published set name
-%   >> [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 6, 'TemplateSet', 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 6, 'TemplateSet', 
 %       'Koenig2002', 'IgnorePolarity', 1, 'Classes', 3:6)
-%   >> [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 6, 'TemplateSet',
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 6, 'TemplateSet',
 %       'Custo2017', 'IgnorePolarity', 1, 'Classes', 7)
 %
 % To sort maps or relabel maps manually, specify "TemplateSet" as "manual."
@@ -30,12 +30,12 @@
 % a time.
 %
 % Ex: manual sort without GUI
-%   >> [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1, 'TemplateSet',
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1, 'TemplateSet',
 %       'manual', 'IgnorePolarity', 1, 'Classes', 4, 'SortOrder', [-4 2 3 -1],
 %       'NewLabels', {'A', 'B', 'C', 'D'})
 %
 % Ex: manual sort with GUI
-%   >> [EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1, 'TemplateSet',
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1, 'TemplateSet',
 %       'manual')
 %
 % Graphical interface:
@@ -150,6 +150,10 @@
 %
 % Outputs:
 %
+%   "ALLEEG"
+%   -> ALLEEG structure array containing sorted datasets. May also include
+%   updated child datasets with cleared/updated sorting information.
+%
 %   "EEG" 
 %   -> EEG structure array containing sorted datasets
 %
@@ -242,6 +246,9 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
     isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
     AvailableSets = find(and(and(and(~isEmpty, ~HasDyn), HasMS), ~isPublishedSet));
+    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
+    AvailableIndSets = AvailableSets(~HasChildren);
+    AvailableMeanSets = AvailableSets(HasChildren);
     
     if isempty(AvailableSets)
         errordlg2(['No valid sets for sorting found.'], 'Sort microstate maps error');
@@ -264,25 +271,37 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
             return;
         end
     % Otherwise, add set selection gui elements
-    else
+    else        
+        ud.AvailableSets = AvailableSets;
+        ud.AvailableIndSets = AvailableIndSets;
+        ud.AvailableMeanSets = AvailableMeanSets;
+        ud.AvailableSetnames = {AllEEG(AvailableSets).setname};
+        ud.AvailableIndSetnames = {AllEEG(AvailableIndSets).setname};
+        ud.AvailableMeanSetnames = {AllEEG(AvailableMeanSets).setname};
+        ud.CurrentSet = CurrentSet;
+
         defaultSets = find(ismember(AvailableSets, CurrentSet));
-        if isempty(defaultSets);    defaultSets = 1;    end        
-        AvailableSetnames = {AllEEG(AvailableSets).setname};
+        ud.defaultSets = defaultSets;
+        if isempty(defaultSets);    defaultSets = 1;    end
+
+        setOptions = {'Individual and mean sets', 'Only individual sets', 'Only mean sets'};
+
         guiElements = [guiElements, ....
                     {{ 'Style', 'text', 'string', 'Choose sets for sorting'}} ...
                     {{ 'Style', 'text', 'string', 'Use ctrl or shift for multiple selection'}} ...
                     {{ 'Style', 'text', 'string', 'If using the interactive explorer, only one set can be chosen' 'FontWeight', 'bold'}} ...
-                    {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
-        guiGeom  = [guiGeom  1 1 1 1];
-        guiGeomV = [guiGeomV  1 1 1 4];
+                    {{ 'Style', 'text', 'string', 'Display options'}} ...
+                    {{ 'Style', 'popupmenu', 'string', setOptions, 'Callback', @displayedSetsChanged, 'Tag', 'DisplayedSets'}} ...
+                    {{ 'Style', 'text', 'string', ''}} ...
+                    {{ 'Style', 'listbox' , 'string', ud.AvailableSetnames, 'Min', 0, 'Max', 1,'Value', defaultSets(1), 'tag','SelectedSets', 'UserData', ud}}];
+        guiGeom  = [guiGeom  1 1 1 [1 1] 1 1];
+        guiGeomV = [guiGeomV  1 1 1 1 1 4];
     end
 
     %% TemplateSet validation
     % If the user has provided a template set number or name, check its
     % validity
-    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
-    meanSets = AvailableSets(HasChildren);
-    meanSetnames = {AllEEG(meanSets).setname};
+    meanSetnames = {AllEEG(AvailableMeanSets).setname};
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
     usingPublished = false;
@@ -291,13 +310,13 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
         % If the template set is a number, make sure it is one of the
         % mean sets in ALLEEG
         if isnumeric(TemplateSet)
-            if ~ismember(TemplateSet, meanSets)
+            if ~ismember(TemplateSet, AvailableMeanSets)
                 errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
                 errordlg2([errorMessage], 'Sort microstate maps error');
                 return;
             else
-                TemplateIndex = find(ismember(meanSets, TemplateSet));
+                TemplateIndex = find(ismember(AvailableMeanSets, TemplateSet));
                 TemplateName = meanSetnames{TemplateIndex};
             end
         % Else if the template set is a string, make sure it matches one of
@@ -320,7 +339,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
                 else
                     TemplateIndex = find(matches(meanSetnames, TemplateSet));
                     TemplateName = TemplateSet;
-                    TemplateSet = meanSets(TemplateIndex);
+                    TemplateSet = AvailableMeanSets(TemplateIndex);
                 end            
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
@@ -345,7 +364,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
         end
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Name of template set to sort by', 'fontweight', 'bold'}} ...
-            {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
+            {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex, 'Callback', @templateChanged }}];
         guiGeom = [guiGeom 1 1];
         guiGeomV = [guiGeomV 1 1];
     end
@@ -366,7 +385,13 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
         if isempty(res); return; end
         
         if isfield(outstruct, 'SelectedSets')
-            SelectedSets = AvailableSets(outstruct.SelectedSets);
+            if outstruct.DisplayedSets == 1
+                SelectedSets = AvailableSets(outstruct.SelectedSets);
+            elseif outstruct.DisplayedSets == 2
+                SelectedSets = AvailableIndSets(outstruct.SelectedSets);
+            else
+                SelectedSets = AvailableMeanSets(outstruct.SelectedSets);
+            end
         end
 
         if isfield(outstruct, 'TemplateIndex')
@@ -375,7 +400,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
                     manualSort = true;
                 elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
                     TemplateIndex = outstruct.TemplateIndex-1;
-                    TemplateSet = meanSets(TemplateIndex);
+                    TemplateSet = AvailableMeanSets(TemplateIndex);
                     TemplateName = meanSetnames{TemplateIndex};
                 else
                     TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames) - 1;
@@ -386,7 +411,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
             else
                 if outstruct.TemplateIndex <= numel(meanSetnames)
                     TemplateIndex = outstruct.TemplateIndex;
-                    TemplateSet = meanSets(TemplateIndex);
+                    TemplateSet = AvailableMeanSets(TemplateIndex);
                     TemplateName = meanSetnames{TemplateIndex};
                 else
                     TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames);
@@ -452,7 +477,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     if usingPublished
         ChosenTemplate = MSTEMPLATE(TemplateIndex);
     else
-        ChosenTemplate = AllEEG(meanSets(TemplateIndex));
+        ChosenTemplate = AllEEG(AvailableMeanSets(TemplateIndex));
     end
 
     %% Prompt user to select class range and option to sort all if necessary
@@ -467,10 +492,10 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
 
         [res,~,~,outstruct] = inputgui('geometry', [1 1 1 1], 'geomvert', [1 1 4 1], 'uilist', ...
             { {'Style', 'text', 'string', 'Select classes to sort'} ...
-              {'Style', 'text', 'string' 'Use ctrlshift for multiple selection'} ...
+              {'Style', 'text', 'string' 'Use ctrl or shift for multiple selection'} ...
               {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 2, 'Value', 1:numel(classRange), 'Tag', 'Classes', 'Callback', @solutionChanged}, ...
               {'Style', 'checkbox', 'string', 'Use selected solution to reorder all other solutions', 'Value', SortAll, 'Tag', 'SortAll', 'Enable', 'off'}}, ...
-              'title', 'Sort microstate maps');
+              'title', 'Sort microstate maps'); 
         
         if isempty(res); return; end
 
@@ -498,7 +523,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
             if matches(AllEEG(sIndex).setname, ChosenTemplate.setname)
                 continue
             end
-            containsChild = checkSetForChild(AllEEG, meanSets(TemplateIndex), AllEEG(sIndex).setname);
+            containsChild = checkSetForChild(AllEEG, AvailableMeanSets(TemplateIndex), AllEEG(sIndex).setname);
             if ~containsChild
                 warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
             end
@@ -632,8 +657,47 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     end        
 end
 
-function solutionChanged(obj, event)
+function displayedSetsChanged(obj, ~)
+    setBox = findobj(obj.Parent, 'Tag', 'SelectedSets');
+    if isempty(setBox); return; end
+    ud = setBox.UserData;
+    if obj.Value == 1
+        setBox.String = ud.AvailableSetnames;
+        defaultSets = find(ismember(ud.AvailableSets, ud.CurrentSet));        
+    elseif obj.Value == 2
+        setBox.String = ud.AvailableIndSetnames;
+        defaultSets = find(ismember(ud.AvailableIndSets, ud.CurrentSet));
+    else
+        setBox.String = ud.AvailableMeanSetnames;
+        defaultSets = find(ismember(ud.AvailableMeanSets, ud.CurrentSet));
+    end
+    
+    if isempty(defaultSets);    defaultSets = 1;    end
+    ud.defaultSets = defaultSets;
+    templateSet = findobj(obj.Parent, 'Tag', 'TemplateIndex');
+    if ~isempty(templateSet)
+        if templateSet.Value == 1;  defaultSets = defaultSets(1);   end
+    end
+    setBox.Value = defaultSets;
+    setBox.UserData = ud;
+end
+
+function templateChanged(obj, ~)
+    setBox = findobj(obj.Parent, 'Tag', 'SelectedSets');
+    if isempty(setBox); return; end
+    ud = setBox.UserData;
+    if obj.Value == 1
+        setBox.Max = 1;
+        setBox.Value = ud.defaultSets(1);
+    else
+        setBox.Max = 2;
+        setBox.Value = ud.defaultSets;
+    end
+end
+
+function solutionChanged(obj, ~)
     sortAll = findobj(obj.Parent, 'Tag', 'SortAll');
+    if isempty(sortAll);    return; end
     if numel(obj.Value) > 1    
         sortAll.Enable = 'off';
     else
