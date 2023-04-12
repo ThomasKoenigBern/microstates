@@ -238,7 +238,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             ClustPar.UseAAHC = floor(ClustPar.UseAAHC) + 1;
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Algorithm', 'fontweight', 'normal'  }} ...
-                {{ 'Style', 'popupmenu', 'string',{'k-means','AAHC'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC}}];
+                {{ 'Style', 'popupmenu', 'string',{'k-means','AAHC'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC, 'Callback', @algorithmChanged}}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
@@ -261,7 +261,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     
         if contains('Restarts', ClustParDefaults)
             guiElements = [guiElements ...
-                {{ 'Style', 'text', 'string', 'Number of restarts', 'fontweight', 'normal'  }} ...
+                {{ 'Style', 'text', 'string', 'Number of restarts', 'fontweight', 'normal', 'tag', 'RestartsLabel'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.Restarts),'tag' 'Restarts' }}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
@@ -487,6 +487,24 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     
     %% Command string generation
     com = sprintf('[EEG, CURRENTSET] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s, ''ShowMaps'', %i, ''ShowDyn'', %i);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar), ShowMaps, ShowDyn);
+end
+
+function algorithmChanged(obj, ~)
+    restartsLabel = findobj(obj.Parent, 'Tag', 'RestartsLabel');
+    restartsEdit = findobj(obj.Parent, 'Tag', 'Restarts');
+    normalizeBox = findobj(obj.Parent, 'Tag', 'Normalize');
+
+    if obj.Value == 1
+        restartsLabel.Enable = 'on';
+        restartsEdit.Enable  = 'on';
+        normalizeBox.Value = 1;
+        normalizeBox.Enable  = 'on';
+    else
+        restartsLabel.Enable = 'off';
+        restartsEdit.Enable  = 'off';
+        normalizeBox.Value = 0;
+        normalizeBox.Enable  = 'off';
+    end
 end
 
 function [ClustPar, UsingDefaults] = checkClustPar(varargin)
