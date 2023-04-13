@@ -6,7 +6,6 @@ function [childIdx, childSetnames] = FindChildSets(AllEEG, MeanSets)
         if isempty(childNames);     continue;   end
         newChildIdx = find(matches({AllEEG.setname}, childNames));
         if isempty(newChildIdx)
-            fprintf('Could not find children of %s for resorting\n', AllEEG(MeanSets(s)).setname);
             continue;
         end
 
