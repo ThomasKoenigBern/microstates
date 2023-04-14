@@ -13,7 +13,7 @@
 % To compare microstate topographies across cluster solutions within one
 % dataset, pass in the index or name of one dataset within ALLEEG.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMStemplate(ALLEEG, 1, [], [])
+%   >> [EEG, CURRENTSET] = pop_CompareMSTemplates(ALLEEG, 1, [], [])
 %
 % To compare microstate topographies of one cluster solution across
 % multiple datasets, pass in the indices or names of datasets to compare,
