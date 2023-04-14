@@ -74,6 +74,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     guiOpts.showCompWarning2 = true;
     guiOpts.showCompWarning3 = true;
 
+    addpath(genpath(fileparts(which('eegplugin_Microstates'))));
+
     VersionNumber = '1.2';
     vers = ['Microstates ' VersionNumber];
     
