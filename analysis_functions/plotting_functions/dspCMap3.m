@@ -331,7 +331,11 @@ switch cmap
         colormap(ax,cm);
         
     case 'br'
-        clim(ax,[-8*CStep 8*CStep]);
+        if verLessThan('matlab', '9.12')
+            caxis(ax,[-8*CStep 8*CStep]);
+        else
+            clim(ax,[-8*CStep 8*CStep]);
+        end
         colormap(ax,bluered);
         LabBkG = 1;
     case 'rr'
