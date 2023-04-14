@@ -141,30 +141,69 @@ function com = pop_RaguMSTemplates(AllEEG, varargin)
     rd = MsMapsAndDesign4Ragu(AllEEG(SelectedSets), Classes);
  %    rd = SaveMSMapsForRagu(AllEEG(SelectedSets), Classes);
 
-    Output = Randomizer_Design([], [], [],rd);
-    if isempty(Output)
+    % Prompt user for within and between factors design
+    inputGUI = figure("Name", "Export microstates to Ragu", "MenuBar", "none", "ToolBar", "none", ...
+        "NumberTitle", "off", "Color", [.66 .76 1]);
+    inputGUI.Position(3:4) = [420 180];
+    inputGUI.UserData = rd;
+
+    uicontrol(inputGUI, 'Style', 'Text', 'String', 'Define within subjects design', 'Position', [20 140 250 20], ...
+        'FontSize', 12, 'BackgroundColor', [.66 .76 1], 'HorizontalAlignment', 'left');
+    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Edit design', 'Position', [300 135 100 30], 'FontSize', 11, ...
+        'Callback', @defineWithinDesign);
+    uicontrol(inputGUI, 'Style', 'Text', 'String', 'Define between subjects design', 'Position', [20 90 250 20], ...
+        'FontSize', 12, 'BackgroundColor', [.66 .76 1], 'HorizontalAlignment', 'left');
+    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Edit design', 'Position', [300 85 100 30], 'FontSize', 11, ...
+        'Callback', @defineBetweenDesign);
+    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Ok', 'Position', [300 10 100 30], 'Enable', 'off', 'Tag', 'Ok', 'Callback', 'uiresume()');
+    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Cancel', 'Position', [190 10 100 30], 'Callback', @(src,event)close(src.Parent));
+
+    uiwait(inputGUI);
+    if ~isvalid(inputGUI)
         return;
     end
-
-    rd = get(Output,'UserData');
-
-    close(Output);
-
-    Output = Randomizer_IndFeatures([], [], [],rd);
-    if isempty(Output)
-        return;
-    end
-
-    rd = get(Output,'UserData');
-
-    close(Output);
+    rd = inputGUI.UserData;
+    delete(inputGUI);
 
     rd = Randomizer_ComputeTanova(rd);
  
     Randomizer_ShowTanovaResults(rd);
-    %Ragu(rd);
 
     com = sprintf('com = pop_RaguMSTemplates(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
+end
+
+function defineWithinDesign(src, ~)
+    
+    rd = src.Parent.UserData;
+    okBtn = findobj(src.Parent, 'Tag', 'Ok');
+
+    Output = Randomizer_Design([], [], [], rd);
+    if ~isempty(Output)
+        rd = get(Output,'UserData');
+        close(Output);
+        src.Parent.UserData = rd;
+        if ~isempty(rd.Design)
+            okBtn.Enable = 'on';
+        end
+    end
+
+end
+
+function defineBetweenDesign(src, ~)
+
+    rd = src.Parent.UserData;
+    okBtn = findobj(src.Parent, 'Tag', 'Ok');    
+
+    Output = Randomizer_IndFeatures([], [], [], rd);
+    if ~isempty(Output)
+        rd = get(Output,'UserData');
+        close(Output);
+        src.Parent.UserData = rd;
+        if numel(unique(rd.IndFeature)) > 1
+            okBtn.Enable = 'on';
+        end
+    end
+
 end
 
 function isEmpty = isEmptySet(in)
