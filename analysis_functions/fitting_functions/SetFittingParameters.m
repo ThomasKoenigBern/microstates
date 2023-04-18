@@ -1,23 +1,43 @@
 function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, AddOptions)
     
     if nargin < 5;  AddOptions = false; end
-
-    if PeakFit
-        enablePeakFit = 'off';
-    else
-        enablePeakFit = 'on';
-    end
-
+   
     % Initial validation
-    [FitPar, FitParDefaults] = checkFitPar(funcName, PossibleNs, FitPar);
+    [FitPar, FitParDefaults] = checkFitPar(funcName, PossibleNs, AddOptions, PeakFit, FitPar);
 
     guiElements = {};
     guiGeom = {};
     guiGeomV = []; 
 
+    showPeakFit = true;
+    if PeakFit == 1
+        if ~FitPar.PeakFit
+            warning(['Backfitting on all timepoints rather than only GFP peaks is not recommended if microstates were clustered' ...
+                ' using only GFP peaks. For consistency, set FitPar.PeakFit to true.']);
+        end
+        if ~matches('nClasses', FitParDefaults)
+            showPeakFit = false;
+        end
+    elseif PeakFit == 0
+        if FitPar.PeakFit
+            warning(['Backfitting on only GFP peaks is not recommended if microstates were clustered from all timepoints. ' ...
+                'For consistency, set FitPar.PeakFit to false.']);
+        end
+        if ~matches('nClasses', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
+            showPeakFit = false;
+        end
+    elseif PeakFit == -1
+        if FitPar.PeakFit && ~matches('nClasses', FitParDefaults)
+            showPeakFit = false;
+        end
+        if ~FitPar.PeakFit && ~matches('nClasses', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
+            showPeakFit = false;
+        end           
+    end
+
     % Add all fitting parameters that were filled in with default values as
     % gui elements
-    if contains('nClasses', FitParDefaults)
+    if matches('nClasses', FitParDefaults)
         classChoices = sprintf('%i Classes|', PossibleNs);
         classChoices(end) = [];
 
@@ -28,65 +48,66 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
         guiGeomV = [guiGeomV 3];
     end
 
-    if contains('PeakFit', FitParDefaults)
-        if contains('nClasses', FitParDefaults)
+    if matches('PeakFit', FitParDefaults) && showPeakFit
+        if matches('nClasses', FitParDefaults)
             guiElements = [guiElements, {{ 'Style', 'text', 'string', ''}}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
         end
 
-        guiElements = [guiElements, ...
-            {{ 'Style', 'checkbox', 'string' 'Fitting only on GFP peaks' 'tag' 'PeakFit','Value', PeakFit, 'Enable', 'off', 'Callback', @peakFitChanged }}];
-        guiGeom = [guiGeom 1];
-        guiGeomV = [guiGeomV 1];
-    end
-
-    if contains('BControl', FitParDefaults)
-        guiElements = [guiElements, ...
-            {{ 'Style', 'checkbox', 'string' 'Remove potentially truncated microstates' 'tag' 'BControl','Value', FitPar.BControl }}];
-        guiGeom = [guiGeom 1];
-        guiGeomV = [guiGeomV 1];
-    end
-
-    if (contains('b', FitParDefaults) || contains('lambda', FitParDefaults)) && (~FitPar.PeakFit || contains('PeakFit', FitParDefaults))
-        guiElements = [guiElements, ...
-            {{ 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'Tag', 'SmoothingLabel', 'fontweight', 'bold', 'HorizontalAlignment', 'center', 'Enable', enablePeakFit}}];
-        guiGeom = [guiGeom 1];
-        guiGeomV = [guiGeomV 1];
-
-        if contains('b', FitParDefaults)
+        if PeakFit == -1
             guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Label smoothing window (ms)', 'Tag', 'bLabel', 'fontweight', 'bold', 'Enable', enablePeakFit }} ...
-                {{ 'Style', 'edit', 'string', num2str(FitPar.b) 'tag', 'b', 'Enable', enablePeakFit}}];
+                {{ 'Style', 'checkbox', 'string' 'Backfit only on GFP peaks' 'tag' 'PeakFit','Value', FitPar.PeakFit, 'Callback', @peakFitChanged }}];            
+        elseif PeakFit == 1
+            guiElements = [guiElements, ...
+                {{ 'Style', 'text', 'string', ['Template maps will be backfit on GFP peaks only,' newline 'with labels interpolated in between.']}}];
+        else
+            guiElements = [guiElements, ...
+                {{ 'Style', 'text', 'string', 'Template maps will be backfit on all EEG timepoints.'}}];
+        end
+        guiGeom = [guiGeom 1];
+        guiGeomV = [guiGeomV 1];
+    end
+
+    if ~FitPar.PeakFit && (matches('b', FitParDefaults) || matches('lambda', FitParDefaults))      
+        guiElements = [guiElements, ...
+            {{ 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'Tag', 'SmoothingLabel', 'fontweight', 'bold'}}];
+        guiGeom = [guiGeom 1];
+        guiGeomV = [guiGeomV 1];
+
+        if matches('b', FitParDefaults)
+            guiElements = [guiElements, ...
+                {{ 'Style', 'text', 'string', 'Label smoothing window (ms)', 'Tag', 'bLabel', 'fontweight', 'bold'}} ...
+                {{ 'Style', 'edit', 'string', num2str(FitPar.b) 'tag', 'b'}}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
 
-        if contains('lambda', FitParDefaults)
+        if matches('lambda', FitParDefaults)
             guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Non-Smoothness penalty', 'Tag', 'lambdaLabel', 'fontweight', 'bold', 'Enable', enablePeakFit }} ...
-                {{ 'Style', 'edit', 'string', num2str(FitPar.lambda) 'tag', 'lambda', 'Enable', enablePeakFit }}];
+                {{ 'Style', 'text', 'string', 'Non-Smoothness penalty', 'Tag', 'lambdaLabel', 'fontweight', 'bold'}} ...
+                {{ 'Style', 'edit', 'string', num2str(FitPar.lambda) 'tag', 'lambda'}}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
     end
 
     if AddOptions
-        if contains('Rectify', FitParDefaults)
+        if matches('Rectify', FitParDefaults)
             guiElements = [guiElements, ...
                 {{ 'Style', 'checkbox', 'string','Rectify microstate fit' 'tag' 'Rectify','Value',FitPar.Rectify}}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1]; 
         end
 
-        if contains('Normalize', FitParDefaults)
+        if matches('Normalize', FitParDefaults)
             guiElements = [guiElements, ...
                 {{ 'Style', 'checkbox', 'string','Normalize microstate fit' 'tag' 'Normalize','Value',FitPar.Normalize}}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1]; 
         end
     end
-
+      
     % Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
@@ -103,10 +124,6 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
 
         if isfield(outstruct, 'PeakFit')
             FitPar.PeakFit = outstruct.PeakFit;
-        end
-
-        if isfield(outstruct, 'BControl')
-            FitPar.BControl = outstruct.BControl;
         end
 
         if isfield(outstruct, 'b')
@@ -126,12 +143,16 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
         end
 
         % Re-check FitPar values
-        FitPar = checkFitPar(funcName, PossibleNs, FitPar);
+        FitPar = checkFitPar(funcName, PossibleNs, AddOptions, PeakFit, FitPar);
+    end
+
+    if FitPar.PeakFit
+        FitPar = rmfield(FitPar, {'b', 'lambda'});
     end
 
 end
 
-function peakFitChanged(obj, event)
+function peakFitChanged(obj, ~)
     smoothingLabel  = findobj(obj.Parent, 'Tag', 'SmoothingLabel');
     bLabel          = findobj(obj.Parent, 'Tag', 'bLabel');
     b               = findobj(obj.Parent, 'Tag', 'b');
@@ -139,21 +160,25 @@ function peakFitChanged(obj, event)
     lambda          = findobj(obj.Parent, 'Tag', 'lambda');
 
     if obj.Value
-        smoothingLabel.Enable = 'off';
-        bLabel.Enable = 'off';
-        b.Enable = 'off';
-        lambdaLabel.Enable = 'off';
-        lambda.Enable = 'off';
+        enable = 'off';       
     else
-        smoothingLabel.Enable = 'on';
-        bLabel.Enable = 'on';
-        b.Enable = 'on';
-        lambdaLabel.Enable = 'on';
-        lambda.Enable = 'on';
+        enable = 'on';
+    end
+
+    if ~isempty(smoothingLabel)
+        smoothingLabel.Enable = enable;
+    end
+    if ~isempty(bLabel)
+        bLabel.Enable = enable;
+        b.Enable = enable;
+    end
+    if ~isempty(lambdaLabel)
+        lambdaLabel.Enable = enable;
+        lambda.Enable = enable;
     end
 end
 
-function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, varargin)
+function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, AddOptions, PeakFit, varargin)
     
     if ~isempty(varargin)
         if isempty(varargin{:})
@@ -179,10 +204,11 @@ function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, varargin)
         funcName, 'FitPar.nClasses'));
     
     % Logical inputs
-    addParameter(p, 'PeakFit', true, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.PeakFit'));
-    addParameter(p, 'BControl', true, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.BControl'));
-    addParameter(p, 'Rectify', false, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.Rectify'));
-    addParameter(p, 'Normalize', false, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.Normalize'));
+    addParameter(p, 'PeakFit', (PeakFit == 1), @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.PeakFit'));
+    if AddOptions
+        addParameter(p, 'Rectify', false, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.Rectify'));
+        addParameter(p, 'Normalize', false, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.Normalize'));
+    end
 
     parse(p, varargin{:});
     FitPar = p.Results;

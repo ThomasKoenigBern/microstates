@@ -76,7 +76,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         errordlg2(errorMessage, 'Outlier detection error');
         return;
     end
-    if contains('Classes', p.UsingDefaults)
+    if matches('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
         classChoices = sprintf('%i Classes|', classRange);
         classChoices(end) = [];

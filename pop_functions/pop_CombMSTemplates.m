@@ -208,7 +208,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     end
 
     %% Add other gui elements
-    if contains('MeanName', p.UsingDefaults)
+    if matches('MeanName', p.UsingDefaults)
         if pickIndSets
             MeanName = 'GroupMean_<group name>';
         end
@@ -220,7 +220,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         guiGeomV = [guiGeomV 1];
     end
 
-    if contains('IgnorePolarity', p.UsingDefaults)
+    if matches('IgnorePolarity', p.UsingDefaults)
         guiElements = [guiElements ...
             {{ 'Style', 'checkbox', 'string', 'No polarity','tag','IgnorePolarity','Value', IgnorePolarity }}];
         guiGeom = [guiGeom 1];
@@ -228,7 +228,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     end
 
     % Add option to sort when done if other elements are being shown
-    if any(contains({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
+    if any(matches({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
         guiElements = [guiElements ...
             {{ 'Style', 'checkbox', 'string', 'Edit & sort maps when done', 'tag', 'SortMaps', 'Value', 1}}];
         guiGeom = [guiGeom 1];

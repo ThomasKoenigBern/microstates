@@ -145,7 +145,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     AllMaxClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MaxClasses, 1:numel(SelectedEEG));
     MinClasses = min(AllMinClasses);
     MaxClasses = max(AllMaxClasses);
-    if contains('Classes', p.UsingDefaults)
+    if matches('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
         classChoices = sprintf('%i Classes|', classRange);
         classChoices(end) = [];
@@ -174,7 +174,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     % Compute initial figure size and whether scrolling is needed
     % (for larger number of solutions/maps)
     expVarWidth = 0;
-    minGridHeight = 60;
+    minGridHeight = 80;
     minGridWidth = 60;    
     tabHeight = 30;
     nRows = numel(Classes);
@@ -232,9 +232,6 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
         fig_h.Position(2) = fig_h.Position(2) + .5*heightDiff;
         fig_h.Position(4) = gridWidth*nRows + 200;
         ud.minPanelHeight = fig_h.Position(4) - tabHeight - 30;
-    end
-    if ud.Scroll
-        fig_h.Resize = 'off';
     end
     tabGroup = uitabgroup(fig_h, 'Units', 'normalized', 'Position', [0 0 1 1]);
 

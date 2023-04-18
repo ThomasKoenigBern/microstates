@@ -42,7 +42,7 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
     if ud.minPanelWidth > figSize(3)*mapPanelNormWidth || ud.minPanelHeight > figSize(4)*mapPanelNormHeight
         ud.Scroll = true;
         fig_h = uifigure('Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], 'Units', 'pixels', ...
-            'Position', figSize, 'Resize', 'off');
+            'Position', figSize);
         if ud.minPanelWidth < fig_h.Position(3) - 20
             ud.minPanelWidth = fig_h.Position(3) - 50;
         end
@@ -55,9 +55,6 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
         fig_h = figure('NumberTitle', 'off', 'WindowStyle', 'modal', ...
             'Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], 'Position', figSize);
     end           
-    if ud.Scroll
-        fig_h.Resize = 'off';
-    end
 
     ud.Visible = true;
     ud.AllMaps = AllEEG(SelectedSet).msinfo.MSMaps;
@@ -285,8 +282,6 @@ function buildUIFig(fig_h, AllEEG)
     ud.Done = uibutton(ud.SortLayout, 'Text', 'Close', 'ButtonPushedFcn', {@figClose, fig_h});
     ud.Done.Layout.Row = 4;
     ud.Done.Layout.Column = 5;
-    
-    fig_h.Resize = 'off';
     
     fig_h.UserData = ud;
     

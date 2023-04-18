@@ -254,7 +254,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
     AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
     
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for quantifying found.'], 'Quantify microstates error');
+        errordlg2(['No valid sets for quantifying found.'], 'Quantify microstate dynamics error');
         return;
     end
 
@@ -268,7 +268,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
             errorMessage = ['The following sets cannot be quantified: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
                 'or sets without microstate maps.'];
-            errordlg2(errorMessage, 'Quantify microstates error');
+            errordlg2(errorMessage, 'Quantify microstate dynamics error');
             return;
         end
     % Otherwise, add set selection gui elements
@@ -278,8 +278,8 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         guiElements = [guiElements, ....
                     {{ 'Style', 'text'    , 'string', 'Choose sets for quantifying'}} ...
                     {{ 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'}} ...
-                    {{ 'Style', 'text'    , 'string', 'If one is chosen, individual stats will be displayed.'}} ...
-                    {{ 'Style', 'text'    , 'string', 'If multiple are chosen, aggregate stats will be displayed.'}} ...
+                    {{ 'Style', 'text'    , 'string', 'If one is chosen, individual dynamics will be displayed.'}} ...
+                    {{ 'Style', 'text'    , 'string', 'If multiple are chosen, aggregate dynamics will be displayed.'}} ...
                     {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
         guiGeom  = [guiGeom  1 1 1 1 1];
         guiGeomV = [guiGeomV  1 1 1 1 4];
@@ -299,7 +299,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
             if ~ismember(TemplateSet, meanSets)
                 errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
-                errordlg2([errorMessage], 'Quantify microstates error');
+                errordlg2([errorMessage], 'Quantify microstate dynamics error');
                 return;
             else
                 TemplateMode = 'mean';
@@ -321,7 +321,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
                 if numel(find(matches(meanSetnames, TemplateSet))) > 1
                     errorMessage = sprintf(['There are multiple mean sets with the name "%s." ' ...
                         'Please specify the set number instead ot the set name.'], TemplateSet);
-                    errordlg2([errorMessage], 'Quantify microstates error');
+                    errordlg2([errorMessage], 'Quantify microstate dynamics error');
                     return;
                 else
                     TemplateMode = 'mean';
@@ -332,7 +332,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
             else
                 errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
                     'mean sets or in the microstates/Templates folder.'], TemplateSet);
-                errordlg2([errorMessage], 'Quantify microstates error');
+                errordlg2([errorMessage], 'Quantify microstate dynamics error');
                 return;
             end
         end
@@ -350,7 +350,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
     %% Prompt user to choose SelectedSets and TemplateSet if necessary
     if ~isempty(guiElements)
         % If gui is being displayed, add option to show/hide GUI
-        if contains('gui', p.UsingDefaults)
+        if matches('gui', p.UsingDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', ''}} ...
                 {{ 'Style', 'checkbox', 'string','Show data visualizations','tag','showGUI','Value', showGUI}}];
@@ -391,7 +391,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
     end
 
     if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Quantify microstates error');
+        errordlg2('You must select at least one set of microstate maps','Quantify microstate dynamics error');
         return;
     end
 
@@ -415,12 +415,9 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         end
 
         if ~isempty(warningSetnames) && guiOpts.showQuantWarning1
-            txt = sprintf('%s, ', warningSetnames{:});
-            txt = txt(1:end-2);
             warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets: %s. Are you sure you would like to proceed?'], ...
-                TemplateName, txt);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+                'the following sets. Are you sure you would like to proceed?'], TemplateName);
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Quantify microstate dynamics warning', warningSetnames);
             if boxChecked;  guiOpts.showQuantWarning1 = false;     end
             if ~yesPressed; return;                             end
         end
@@ -433,19 +430,34 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         MinClasses = max(AllMinClasses);
         MaxClasses = min(AllMaxClasses);
         if MaxClasses < MinClasses
-            errorMessage = ['No overlap in microstate classes found between all selected sets.'];
-            errordlg2(errorMessage, 'Quantify microstates error');
+            errorMessage = 'No overlap in microstate classes found between all selected sets.';
+            if matches('SelectedSets', p.UsingDefaults)
+                errordlg2(errorMessage, 'Quantify microstate dynamics error');
+            else
+                error(errorMessage);
+            end
             return;
         end
 
         GFPPeaks = arrayfun(@(x) logical(AllEEG(x).msinfo.ClustPar.GFPPeaks), SelectedSets);
         IgnorePolarity = arrayfun(@(x) logical(AllEEG(x).msinfo.ClustPar.IgnorePolarity), SelectedSets);
         if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0)) || ~(all(IgnorePolarity == 1) || all(IgnorePolarity == 0))
-            errordlg2(['Microstate clustering parameters differ between selected sets. Sets selected for quantification must ' ...
-                'have consistent parameters for ignoring polarity and clustering on GFP peaks.'], 'Quantify microstate dynamics error');
-            return;
+            errorMessage = ['Microstate clustering parameters differ between selected sets. Sets selected for quantification should ' ...
+                'have consistent parameters for ignoring polarity and clustering on GFP peaks.'];
+            if matches('SelectedSets', p.UsingDefaults)
+                errordlg2(errorMessage, 'Quantify microstate dynamics error');
+                return;
+            else
+                warning(errorMessage);
+                if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0))
+                    PeakFit = -1;
+                else
+                    PeakFit = all(GFPPeaks == 1);
+                end
+            end            
+        else
+            PeakFit = all(GFPPeaks == 1);
         end
-        PeakFit = all(GFPPeaks == 1);
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
@@ -465,7 +477,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         if any(strcmp(SortModes, 'none')) && guiOpts.showQuantWarning2
             warningMessage = ['Some datasets remain unsorted. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstate dynamics warning');
             noSort = noPressed;
             if boxChecked;  guiOpts.showQuantWarning2 = false;  end
             if yesPressed
@@ -493,7 +505,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
             warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
                 'sort all sets according to the same template before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstate dynamics warning');
             noSameSort = noPressed;
             if boxChecked;  guiOpts.showQuantWarning3 = false;  end
             if yesPressed
@@ -515,7 +527,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
             warningMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, each set must either be ' ...
                 'manually sorted and assigned new labels, or sorted by a template set with equal (ideally) or greater number of maps. Would you like ' ...
                 'to re-sort before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstate dynamics warning');
             if boxChecked;  guiOpts.showQuantWarning4 = false;   end
             if yesPressed
                 [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
@@ -539,7 +551,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
             warningMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
                 'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
                 'and assigned the same set of labels, or sorted using a template set with an equal number of maps. Would you like to re-sort before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstates warning');
+            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Quantify microstate dynamics warning');
             if boxChecked;  guiOpts.showQuantWarning5 = false;   end
             if yesPressed
                 [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', FitPar.nClasses);
@@ -590,7 +602,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         else
             [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(SelectedEEG(s).chanlocs,ChosenTemplate.chanlocs);
             if any(isnan(LocalToGlobal(:)))
-                errordlg2(['Set ' SelectedEEG(s).setname ' does not have all channel positions defined'],'Quantify microstates error');
+                errordlg2(['Set ' SelectedEEG(s).setname ' does not have all channel positions defined'],'Quantify microstate dynamics error');
                 return;
             end
             if SelectedEEG(s).nbchan > ChosenTemplate.nbchan
@@ -742,7 +754,13 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
     %% Generate output file
     if ~strcmp(FileName, 'none')
         if isempty(FileName)
-            [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics');
+            % Set default filename
+            if strcmp(TemplateMode, 'own')
+                defaultFilename = 'MicrostateDynamics_IndividualTemplates.csv';
+            else
+                defaultFilename = ['MicrostateDynamics_' ChosenTemplate.setname '_Template.csv'];
+            end
+            [FName,PName,idx] = uiputfile({'*.csv','Comma separated file';'*.csv','Semicolon separated file';'*.txt','Tab delimited file';'*.mat','Matlab Table'; '*.xlsx','Excel file';'*.4R','Text file for R'},'Save microstate statistics', defaultFilename);
             if FName == 0
                 FileName = 'none';
             else

@@ -333,12 +333,9 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         end
 
         if ~isempty(warningSetnames) && guiOpts.showGetWarning
-            txt = sprintf('%s, ', warningSetnames{:});
-            txt = txt(1:end-2);
             warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets: %s. Are you sure you would like to proceed?'], ...
-                TemplateName, txt);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Obtain microstate activation time series warning');
+                'the following sets. Are you sure you would like to proceed?'], TemplateName);
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Obtain microstate activation time series warning', warningSetnames);
             if boxChecked;  guiOpts.showGetWarning = false;     end
             if ~yesPressed; return;                             end
         end

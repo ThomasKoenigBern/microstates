@@ -234,7 +234,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
 
-        if contains('UseAAHC', ClustParDefaults)
+        if matches('UseAAHC', ClustParDefaults)
             ClustPar.UseAAHC = floor(ClustPar.UseAAHC) + 1;
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Algorithm', 'fontweight', 'normal'  }} ...
@@ -243,7 +243,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('MinClasses', ClustParDefaults)
+        if matches('MinClasses', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Min number of classes', 'fontweight', 'normal'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.MinClasses), 'tag','MinClasses' }}];
@@ -251,7 +251,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('MaxClasses', ClustParDefaults)
+        if matches('MaxClasses', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Max number of classes', 'fontweight', 'normal'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.MaxClasses), 'tag','MaxClasses' }}];
@@ -259,7 +259,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('Restarts', ClustParDefaults)
+        if matches('Restarts', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Number of restarts', 'fontweight', 'normal', 'tag', 'RestartsLabel'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.Restarts),'tag' 'Restarts' }}];
@@ -267,7 +267,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('MaxMaps', ClustParDefaults)
+        if matches('MaxMaps', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Max number of maps to use', 'fontweight', 'normal'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.MaxMaps), 'tag', 'MaxMaps'}}];
@@ -275,21 +275,21 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('GFPPeaks', ClustParDefaults)
+        if matches('GFPPeaks', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string', 'GFP peaks only' 'tag', 'GFPPeaks','Value', ClustPar.GFPPeaks }}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('IgnorePolarity', ClustParDefaults)
+        if matches('IgnorePolarity', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string', 'No polarity','tag','IgnorePolarity','Value', ClustPar.IgnorePolarity }}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('Normalize', ClustParDefaults)
+        if matches('Normalize', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string', 'Normalize EEG before clustering','tag','Normalize' ,'Value', ClustPar.Normalize }}];
             guiGeom = [guiGeom 1];
@@ -306,14 +306,14 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
 
-        if contains('ShowMaps', p.UsingDefaults)
+        if matches('ShowMaps', p.UsingDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('ShowDyn', p.UsingDefaults)
+        if matches('ShowDyn', p.UsingDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string','Show dynamics when done','tag','ShowDyn','Value', ShowDyn }}];
             guiGeom = [guiGeom 1];

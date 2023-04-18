@@ -9,7 +9,7 @@
 %
 % Outputs:
 %   - selection: character vector of the option the user selected, empty if
-%   they closed the dialog box
+%   the dialog box was closed
 %
 
 function selection = questionDialog(question, title, options)   
@@ -30,24 +30,6 @@ function selection = questionDialog(question, title, options)
         "Units", "normalized", "Position", [0.36 0.1 0.28 0.3], "Parent", selectDlg);
     uicontrol("Style", "pushbutton", "String", "Cancel", "Callback", {@btnPressed, selectDlg}, ...
         "Units", "normalized", "Position", [0.67 0.1 0.28 0.3], "Parent", selectDlg);
-% 
-%     selectDlg = uifigure('Name', title);
-%     selectDlg.Position(3:4) = [750 150];
-%     selectDlg.UserData.selection = selection;
-%     selectDlg.CloseRequestFcn = 'uiresume()';
-%     grid1 = uigridlayout(selectDlg, [2 1]);
-%     grid1.BackgroundColor = [.66 .76 1];        % match EEGLAB background color
-%     grid1.Padding = [30 10 30 10];
-%     
-%     questLabel = uilabel(grid1, 'Text', question, 'WordWrap', 'on');
-%     questLabel.FontSize = 14;
-%     
-%     grid2 = uigridlayout(grid1, [1 3]);
-%     grid2.BackgroundColor = [.66 .76 1];        % match EEGLAB background color
-%     
-%     uibutton(grid2, 'Text', options{1}, 'ButtonPushedFcn', {@btnPressed, selectDlg});
-%     uibutton(grid2, 'Text', options{2}, 'ButtonPushedFcn', {@btnPressed, selectDlg});
-%     uibutton(grid2, 'Text', 'Cancel', 'ButtonPushedFcn', {@btnPressed, selectDlg});
 
     uiwait(selectDlg);
 
