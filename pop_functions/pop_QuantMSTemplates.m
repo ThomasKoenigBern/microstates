@@ -1,11 +1,11 @@
 % pop_QuantMSTemplates() Quantifies the temporal dynamics of microstates in
-% individual EEG datasets. Generates and outputs a structure array of
-% temporal dynamics parameters for all sets chosen for analysis in the
+% individual EEG datasets. Generates a structure array of temporal dynamics
+% parameters for all sets chosen for analysis, which is stored in the
 % "MSStats" output, with the option to save the array to a csv, txt, xlsx,
-% 4R, or mat file. Includes the option to generate plots with summary
-% statistics for the temporal dynamics extracted. Statistics for each
-% subject included in the analysis are also saved to the "stats" field of
-% "msinfo" in the corresponding EEG set.
+% 4R, or mat file. Includes the option to generate plots of the extracted
+% temporal dynamics parameters for all included datasets. Temporal dynamics
+% statistics for each subject included in the analysis are also saved to 
+% the "stats" field of "msinfo" in the corresponding EEG set.
 %
 % Usage:
 %   >> [EEG, CURRENTSET, MSStats, fig_h] = pop_QuantMSTemplates(ALLEEG, 
@@ -65,8 +65,8 @@
 %
 %   "Show data visualizations"
 %   -> Controls whether to generate figure with summary of extracted
-%   temporal dynamics statistics. Uncheck this if you want to skip the
-%   visualizations and save the results to a file.
+%   temporal dynamics parameters. Uncheck this if you want to skip the
+%   visualizations and go straight to saving the results to a file.
 %   -> Command line equivalent: "gui"
 %
 %   "Microstate fitting parameters"
@@ -79,23 +79,19 @@
 %   "Fitting only on GFP peaks"
 %   -> Controls whether to backfit maps only at global field power peaks
 %   and interpolate microstae assignments in between peaks, or to backfit
-%   maps at all timepoints.
+%   maps at all timepoints. If datasets were clustered only on GFP peaks, 
 %   -> Command line equivalent: "FitPar.PeakFit"
-%
-%   "Remove potentially truncated microstates"
-%   -> Controls whether to remove microstate assignments around boundary
-%   events in the EEG data
-%   -> Command line equivalent: "FitPar.BControl"
 %
 %   "Label smoothing window"
 %   -> Window size in ms to use for temporal smoothing of microstate
-%   assignments. Use 0 to skip temporal smoothing. Ignored if fitting only
-%   on GFP peaks.
+%   assignments. Use 0 to skip temporal smoothing. Will not appear if
+%   datasets selected for backfitting were clustered only on GFP peaks.
 %   -> Command line equivalent: "FitPar.b"
 %
 %   "Non-Smoothness penality"
 %   -> Penalty for non-smoothness in the temporal smoothing algorithm.
-%   Ignored if fitting only on GFP peaks.
+%   Will not appear if datasets selected for backfitting were clustered
+%   only on GFP peaks.
 %   -> Command line equivalent: "FitPar.lambda"
 %
 % Inputs:
@@ -105,24 +101,24 @@
 %
 %   "SelectedSets" (optional)
 %   -> Array of set indices of ALLEEG for which temporal dynamics will be
-%   extracted. If not provided, a GUI will appear to choose sets.
+%   extracted. Selected sets must be individual datasets (not group level 
+%   or grand mean sets). If not provided, a GUI will appear to choose sets.
 %
 % Key, Value inputs (optional):
 %
 %   "FitPar"
 %   -> Structure containing fields specifying parameters for backfitting.
 %   If some required fields are not included, a GUI will appear with the
-%   unincluded fields. Required fields:
+%   unincluded fields. FitPar fields include:
 %       "FitPar.nClasses"
 %       -> Number of classes to use for backfitting
 %
 %       "FitPar.PeakFit"
 %       -> 1 = backfit maps only at global field power peaks and
-%       interpolate in between, 0 = backfit maps at all timepoints
-%
-%       "FitPar.BControl"
-%       -> 1 = Remove microstate assignments around boundary events in the
-%       EEG data, 0 = keep all microstate assignments
+%       interpolate in between, 0 = backfit maps at all timepoints.
+%       Recommended to backfit maps to GFP peaks if maps were clustered
+%       using only GFP peaks, and to backfit maps at all timepoints if maps
+%       clustered using all timepoints.
 %
 %       "FitPar.b"
 %       -> Window size in ms to use for temporal smoothing of microstate
@@ -177,6 +173,10 @@
 %   different temporal parameter, and each element in the array corresponds
 %   to a dataset.
 %
+%   "fig_h"
+%   -> Figure handle to window with plotted temporal dynamics parameters
+%   for all selected sets. Useful for scripting purposes to save figures.
+%
 %   "com"
 %   -> Command necessary to replicate the computation
 %              
@@ -199,7 +199,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTemplates(AllEEG, varargin)
+function [EEGout, CurrentSet, MSStats, fig_h, com, EpochData] = pop_QuantMSTemplates(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
@@ -210,7 +210,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
     EEGout = EEG;
     CurrentSet = CURRENTSET;
     MSStats = [];
-    statsFig = [];
+    fig_h = [];
 
     guiElements = {};
     guiGeom = {};
@@ -567,12 +567,6 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         end        
     end
 
-    if isfield(FitPar,'SingleEpochFileTemplate')
-        SingleEpochFileTemplate = FitPar.SingleEpochFileTemplate;
-    else 
-        SingleEpochFileTemplate = [];
-    end
-
     %% Quantify
     h = waitbar(0, sprintf('Working on %s', SelectedEEG(1).setname), 'Name', 'Quantifying microstates, please wait...');
     h.Children.Title.Interpreter = 'none';
@@ -589,15 +583,18 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
 
         if strcmp(TemplateMode, 'own')
             msinfo = SelectedEEG(s).msinfo;
+            TemplateInfo.name = '<<own>>';            
         else
             msinfo = ChosenTemplate.msinfo;
+            TemplateInfo.name = ChosenTemplate.setname;
         end
+        TemplateInfo.SortedBy = msinfo.MSMaps(FitPar.nClasses).SortedBy;
         Maps = L2NormDim(msinfo.MSMaps(FitPar.nClasses).Maps, 2);
         
         if strcmp(TemplateMode, 'own')
             [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar,msinfo.ClustPar.IgnorePolarity);
             if ~isempty(MSClass)
-                [tempStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, [], IndGEVs, SingleEpochFileTemplate);
+                tempStats(s) = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateInfo, IndGEVs);                
             end
         else
             [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(SelectedEEG(s).chanlocs,ChosenTemplate.chanlocs);
@@ -612,11 +609,10 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
                 [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar, msinfo.ClustPar.IgnorePolarity);
             end
             if ~isempty(MSClass)
-                [tempStats(s), SSEpochData] = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate);
+                tempStats(s) = QuantifyMSDynamics(MSClass,gfp,SelectedEEG(s).msinfo,SelectedEEG(s).srate, DataInfo, TemplateInfo, IndGEVs);
             end
         end
         SelectedEEG(s).msinfo.stats = tempStats(s);
-        EpochData(s) = SSEpochData;
     end
     close(h);
 
@@ -631,11 +627,11 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
     %% Show GUI with summary statistics
     if showGUI
         if numel(SelectedSets) == 1
-            figName = ['Microstates statistics summary: ' SelectedEEG.setname];
+            figName = ['Microstate dynamics summary: ' SelectedEEG.setname];
             x = categorical(Labels);
             x = reordercats(x, Labels);
         else
-            figName = 'Microstates statistics summary';
+            figName = 'Microstate dynamics summary';
             x = repmat(Labels, 1, numel(SelectedSets));
             x = categorical(x, Labels);
         end
@@ -645,10 +641,10 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         else
             figVisible = 'off';
         end        
-        statsFig = figure('Name', figName, 'NumberTitle', 'off', 'Units', 'normalized', ...
-        'Position', [.1 .1 .8 .8], 'ToolBar', 'none', 'WindowStyle', 'modal', 'Visible', figVisible);
+        fig_h = figure('Name', figName, 'NumberTitle', 'off', 'Units', 'normalized', ...
+        'Position', [.1 .1 .8 .8], 'ToolBar', 'none', 'Visible', figVisible);
         
-        t = tiledlayout(statsFig, 2, 3);
+        t = tiledlayout(fig_h, 2, 3);
         t.TileSpacing = 'tight';
         t.Padding = 'compact';
     
@@ -669,7 +665,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         if numel(SelectedSets)  == 1
             bar(durAx, x, MSStats.Duration*1000);
         else
-            Durations = cell2mat(arrayfun(@(x) double(MSStats(x).Duration*1000), 1:numel(SelectedSets), 'UniformOutput', false));
+            Durations = cell2mat(arrayfun(@(x) double(MSStats(x).MeanDuration*1000), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(durAx, x, Durations, 25, [0 0.4470 0.7410],'filled');
         end
         ymax = durAx.YLim(2)*1.1;
@@ -681,19 +677,19 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         if numel(SelectedSets) == 1
             bar(occAx, x, MSStats.Occurrence);
         else
-            Occurrences = cell2mat(arrayfun(@(x) double(MSStats(x).Occurrence), 1:numel(SelectedSets), 'UniformOutput', false));
+            Occurrences = cell2mat(arrayfun(@(x) double(MSStats(x).MeanOccurrence), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(occAx, x, Occurrences, 25, [0 0.4470 0.7410],'filled');
         end
         ymax = occAx.YLim(2)*1.1;
         ylim(occAx, [0 ymax]);
-        title(occAx, 'Mean Occurence (segments/s)');
+        title(occAx, 'Mean Occurrence (appearances/s)');
     
         % Coverage
         covAx = nexttile(t, 5);
         if numel(SelectedSets) == 1
             bar(covAx, x, MSStats.Contribution*100);
         else
-            Coverages = cell2mat(arrayfun(@(x) double(MSStats(x).Contribution*100), 1:numel(SelectedSets), 'UniformOutput', false));
+            Coverages = cell2mat(arrayfun(@(x) double(MSStats(x).Coverage*100), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(covAx, x, Coverages, 25, [0 0.4470 0.7410],'filled');
         end
         ymax = covAx.YLim(2)*1.1;
@@ -710,7 +706,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         end
         ymax = gfpAx.YLim(2)*1.1;
         ylim(gfpAx, [0 ymax]);
-        title(gfpAx, 'Mean GFP');
+        title(gfpAx, 'Mean GFP (\muV)', 'Interpreter', 'tex');
     
         % Transition matrix
 %         nexttile(t, 3);
@@ -733,7 +729,7 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
         nexttile(t, 6);
         if numel(SelectedSets) == 1
             h2 = heatmap(t, Labels, Labels, MSStats.DeltaTM, 'GridVisible', 'off');
-            h2.Title = 'Delta Transition Matrix';
+            h2.Title = 'Observed - Expected Transition Probabilities';
         else
             avgTM = zeros(FitPar.nClasses);
             for s=1:numel(SelectedSets)
@@ -741,13 +737,13 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
             end
             avgTM = avgTM/numel(SelectedSets);
             h2 = heatmap(t, Labels, Labels, avgTM, 'GridVisible', 'off');
-            h2.Title = 'Average Delta Transition Matrix';
+            h2.Title = 'Mean Observed - Expected Transition Probabilities';
         end
         h2.XLabel = 'To';
         h2.YLabel = 'From';
 
         if Visible && isempty(FileName)
-            uiwait(statsFig);
+            uiwait(fig_h);
         end
     end 
 
@@ -798,9 +794,9 @@ function [EEGout, CurrentSet, MSStats, statsFig, com, EpochData] = pop_QuantMSTe
     end
 
     if ischar(TemplateSet) || isstring(TemplateSet)
-        quantCom = sprintf('[EEG, CURRENTSET, MSStats, fig_h, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+        quantCom = sprintf('[EEG, CURRENTSET, MSStats, fig_h, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'', ''FileName'', ''%s'', ''gui'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI, Visible);
     elseif isnumeric(TemplateSet)
-        quantCom = sprintf('[EEG, CURRENTSET, MSStats, fig_h, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI);
+        quantCom = sprintf('[EEG, CURRENTSET, MSStats, fig_h, com] = pop_QuantMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i, ''FileName'', ''%s'', ''gui'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet, FileName, showGUI, Visible);
     end
 
     if isempty(com)
