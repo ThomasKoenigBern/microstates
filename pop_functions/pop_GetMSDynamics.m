@@ -183,7 +183,8 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
     isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
+%    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
+    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet));
     
     if isempty(AvailableSets)
         errordlg2(['No valid sets for extracting dynamics found.'], 'Obtain microstate activation time series error');
@@ -408,8 +409,16 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         newEEG(index).nbchan = FitPar.nClasses;
         newEEG(index).msinfo.FitPar = FitPar;
         % replace msinfo.MSMaps with only the relevant maps
-        newEEG(index).msinfo.MSMaps(1:end) = [];
-        newEEG(index).msinfo.MSMaps(FitPar.nClasses) = AllEEG(sIndex).msinfo.MSMaps(FitPar.nClasses);
+        
+        if isfield(newEEG(index),'msinfo')
+            if isfield(newEEG(index).msinfo,'MSMaps')
+                newEEG(index).msinfo.MSMaps(1:end) = [];
+            end
+        end
+        %newEEG(index).msinfo.MSMaps(FitPar.nClasses) = AllEEG(sIndex).msinfo.MSMaps(FitPar.nClasses);
+        newEEG(index).msinfo.MSMaps(FitPar.nClasses) = msinfo.MSMaps(FitPar.nClasses);
+        newEEG(index).msinfo.MSMaps(FitPar.nClasses).Maps = Maps;
+
         % add dynamics info
         newEEG(index).msinfo.DynamicsInfo.TemplateMode = TemplateMode;
         if ~strcmp(TemplateMode, 'own')
