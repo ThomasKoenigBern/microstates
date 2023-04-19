@@ -92,6 +92,9 @@ ClustPar.IgnorePolarity = true;         % whether maps of inverted polarities sh
 ClustPar.Normalize = true;              % Set to false if using AAHC
 
 % Set backfitting parameters
+% NOTE: If more than 7 maps are used for backfitting, please either update 
+% the "TemplateNames" and "SortClasses" variables below with your own
+% template, or use the interactive explorer to manually sort maps.
 FitPar.nClasses = 4;                    % number of maps to use for quantifying
 FitPar.PeakFit = ClustPar.GFPPeaks;     % whether to backfit only on global field power peaks
 FitPar.lambda = 0.3;                    % smoothness penalty
@@ -230,7 +233,7 @@ for i=1:nGroups
     fprintf('Plotting and saving maps for group %s...\n', groupNames{i});
     for j=1:numel(currGroupIdx)
         % Save figures with individual microstate maps
-        [ALLEEG, EEG, CURRENTSET, fig] = pop_ShowIndMSMaps(ALLEEG, currGroupIdx(j), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
+        fig = pop_ShowIndMSMaps(ALLEEG, currGroupIdx(j), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
         saveas(fig, fullfile(subjFigDir, [EEG.setname '.png']));
         close(fig);
 
@@ -239,7 +242,7 @@ for i=1:nGroups
     end
 
     % Save figures with group level microstate maps
-    [ALLEEG, EEG, CURRENTSET, fig] = pop_ShowIndMSMaps(ALLEEG, GroupMeanIdx(i), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
+    fig = pop_ShowIndMSMaps(ALLEEG, GroupMeanIdx(i), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
     saveas(fig, fullfile(meanFigDir, [EEG.setname '.png']));
     close(fig);
 
@@ -249,7 +252,7 @@ end
 
 % Save figures with grand mean microstate maps
 disp('Plotting and saving grand mean maps...');
-[ALLEEG, EEG, CURRENTSET, fig] = pop_ShowIndMSMaps(ALLEEG, GrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
+fig = pop_ShowIndMSMaps(ALLEEG, GrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
 saveas(fig, fullfile(meanFigDir, [EEG.setname '.png']));
 close(fig);
 % Save grand mean set files with microstates data
@@ -258,11 +261,17 @@ pop_saveset(EEG, 'filename', EEG.setname, 'filepath', meanDir);
 %% 9. Quantify microstate dynamics
 disp('Quantifying microstate dynamics...');
 % Quantify according to individual microstate template maps
-pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', 'own', 'FitPar', FitPar, 'Filename', fullfile(quantDir, 'MicrostateDynamics_IndividualTemplates.csv'), 'gui', 0);
+[EEG, CURRENTSET, IndStats, fig] = pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', 'own', 'FitPar', FitPar, 'Filename', fullfile(quantDir, 'MicrostateDynamics_IndividualTemplates.csv'), 'gui', 1, 'Visible', 0);
+saveas(fig, fullfile(quantDir, 'MicrostateDynamics_IndividualTemplates.png'));
+close(fig);
 % Quantify according to grand mean microstate template maps
-pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', GrandMeanIdx, 'FitPar', FitPar, 'Filename', fullfile(quantDir, 'MicrostateDynamics_GrandMeanTemplate.csv'), 'gui', 0);
+[EEG, CURRENTSET, GrandMeanStats, fig] = pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', GrandMeanIdx, 'FitPar', FitPar, 'Filename', fullfile(quantDir, 'MicrostateDynamics_GrandMeanTemplate.csv'), 'gui', 1, 'Visible', 0);
+saveas(fig, fullfile(quantDir, 'MicrostateDynamics_GrandMeanTemplate.png'));
+close(fig);
 % Quantify according to specified published microstate template maps
-pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', FittingTemplate, 'FitPar', FitPar, 'Filename', fullfile(quantDir, ['MicrostateDynamics_' FittingTemplate '.csv']), 'gui', 0);
+[EEG, CURRENTSET, PublishedSetStats, fig] = pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', FittingTemplate, 'FitPar', FitPar, 'Filename', fullfile(quantDir, ['MicrostateDynamics_' FittingTemplate '.csv']), 'gui', 1, 'Visible', 0);
+saveas(fig, fullfile(quantDir, ['MicrostateDynamics_' FittingTemplate '.png']));
+close(fig);
 
 %% 10. Export microstate maps to Ragu
 if numel(which('Ragu')) > 1

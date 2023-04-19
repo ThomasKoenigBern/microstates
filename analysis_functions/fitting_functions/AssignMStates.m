@@ -146,19 +146,19 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
             end
 
             Winner(Hit == 0) = 0;       % microstate assignments of 0
-            if params.BControl == true
-                % Kill microstates truncated by boundaries
-                for b = 1:numel(BoundaryPoint)
-                    if BoundaryEpoch(b) == s
-                        FirstPeakAfterBoundary = find(IsIn > BoundaryPoint(b),1);
-                        LastPeakBeforeBoundary = find(IsIn < BoundaryPoint(b),1,'last');
-                        Winner = fill1D(Winner, IsIn(FirstPeakAfterBoundary), 0);
-                        Winner = fill1D(Winner, IsIn(LastPeakBeforeBoundary), 0);                
-                    end
+
+            % Kill microstates truncated by boundaries
+            for b = 1:numel(BoundaryPoint)
+                if BoundaryEpoch(b) == s
+                    FirstPeakAfterBoundary = find(IsIn > BoundaryPoint(b),1);
+                    LastPeakBeforeBoundary = find(IsIn < BoundaryPoint(b),1,'last');
+                    Winner = fill1D(Winner, IsIn(FirstPeakAfterBoundary), 0);
+                    Winner = fill1D(Winner, IsIn(LastPeakBeforeBoundary), 0);                
                 end
-                Winner = fill1D(Winner, IsIn(1)  , 0);
-                Winner = fill1D(Winner, IsIn(end), 0);
             end
+            Winner = fill1D(Winner, IsIn(1)  , 0);
+            Winner = fill1D(Winner, IsIn(end), 0);
+
             MSClass(:,s) = Winner;
         end
     else
@@ -180,20 +180,19 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
             end
 
             % Kill microstates truncated by boundaries
-            if params.BControl == true
-                for b = 1:numel(BoundaryPoint)
-                    if BoundaryEpoch(b) == s
-                        FirstPointAfterBoundary = ceil( BoundaryPoint(b));
-                        LastPointBeforeBoundary = floor(BoundaryPoint(b));
-                        
-                        Winner = fill1D(Winner, FirstPointAfterBoundary, 0);
-                        Winner = fill1D(Winner, LastPointBeforeBoundary, 0);   
-                    end
+            for b = 1:numel(BoundaryPoint)
+                if BoundaryEpoch(b) == s
+                    FirstPointAfterBoundary = ceil( BoundaryPoint(b));
+                    LastPointBeforeBoundary = floor(BoundaryPoint(b));
+                    
+                    Winner = fill1D(Winner, FirstPointAfterBoundary, 0);
+                    Winner = fill1D(Winner, LastPointBeforeBoundary, 0);   
                 end
-            % Clear the first and last state, because it is undefined
+            end
+
+                % Clear the first and last state, because it is undefined
                 Winner = fill1D(Winner,1           ,0);
                 Winner = fill1D(Winner,numel(Winner),0);
-            end
         
 %             AllMFit = AllMFit + sum(ExpVar(1,Winner > 0),2);
 %             AllMVar = AllMVar + sum(Winner > 0);

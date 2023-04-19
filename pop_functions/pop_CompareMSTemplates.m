@@ -488,7 +488,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             return;
         end
 
-        if contains('nClasses', p.UsingDefaults)
+        if matches('nClasses', p.UsingDefaults)
             classes = MinClasses:MaxClasses;
             classChoices = sprintf('%i Classes|', classes);
             classChoices(end) = [];

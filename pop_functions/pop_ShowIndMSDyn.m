@@ -328,12 +328,9 @@ function [EEGout, CurrentSet, com] = pop_ShowIndMSDyn(AllEEG, varargin)
         end
 
         if ~isempty(warningSetnames) && guiOpts.showQuantWarning1
-            txt = sprintf('%s, ', warningSetnames{:});
-            txt = txt(1:end-2);
             warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets: %s. Are you sure you would like to proceed?'], ...
-                TemplateName, txt);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Plot microstate dynamics error');
+                'the following sets. Are you sure you would like to proceed?'], TemplateName);
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Plot microstate dynamics error', warningSetnames);
             if boxChecked;  guiOpts.showDynWarning = false;     end
             if ~yesPressed; return;                             end
         end

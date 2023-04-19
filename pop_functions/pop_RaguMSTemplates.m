@@ -117,7 +117,7 @@ function com = pop_RaguMSTemplates(AllEEG, varargin)
     
     MinClasses = max(arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets));
     MaxClasses = min(arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets));
-    if contains('Classes', p.UsingDefaults)
+    if matches('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
         classChoices = sprintf('%i Classes|', classRange);
         classChoices(end) = [];

@@ -83,9 +83,9 @@ function PlotMSMaps(fh, classes)
                         ylabel(UserData.Axes{y_pos, x_pos}, ExpVarStr, 'FontSize', 10, 'Rotation', 0, 'HorizontalAlignment', 'right', 'FontWeight', 'bold');
                     else
                         if isfield(UserData.AllMaps(classesToUpdate(y)), 'SharedVar')
-                            ExpVar = mean(UserData.AllMaps(classesToUpdate(y)).SharedVar);
-                            ExpVarStr = sprintf(' %2.2f%% ', ExpVar*100);
-                            ylabel(UserData.Axes{y_pos, x_pos}, ExpVarStr, 'FontSize', 10, 'Rotation', 0, 'HorizontalAlignment', 'right', 'FontWeight', 'bold');
+                            SharedVar = mean(UserData.AllMaps(classesToUpdate(y)).SharedVar);
+                            SharedVarStr = sprintf(' %2.2f%% ', SharedVar*100);
+                            ylabel(UserData.Axes{y_pos, x_pos}, SharedVarStr, 'FontSize', 10, 'Rotation', 0, 'HorizontalAlignment', 'right', 'FontWeight', 'bold');
                         end
                     end                                                
                 end

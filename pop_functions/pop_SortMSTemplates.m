@@ -24,14 +24,13 @@
 %       'Custo2017', 'IgnorePolarity', 1, 'Classes', 7)
 %
 % To sort maps or relabel maps manually, specify "TemplateSet" as "manual."
-% Include "IgnorePolarity", "Classes", "SortOrder", and "NewLabels" for 
-% reordering to occur without the GUI, or leave them out to bring up the 
-% interactive GUI. Only one dataset can be passed in for manual sorting at 
-% a time.
+% Include "Classes", "SortOrder", and "NewLabels" for reordering to occur
+% without the GUI, or leave them out to bring up the interactive GUI. Only 
+% one dataset can be passed in for manual sorting at a time.
 %
 % Ex: manual sort without GUI
 %   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1, 'TemplateSet',
-%       'manual', 'IgnorePolarity', 1, 'Classes', 4, 'SortOrder', [-4 2 3 -1],
+%       'manual', 'Classes', 4, 'SortOrder', [-4 2 3 -1],
 %       'NewLabels', {'A', 'B', 'C', 'D'})
 %
 % Ex: manual sort with GUI
@@ -370,7 +369,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     end
 
     %% Add other gui elements
-    if contains('IgnorePolarity', p.UsingDefaults) && ~manualSort
+    if matches('IgnorePolarity', p.UsingDefaults) && ~manualSort
         guiElements = [guiElements ...
             {{ 'Style', 'checkbox', 'string', 'No polarity','tag','IgnorePolarity','Value', IgnorePolarity }}];
         guiGeom = [guiGeom 1];
@@ -395,7 +394,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
         end
 
         if isfield(outstruct, 'TemplateIndex')
-            if contains('Manual or template sort in interactive explorer', combinedSetnames)
+            if matches('Manual or template sort in interactive explorer', combinedSetnames)
                 if outstruct.TemplateIndex == 1
                     manualSort = true;
                 elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
@@ -447,8 +446,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
             [SortedMaps, com] = ManualSort(AllEEG(SelectedSets).msinfo.MSMaps, SortOrder, NewLabels, Classes, ClassRange);
             if isempty(SortedMaps); return; end
 
-            % Sort all if selected
-            IgnorePolarity = AllEEG(SelectedSets).msinfo.ClustPar.IgnorePolarity;
+            % Sort all if selected            
             if SortAll                
                 SortedMaps = SortAllSolutions(SortedMaps, ClassRange, Classes, IgnorePolarity);
             end
@@ -485,7 +483,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     AllMaxClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets);
     MinClasses = min(AllMinClasses);
     MaxClasses = max(AllMaxClasses);
-    if contains('Classes', p.UsingDefaults)
+    if matches('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
         classChoices = sprintf('%i Classes|', classRange);
         classChoices(end) = [];
@@ -530,12 +528,9 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
         end
 
         if ~isempty(warningSetnames) && guiOpts.showSortWarning
-            txt = sprintf('%s, ', warningSetnames{:});
-            txt = txt(1:end-2);
             warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets: %s. Are you sure you would like to proceed?'], ...
-                TemplateName, txt);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Sort microstate maps warning');
+                'the following sets. Are you sure you would like to proceed?'], TemplateName);
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Sort microstate maps warning', warningSetnames);
             if boxChecked;  guiOpts.showSortWarning = false;    end
             if ~yesPressed; return;                             end
         end
