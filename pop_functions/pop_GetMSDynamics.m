@@ -185,7 +185,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
 %    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
     AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet));
-    
+
     if isempty(AvailableSets)
         errordlg2(['No valid sets for extracting dynamics found.'], 'Obtain microstate activation time series error');
         return;
@@ -194,7 +194,8 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     % If the user has provided sets, check their validity
     if ~isempty(SelectedSets)
         SelectedSets = unique(SelectedSets, 'stable');
-        isValid = ismember(SelectedSets, AvailableSets);
+
+        isValid = ismember(SelectedSets, AvailableSets); % This needs to be checked
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
@@ -218,10 +219,12 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         guiGeomV = [guiGeomV  1 1 1 4];
     end
 
+
     %% TemplateSet validation
     % If the user has provided a template set number or name, check its
     % validity
     meanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
+
     meanSetnames = {AllEEG(meanSets).setname};
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;

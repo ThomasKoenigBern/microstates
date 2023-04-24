@@ -179,6 +179,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     addParameter(p, 'ClustPar', []);
     addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'ShowDyn', false, @(x) validateattributes(x, logClass, logAttributes));
+    addParameter(p, 'TTFrD', false, @(x) validateattributes(x, logClass, logAttributes));
 
     parse(p, AllEEG, varargin{:});
 
@@ -186,13 +187,19 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     ClustPar = p.Results.ClustPar;
     ShowMaps = p.Results.ShowMaps;
     ShowDyn = p.Results.ShowDyn;
+    DoTTFrD = p.Results.TTFrD;
 
     %% SelectedSets validation
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
+    HasTTFrDF   = arrayfun(@(x) DoesItHaveWavelets(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
     isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet));
+    if DoTTFrD == true
+        AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet),HasTTFrDF));
+    else
+        AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet));
+    end
     if isempty(AvailableSets)
         errordlg2(['No valid sets for clustering found.'], 'Identify microstates error');
         return;
@@ -396,26 +403,31 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             MapsPerSegment = inf(nSegments,1);
         end
     
-        MapsToUse = [];
-        for s = 1:nSegments
-            if ClustPar.GFPPeaks == 1
-                gfp = std(AllEEG(sIndex).data(:,:,s),1,1);
-                IsGFPPeak = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
-                if numel(IsGFPPeak) > MapsPerSegment(s) && MapsPerSegment(s) > 0
-                    idx = randperm(numel(IsGFPPeak));
-                    IsGFPPeak = IsGFPPeak(idx(1:MapsPerSegment(s)));
-                end
-                MapsToUse = [MapsToUse AllEEG(sIndex).data(:,IsGFPPeak,s)];
-            else
-                if (size(AllEEG(sIndex).data,2) > ClustPar.MaxMaps) && MapsPerSegment(s) > 0
-                    idx = randperm(size(AllEEG(sIndex).data,2));
-                    MapsToUse = [MapsToUse AllEEG(sIndex).data(:,idx(1:MapsPerSegment(s)),s)];
+        if DoTTFrD
+            MapsToUse = AllEEG(sIndex).TTFrD.Wavelets.Maps;
+        else
+
+            MapsToUse = [];
+            for s = 1:nSegments
+                if ClustPar.GFPPeaks == 1
+                    gfp = std(AllEEG(sIndex).data(:,:,s),1,1);
+                    IsGFPPeak = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
+                    if numel(IsGFPPeak) > MapsPerSegment(s) && MapsPerSegment(s) > 0
+                        idx = randperm(numel(IsGFPPeak));
+                        IsGFPPeak = IsGFPPeak(idx(1:MapsPerSegment(s)));
+                    end
+                    MapsToUse = [MapsToUse AllEEG(sIndex).data(:,IsGFPPeak,s)];
                 else
-                    MapsToUse = [MapsToUse AllEEG(sIndex).data(:,:,s)];
+                    if (size(AllEEG(sIndex).data,2) > ClustPar.MaxMaps) && MapsPerSegment(s) > 0
+                        idx = randperm(size(AllEEG(sIndex).data,2));
+                        MapsToUse = [MapsToUse AllEEG(sIndex).data(:,idx(1:MapsPerSegment(s)),s)];
+                    else
+                        MapsToUse = [MapsToUse AllEEG(sIndex).data(:,:,s)];
+                    end
                 end
             end
         end
-        
+
         if size(MapsToUse,2) < ClustPar.MaxClasses
             warning('Not enough data to cluster in set %s',AllEEG(sIndex).setname);
             FailedSets = [FailedSets,sIndex]; %#ok<AGROW> 
@@ -599,4 +611,22 @@ function Answer = DoesItHaveChildren(in)
     else
         Answer = true;
     end
+end
+
+function Answer = DoesItHaveWavelets(in)
+    Answer = false;
+    if ~isfield(in,'TTFrD')
+        return;
+    end
+    
+    if ~isfield(in.TTFrD,'Wavelets')
+        return
+    end
+    if ~isfield(in.TTFrD.Wavelets,'Maps')
+        return;
+    else
+        Answer = true;
+    end
+    
+
 end
