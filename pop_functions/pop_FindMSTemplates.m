@@ -175,7 +175,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     logAttributes = {'binary', 'scalar'};
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
-    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
+    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'nonnegative', '<=', numel(AllEEG)})); % Took out the 'vector attirbute to allow for [] input
     addParameter(p, 'ClustPar', []);
     addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'ShowDyn', false, @(x) validateattributes(x, logClass, logAttributes));
@@ -187,7 +187,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     ClustPar = p.Results.ClustPar;
     ShowMaps = p.Results.ShowMaps;
     ShowDyn = p.Results.ShowDyn;
-    DoTTFrD = p.Results.TTFrD;
+    DoTTFrD = p.Results.TTFrD
 
     %% SelectedSets validation
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
@@ -405,6 +405,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     
         if DoTTFrD
             MapsToUse = AllEEG(sIndex).TTFrD.Wavelets.Maps;
+            'TTFrD'
         else
 
             MapsToUse = [];
