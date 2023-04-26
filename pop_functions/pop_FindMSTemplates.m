@@ -187,7 +187,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     ClustPar = p.Results.ClustPar;
     ShowMaps = p.Results.ShowMaps;
     ShowDyn = p.Results.ShowDyn;
-    DoTTFrD = p.Results.TTFrD
+    DoTTFrD = p.Results.TTFrD;
 
     %% SelectedSets validation
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
@@ -404,8 +404,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         end
     
         if DoTTFrD
-            MapsToUse = AllEEG(sIndex).TTFrD.Wavelets.Maps;
-            'TTFrD'
+            if isfield(AllEEG(sIndex).TTFrD.Wavelets,'Include')
+                MapsToUse = AllEEG(sIndex).TTFrD.Wavelets.Maps(:,AllEEG(sIndex).TTFrD.Wavelets.Include);
+            else
+                MapsToUse = AllEEG(sIndex).TTFrD.Wavelets.Maps;
+            end
         else
 
             MapsToUse = [];

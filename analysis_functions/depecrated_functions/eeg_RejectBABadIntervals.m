@@ -32,14 +32,16 @@
 %
 function TheEEG = eeg_RejectBABadIntervals(TheEEG)
     regions = [];
+    Epochs  = [];
     for i = 1:numel(TheEEG.event)
         if strcmp(TheEEG.event(i).code,'Bad Interval')
-            regions = [regions; TheEEG.urevent(i).latency TheEEG.urevent(i).latency + TheEEG.urevent(i).duration - 1];
+            Epochs  = [Epochs TheEEG.event(i).epoch];
+            regions = [regions; TheEEG.event(i).latency TheEEG.event(i).latency + TheEEG.urevent(i).duration - 1];
         end
     end
     
     [~,nf,ne] = size(TheEEG.data);
-    
+    Epochs
     if isempty(regions)
         return
     end
@@ -48,8 +50,7 @@ function TheEEG = eeg_RejectBABadIntervals(TheEEG)
         TheEEG = eeg_eegrej( TheEEG, regions );
     else
         EpochsToReject = false(ne,1);
-        idx = ceil(regions(:,1)/nf);
-        EpochsToReject(idx) = true;
+        EpochsToReject(unique(Epochs)) = true;
         TheEEG = pop_rejepoch(TheEEG,EpochsToReject,0);
     end
 
