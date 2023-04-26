@@ -153,61 +153,62 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     %% Create outlier detection GUI
     
     fig_h = uifigure('Name', 'Outlier detection', 'Units', 'normalized', ...
-    'Position', [.2 .1 .6 .8], 'HandleVisibility', 'on');
-        
-    vertLayout1 = uigridlayout(fig_h, [1 2]);
-    vertLayout1.ColumnWidth = {'1x', 300};
-    vertLayout1.ColumnSpacing = 0;
-    horzLayout = uigridlayout(vertLayout1, [2 1]);
+    'Position', [.15 .1 .7 .8], 'HandleVisibility', 'on');
+
+    horzLayout = uigridlayout(fig_h, [2 1]);
     horzLayout.RowHeight = {'1x', 150};
-    horzLayout.Padding = [0 0 0 0];
-    vertLayout2 = uigridlayout(horzLayout, [1 2]);
-    vertLayout2.ColumnWidth = {115, '1x'};
-    btnLayout = uigridlayout(vertLayout2, [12 1]);
+    vertLayout = uigridlayout(horzLayout, [1 3]);
+    vertLayout.ColumnWidth = {120, '1x', 450};
+    vertLayout.ColumnSpacing = 0;
+    vertLayout.Padding = [0 0 0 0];
+    btnLayout = uigridlayout(vertLayout, [7 1]);
     btnLayout.Padding = [0 0 0 0];
-    btnLayout.RowHeight = {'1x', 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, '1x'};
+    btnLayout.RowHeight = {'1.2x', 30, 30, 30, 30, 30, '1x'};
     
-    ud.outlierPlot = axes(vertLayout2);
-    axis(ud.outlierPlot, 'equal');
-    axis(ud.outlierPlot, 'tight');
-    axis(ud.outlierPlot, 'square');
+    axLayout = uigridlayout(vertLayout, [2 1]);
+    axLayout.RowHeight = {70, '1x'};
+    axLayout.Padding = [0 0 0 0];
     
-    setLayout = uigridlayout(vertLayout1, [2 1]);
-    setLayout.RowHeight = {30, '1x'};
-    setLayout.Padding = [0 0 0 0];
+    selectLayout = uigridlayout(axLayout, [2 4]);
+    selectLayout.ColumnWidth = {'1x', 200, 200, '1x'};
+    selectLayout.Padding = [0 0 0 0];
     
-    mapSelectLayout = uigridlayout(setLayout, [1 2]);
-    mapSelectLayout.ColumnWidth = {80, '1x'};
-    mapSelectLayout.Padding = [0 0 0 0];
-    uilabel(mapSelectLayout, 'Text', 'Select map', 'FontWeight', 'bold');
+    procedureLabel = uilabel(selectLayout, 'Text', 'Select outlier detection procedure', 'FontWeight', 'bold', 'HorizontalAlignment', 'right');
+    procedureLabel.Layout.Row = 1;
+    procedureLabel.Layout.Column = 2;
+    ud.selProcedure = uidropdown(selectLayout, 'Items', {'Bad channel detection', 'Bad topography detection'}, 'ItemsData', 1:2, 'ValueChangedFcn', {@procedureChanged, fig_h});
+    ud.selProcedure.Layout.Row = 1;
+    ud.selProcedure.Layout.Column = 3;
     
-    % Get unique map labels
+    selMapLabel = uilabel(selectLayout, 'Text', 'Select map', 'FontWeight', 'bold', 'HorizontalAlignment', 'right');
+    selMapLabel.Layout.Row = 2;
+    selMapLabel.Layout.Column = 2;
     MapLabels = unique(AllLabels);
-    ud.selMap = uidropdown(mapSelectLayout, 'Items', MapLabels, 'ItemsData', 2:numel(MapLabels)+1, 'ValueChangedFcn', {@mapChanged, fig_h});
+    ud.selMap = uidropdown(selectLayout, 'Items', MapLabels, 'ItemsData', 2:numel(MapLabels)+1, 'ValueChangedFcn', {@mapChanged, fig_h});
+    ud.selMap.Layout.Row = 2;
+    ud.selMap.Layout.Column = 3;
     
-    setnames = {SelectedEEG.setname};
-    opts = {'Keep', 'Exclude', 'Highlight'};
+    ud.outlierPlot = axes(axLayout);
+    ud.outlierPlot.ButtonDownFcn = {@axisClicked, fig_h};
+    
+    ud.setnames = {SelectedEEG.setname};
+    opts = {'Keep', 'Exclude'};
     % Find indices with missing maps and populate table data
-    tblData = [setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
-    ud.setsTable = uitable(setLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', ...
+    tblData = [ud.setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
+    ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', ...
         'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
     
-    manualBtn = uibutton(btnLayout, 'Text', 'Manual select next', 'ButtonPushedFcn', {@manualSelectNext, fig_h});
-    manualBtn.Layout.Row = 2;
-    autoBtn = uibutton(btnLayout, 'Text', 'Auto select next', 'ButtonPushedFcn', {@autoSelectNextFMCD, fig_h});
-    allBtn = uibutton(btnLayout, 'Text', 'Auto select all', 'ButtonPushedFcn', {@autoSelectAllFMCD, fig_h});
-    pLayout = uigridlayout(btnLayout, [1 2]);
-    pLayout.Padding = [0 0 0 0];
-    pLayout.ColumnWidth = {40, '1x'};
-    pLabel = uilabel(pLayout, 'Text', 'p value');
-    ud.pEdit = uieditfield(pLayout, 'Value', '0.05');
+    autoBtn = uibutton(btnLayout, 'Text', 'Auto select', 'ButtonPushedFcn', {@autoSelect, fig_h});
+    autoBtn.Layout.Row = 2;
+    editLayout = uigridlayout(btnLayout, [1 2]);
+    editLayout.Padding = [0 0 0 0];
+    editLayout.ColumnWidth = {75, '1x'};
+    ud.editLabel = uilabel(editLayout, 'Text', 'No. of MADs');
+    ud.editBox = uieditfield(editLayout, 'Value', '3');
     ud.keepBtn = uibutton(btnLayout, 'Text', 'Keep', 'Enable', 'off', 'ButtonPushedFcn', {@keep, fig_h});
-    ud.keepBtn.Layout.Row = 7;
+    ud.keepBtn.Layout.Row = 5;
     ud.excludeBtn = uibutton(btnLayout, 'Text', 'Exclude', 'Enable', 'off', 'ButtonPushedFcn', {@exclude, fig_h});
-    plusBtn = uibutton(btnLayout, 'Text', '+');
-    plusBtn.Layout.Row = 10;
-    minusBtn = uibutton(btnLayout, 'Text', '-');
     
     ud.MapPanel = uipanel(horzLayout, 'BorderType', 'none', 'Visible', 'off');
     ud.MapPanel.Layout.Row = 2;
@@ -226,315 +227,193 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         ud.MSMaps = [ud.MSMaps SelectedEEG(i).msinfo.MSMaps(ud.nClasses)];
     end
     
+    % Store RMSE values and MDS coordinates for each map
+    ResidualEstimator = VA_MakeSplineResidualMatrix(SelectedEEG(1).chanlocs);
+    Centering = eye(numel(SelectedSets)) - 1/numel(SelectedSets);
+    ud.RMSE = nan(nClasses, numel(SelectedSets));
+    ud.points = nan(nClasses, numel(SelectedSets), 2);
+    for c=1:nClasses
+        Maps = double(cell2mat(arrayfun(@(x) ud.MSMaps(x).Maps(c,:), 1:numel(SelectedSets), 'UniformOutput', false)'));
+        Residual = ResidualEstimator*Maps';
+        RMSE = sqrt(mean(Residual.^2, 1));
+        ud.RMSE(c,:) = RMSE;
+    
+        data = Centering*Maps;
+        cov = data*data';
+        [v,d] = eigs(cov,2);
+        ud.points(c,:,:) = v;
+    end
+    
+    ud.currentIdx = [];
+    ud.highlightPoints = [];
+    ud.dataTip = [];
+    
     fig_h.UserData = ud;
     
     mapChanged(ud.selMap, [], fig_h);
+
 end
 
 function updatePlot(fig_h)
     ud = fig_h.UserData;
 
     mapCol = ud.selMap.Value;
-    mapLabel = ud.selMap.Items{mapCol-1};
 
-    % Get data from the sets that have not been excluded yet and sets that
-    % have been marked to keep for the currently selected map
-    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
-    
-    data = nan(numel(setIdx), ud.nChan);
-    for i=1:numel(setIdx)
-        mapIdx = find(strcmp(ud.MSMaps(setIdx(i)).Labels, mapLabel));
-        data(i,:) = ud.MSMaps(setIdx(i)).Maps(mapIdx, :);
-    end
-    
-    Centering = eye(size(data,1)) - 1/size(data,1);
-    data = Centering*data;
-    cov = data*data';
-    [v,d] = eigs(cov,2);
-    ud.points = v;
+    % Get indices of different set categories
+    excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");    % sets to plot in red
+    keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");          % sets to plot in green
+    reviewIdx = strcmp(ud.setsTable.Data(:,mapCol), "Review");      % sets to plot in yellow
 
     cla(ud.outlierPlot);
-    % Plot unexamined sets in black and sets marked to keep in green
     hold(ud.outlierPlot, 'on');
-    plot(ud.outlierPlot, v(~keepIdx,1), v(~keepIdx,2), '+k');
-    plot(ud.outlierPlot, v(keepIdx,1), v(keepIdx,2), '+g');
-    hold(ud.outlierPlot, 'off');
 
-    ud.max = max(abs(v)*1.1, [], 'all');
-    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-    axis(ud.outlierPlot, 'square');
-    ud.outlierPlot.XAxisLocation = 'origin';
-    ud.outlierPlot.YAxisLocation = 'origin';
+    if ud.selProcedure.Value == 1
+        % Plot RMSE of all sets as a line plot
+        plot(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), '-k');        
 
-    % Store original points before anything is excluded
-    if size(ud.points,1) == size(ud.MSMaps,2)
-        ud.ur_points(mapCol-1,:,:) = ud.points;
-    end
+        % Plot RMSE of all sets as points
+        ud.scatter = scatter(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), 10, 'black', 'filled');
+
+        % Axis formatting
+        axis(ud.outlierPlot, 'normal');        
+        axis(ud.outlierPlot, 'padded');
+        ud.outlierPlot.XAxisLocation = 'bottom';
+        ud.outlierPlot.YAxisLocation = 'left';
+        ud.outlierPlot.XAxis.Color = [0 0 0];
+        ud.outlierPlot.YAxis.Color = [0 0 0];
+    else                               
+        % Plot MDS coordinates of all sets as points
+        ud.scatter = scatter(ud.outlierPlot, ud.points(mapCol-1,:,1), ud.points(mapCol-1,:,2), 10, 'black', 'filled');  
     
-    fig_h.UserData = ud;
-end
-
-function  manualSelectNext(src, event, fig_h)
-    ud = fig_h.UserData;
-
-    mapCol = ud.selMap.Value;
-    mapLabel = ud.selMap.Items{mapCol-1};
-
-    set(0, 'CurrentFigure', fig_h);
-    [x,y] = ginput(1);
-
-    coords(:,1) = ud.points(:,1) - x;
-    coords(:,2) = ud.points(:,2) - y;
-    [~, idx] = min(sum(coords.^2, 2));
-
-    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
-    ud.ToExclude = setIdx(idx);
-
-    % Update plot
-    cla(ud.outlierPlot);
-    hold(ud.outlierPlot, 'on')
-    plot(ud.outlierPlot, ud.points(~keepIdx,1), ud.points(~keepIdx,2), '+k');
-    plot(ud.outlierPlot, ud.points(keepIdx,1), ud.points(keepIdx,2), '+g');
-    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-    axis(ud.outlierPlot, 'square');
-    ud.outlierPlot.XAxisLocation = 'origin';
-    ud.outlierPlot.YAxisLocation = 'origin';
-    
-    if strcmp(ud.setsTable.Data(setIdx(idx),mapCol), "Keep")
-        color = 'g';
-    else
-        color = 'r';
-    end
-    plot(ud.outlierPlot, ud.points(idx,1), ud.points(idx,2), 'or', 'MarkerFaceColor', color);
-    hold(ud.outlierPlot, 'off')
-
-    % Update buttons
-    if ~strcmp(ud.setsTable.Data(setIdx(idx),mapCol), "Keep")
-        ud.keepBtn.Enable = 'on';
-    else
-        ud.keepBtn.Enable = 'off';
-    end
-    ud.excludeBtn.Enable = 'on';
-
-    % Select set in table
-    ud.setsTable.Selection = [setIdx(idx) mapCol];
-    scroll(ud.setsTable, 'row', setIdx(idx));
-
-    % Plot map of selected set    
-    mapIdx = find(strcmp(ud.MSMaps(setIdx(idx)).Labels, mapLabel));
-    X = cell2mat({ud.chanlocs.X});
-    Y = cell2mat({ud.chanlocs.Y});
-    Z = cell2mat({ud.chanlocs.Z});
-    Background = ud.MSMaps(setIdx(idx)).ColorMap(mapIdx,:);
-    dspCMap3(ud.MapAxes, double(ud.MSMaps(setIdx(idx)).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
-    title(ud.MapAxes, ud.MSMaps(setIdx(idx)).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
-    ud.MapAxes.Position = [0 0 .9 .9];
-    ud.MapPanel.Visible = 'on';
-
-    fig_h.UserData = ud;
-end
-
-function autoSelectNext(src, event, fig_h)
-    ud = fig_h.UserData;
-
-    mapCol = ud.selMap.Value;
-    mapLabel = ud.selMap.Items{mapCol-1};
-
-    pval = str2double(ud.pEdit.Value);
-    % Only consider Mahalanobis distances for unexamined sets (not marked
-    % to keep or exclude)
-    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
-    points = ud.points(~keepIdx, :);
-    dist = mahal(points, points);
-
-    % But include sets marked to keep in ACR computation
-    n = numel(setIdx);
-    critDist = ACR(2, n, pval);
-    [maxDist, idx] = max(dist);
-
-    setIdx = setIdx(~keepIdx);
-    ud.ToExclude = setIdx(idx);
-
-    if maxDist > critDist
-        % Update plot
-        cla(ud.outlierPlot);
-        hold(ud.outlierPlot, 'on')
-        plot(ud.outlierPlot, ud.points(~keepIdx,1), ud.points(~keepIdx,2), '+k');
-        plot(ud.outlierPlot, ud.points(keepIdx,1), ud.points(keepIdx,2), '+g');
-        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+        % Axis formatting
+        axis(ud.outlierPlot, 'equal');
         axis(ud.outlierPlot, 'square');
+        ud.max = max(abs(ud.points)*1.1, [], 'all');
+        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
         ud.outlierPlot.XAxisLocation = 'origin';
         ud.outlierPlot.YAxisLocation = 'origin';
-                    
-        plot(ud.outlierPlot, points(idx,1), points(idx,2), 'or', 'MarkerFaceColor', 'r');
-        hold(ud.outlierPlot, 'off')
-
-        % Update buttons
-        ud.keepBtn.Enable = 'on';
-        ud.excludeBtn.Enable = 'on';
-
-        % Select set in table
-        ud.setsTable.Selection = [setIdx(idx) mapCol];
-        scroll(ud.setsTable, 'row', setIdx(idx));
-
-        % Plot map of selected set    
-        mapIdx = find(strcmp(ud.MSMaps(setIdx(idx)).Labels, mapLabel));
-        X = cell2mat({ud.chanlocs.X});
-        Y = cell2mat({ud.chanlocs.Y});
-        Z = cell2mat({ud.chanlocs.Z});
-        Background = ud.MSMaps(setIdx(idx)).ColorMap(mapIdx,:);
-        dspCMap3(ud.MapAxes, double(ud.MSMaps(setIdx(idx)).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
-        title(ud.MapAxes, ud.MSMaps(setIdx(idx)).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
-        ud.MapAxes.Position = [0 0 .9 .9];
-        ud.MapPanel.Visible = 'on';
-
-        fig_h.UserData = ud;
-    else
-        msgbox('No (further) outliers detected.');
+        ud.outlierPlot.XAxis.Color = [.6 .6 .6];
+        ud.outlierPlot.YAxis.Color = [.6 .6 .6];
     end
-end
 
-function autoSelectNextFMCD(src, event, fig_h)
-    ud = fig_h.UserData;
+    hold(ud.outlierPlot, 'off');    
 
-    mapCol = ud.selMap.Value;
-    mapLabel = ud.selMap.Items{mapCol-1};
+    ud.scatter.SizeData = repmat(10, size(ud.points,2), 1);
+    ud.scatter.CData = repmat([0 0 0], size(ud.points,2), 1);    
+    % Highlight categorized sets    
+    ud.scatter.SizeData(excludeIdx | keepIdx | reviewIdx) = 25;
+    if any(excludeIdx); ud.scatter.CData(excludeIdx,:) = repmat([1 0 0], sum(excludeIdx), 1);           end
+    if any(keepIdx);    ud.scatter.CData(keepIdx, :) = repmat([0 1 0], sum(keepIdx), 1);                end
+    if any(reviewIdx);  ud.scatter.CData(reviewIdx, :) = repmat([.929 .694 .125], sum(reviewIdx), 1);   end
 
-    pval = str2double(ud.pEdit.Value);
-    [~,p] = size(ud.points); % p = dims
+    ud.scatter.ButtonDownFcn = {@axisClicked, fig_h};
+    row = dataTipTextRow('Subject', ud.setnames);
+    ud.scatter.DataTipTemplate.DataTipRows = row;
+    ud.scatter.DataTipTemplate.Interpreter = 'none';
 
-    % Pre-calculate indices for plotting
-    excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");
-    keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
-    setIdx = find(~excludeIdx);  % sets indices to plot
-    plotKeepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");      % set indices to plot in green
+    % Disable buttons
+    ud.keepBtn.Enable = 'off';
+    ud.excludeBtn.Enable = 'off';
     
-    % Consider Mahalanobis distances of all points
-    points = squeeze(ud.ur_points(mapCol-1,:,:));
-
-    % Calculate robust Mahalanobis distance using Fast-MCD
-    [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
-
-    % Calculate critical distance and compare with furthest point that has
-    % not been marked to keep or exclude
-    critDist = sqrt(chi2inv(1 - pval, p));
-    maxDist = 0;
-    maxIdx = 0;
-    for idx = 1:numel(dist)
-        if dist(idx) > maxDist && ~excludeIdx(idx) && ~keepIdx(idx)
-            maxDist = dist(idx);
-            maxIdx = idx;
-        end
-    end
-
-    if maxDist > critDist
-        ud.ToExclude = maxIdx;
-
-        % Update plot
-        cla(ud.outlierPlot);
-        hold(ud.outlierPlot, 'on')
-        plot(ud.outlierPlot, ud.points(~plotKeepIdx,1), ud.points(~plotKeepIdx,2), '+k');
-        plot(ud.outlierPlot, ud.points(plotKeepIdx,1), ud.points(plotKeepIdx,2), '+g');
-        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-        axis(ud.outlierPlot, 'square');
-        ud.outlierPlot.XAxisLocation = 'origin';
-        ud.outlierPlot.YAxisLocation = 'origin';
-                    
-        plot(ud.outlierPlot, ud.points(find(setIdx==maxIdx),1), ud.points(find(setIdx==maxIdx),2), 'or', 'MarkerFaceColor', 'r');
-        hold(ud.outlierPlot, 'off')
-
-        % Update buttons
-        ud.keepBtn.Enable = 'on';
-        ud.excludeBtn.Enable = 'on';
-
-        % Select set in table
-        ud.setsTable.Selection = [maxIdx mapCol];
-        scroll(ud.setsTable, 'row', maxIdx);
-
-        % Plot map of selected set    
-        mapIdx = find(strcmp(ud.MSMaps(maxIdx).Labels, mapLabel));
-        X = cell2mat({ud.chanlocs.X});
-        Y = cell2mat({ud.chanlocs.Y});
-        Z = cell2mat({ud.chanlocs.Z});
-        Background = ud.MSMaps(maxIdx).ColorMap(mapIdx,:);
-        dspCMap3(ud.MapAxes, double(ud.MSMaps(maxIdx).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
-        title(ud.MapAxes, ud.MSMaps(maxIdx).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
-        ud.MapAxes.Position = [0 0 .9 .9];
-        ud.MapPanel.Visible = 'on';
-
-        fig_h.UserData = ud;
-    else
-        msgbox('No (further) outliers detected.');
-    end
-end
-
-function autoSelectAllFMCD(src, event, fig_h)
-    ud = fig_h.UserData;
-
-    mapCol = ud.selMap.Value;
-
-    pval = str2double(ud.pEdit.Value);
-    [~,p] = size(ud.points); % p = dims
-
-    % Consider Mahalanobis distances of all points
-    excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");
-    keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
-    points = squeeze(ud.ur_points(mapCol-1,:,:));
-
-    % Calculate robust Mahalanobis distance using Fast-MCD
-    [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
-
-    % Calculate critical distance and compare with all points
-    outliers = dist > sqrt(chi2inv(1 - pval, p));
-
-    for idx = 1:numel(outliers)
-        if outliers(idx) && ~excludeIdx(idx) && ~keepIdx(idx)
-            % Outlier detected
-            ud.ToExclude = idx;
-            fig_h.UserData = ud;
-            highlight(src, event, fig_h);
-            ud = fig_h.UserData;
-        end
-    end
-
     fig_h.UserData = ud;
 end
 
-
-function cellChanged(tbl, event, fig_h)
-    if strcmp(event.EditData, 'Keep')
-        tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);            
-    elseif strcmp(event.EditData, 'Exclude')
-        tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);
-    elseif strcmp(event.EditData, 'Highlight')
-        tblStyle = uistyle('BackgroundColor', [.99 .99 .59]);
-    end
-    addStyle(tbl, tblStyle, 'cell', event.Indices);
-
-    % Update the plot
-    updatePlot(fig_h);
+function axisClicked(~, event, fig_h)
     ud = fig_h.UserData;
 
-    % Update buttons
-    if strcmp(event.EditData, 'Keep')
-        ud.keepBtn.Enable = 'off';
-        ud.excludeBtn.Enable = 'on';
+    mapCol = ud.selMap.Value;
+    
+    % Get the coordinates of where the user clicked
+    x = event.IntersectionPoint(1);
+    y = event.IntersectionPoint(2);
+
+    if ud.selProcedure.Value == 1
+        coords(:,1) = (1:size(ud.RMSE,2))' - x;
+        coords(:,2) = ud.RMSE(mapCol-1,:)' - y;
     else
-        ud.keepBtn.Enable = 'on';
-        ud.excludeBtn.Enable = 'off';        
+        coords(:,1) = ud.points(mapCol-1,:,1) - x;
+        coords(:,2) = ud.points(mapCol-1,:,2) - y;
     end
 
-    % Highlight set if it is marked to keep
-    if strcmp(event.EditData, 'Keep')
-        mapCol = ud.selMap.Value;
-        setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
-        plotIdx = find(setIdx == event.Indices(1));
-        hold(ud.outlierPlot, 'on');
-        plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'g');
-        hold(ud.outlierPlot, 'off');
+    coords = L2NormDim(coords,1);
+    [~, ud.currentIdx] = min(sum(coords.^2, 2));
+
+    fig_h.UserData = ud;
+
+    highlightSets(fig_h);
+end
+
+function autoSelect(~, ~, fig_h)
+    ud = fig_h.UserData;
+
+    mapCol = ud.selMap.Value;
+
+    if ud.selProcedure.Value == 1
+        scale = str2double(ud.editBox.Value);
+
+        % Find median and median absolute deviation
+        med = median(ud.RMSE(mapCol-1,:));
+        MAD = mad(ud.RMSE(mapCol-1,:),1);
+
+        % Calculate distance from median and determine outliers
+        dist = (ud.RMSE(mapCol-1,:)-med)/MAD;
+        outliers = dist > scale;
+    else
+        pval = str2double(ud.editBox.Value);    
+
+        % Consider Mahalanobis distances of all points        
+        points = squeeze(ud.points(mapCol-1,:,:));
+    
+        % Calculate robust Mahalanobis distance using Fast-MCD
+        [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
+    
+        % Calculate critical distance and compare with all points
+        outliers = dist > sqrt(chi2inv(1 - pval, 2));
+    end    
+
+    if any(outliers)
+        excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");
+        keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
+        outlierIdx = find(outliers(:) & ~excludeIdx & ~keepIdx);
+
+        % Change color of points corresponding to outlier sets to yellow
+        % for review and show datatips
+        ud.scatter.CData(outlierIdx,:) = repmat([.929 .694 .125], numel(outlierIdx), 1);
+        ud.scatter.SizeData(outlierIdx) = 25;        
+
+        % Update table to show outlier sets as "Review"
+        ud.setsTable.Data(outlierIdx, mapCol) = "Review";
+        tblStyle = uistyle('BackgroundColor', [.929 .694 .125]);
+        addStyle(ud.setsTable, tblStyle, 'cell', [outlierIdx repmat(mapCol, numel(outlierIdx), 1)]);
+    else
+        msgbox('No outliers detected.');
+    end
+
+    % Disable buttons
+    ud.keepBtn.Enable = 'off';
+    ud.excludeBtn.Enable = 'off';
+
+    % Hide map and clear selection
+    ud.MapPanel.Visible = 'off';
+    ud.setsTable.Selection = [];
+    if ~isempty(ud.highlightPoints);    delete(ud.highlightPoints);   end
+    if ~isempty(ud.dataTip);         delete(ud.dataTip);        end
+
+    ud.currentIdx = outlierIdx;
+    fig_h.UserData = ud;
+
+    % Highlight outliers
+    highlightSets(fig_h);
+end
+
+function cellChanged(~, event, fig_h)
+    fig_h.UserData.currentIdx = event.Indices(1);
+
+    switch(event.EditData)
+        case 'Keep'
+            keep([], [], fig_h);
+        case 'Exclude'
+            exclude([], [], fig_h);
     end
 end
 
@@ -546,127 +425,126 @@ function selectionChanged(tbl, event, fig_h)
         return;
     end
 
-    mapCol = ud.selMap.Value;
-    mapLabel = ud.selMap.Items{mapCol-1};
-
-    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
-    keepIdx = strcmp(ud.setsTable.Data(setIdx,mapCol), "Keep");         % set indices to plot in green
-    idx = event.Selection(1);    
-    plotIdx = find(setIdx == idx);
-
-    ud.ToExclude = idx;
-
-    % Update plot
-    cla(ud.outlierPlot);
-    hold(ud.outlierPlot, 'on')
-    plot(ud.outlierPlot, ud.points(~keepIdx,1), ud.points(~keepIdx,2), '+k');
-    plot(ud.outlierPlot, ud.points(keepIdx,1), ud.points(keepIdx,2), '+g');
-    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-    axis(ud.outlierPlot, 'square');
-    ud.outlierPlot.XAxisLocation = 'origin';
-    ud.outlierPlot.YAxisLocation = 'origin';
-
-    % Highlight set marker if set is not already excluded
-    if ~isempty(plotIdx)
-        if strcmp(ud.setsTable.Data(idx,mapCol), "Keep")
-            color = 'g';
-        else
-            color = 'r';
-        end
-        plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', color);
-        hold(ud.outlierPlot, 'off')
-    end
-
-    % Update buttons
-    if ~strcmp(ud.setsTable.Data(idx,2), "Keep")
-        ud.keepBtn.Enable = 'on';
-    else
-        ud.keepBtn.Enable = 'off';
-    end
-
-    if ~strcmp(ud.setsTable.Data(idx,2), "Exclude")
-        ud.excludeBtn.Enable = 'on';
-    else
-        ud.excludeBtn.Enable = 'off';
-    end
-
-    % Plot map of selected set    
-    mapIdx = find(strcmp(ud.MSMaps(setIdx(idx)).Labels, mapLabel));
-    X = cell2mat({ud.chanlocs.X});
-    Y = cell2mat({ud.chanlocs.Y});
-    Z = cell2mat({ud.chanlocs.Z});
-    Background = ud.MSMaps(setIdx(idx)).ColorMap(mapIdx,:);
-    dspCMap3(ud.MapAxes, double(ud.MSMaps(setIdx(idx)).Maps(mapIdx,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
-    title(ud.MapAxes, ud.MSMaps(setIdx(idx)).Labels{mapIdx},'FontSize', 9, 'Interpreter','none');
-    ud.MapAxes.Position = [0 0 .9 .9];
-    ud.MapPanel.Visible = 'on';
-
+    ud.currentIdx = event.Selection(1);
     fig_h.UserData = ud;
+    highlightSets(fig_h);
 end
 
-function exclude(src, event, fig_h)
+function exclude(~, ~, fig_h)
     ud = fig_h.UserData;
 
     mapCol = ud.selMap.Value;
 
     % Update table
-    ud.setsTable.Data(ud.ToExclude, mapCol) = 'Exclude';
+    ud.setsTable.Data(ud.currentIdx, mapCol) = 'Exclude';
     tblStyle = uistyle('BackgroundColor', [.97 .46 .46]);
-    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude mapCol]);
+    addStyle(ud.setsTable, tblStyle, 'cell', [ud.currentIdx mapCol]);
 
     % Update buttons
     ud.keepBtn.Enable = 'on';
     ud.excludeBtn.Enable = 'off';
 
-    fig_h.UserData = ud;
-
     % Update plot
-    updatePlot(fig_h);
+    ud.scatter.CData(ud.currentIdx,:) = [1 0 0];
+    ud.scatterSizeData(ud.currentIdx) = 25;
+
+    fig_h.UserData = ud;
 end
 
-function keep(src, event, fig_h)
+function keep(~, ~, fig_h)
     ud = fig_h.UserData;
 
     mapCol = ud.selMap.Value;
 
     % Update table
-    ud.setsTable.Data(ud.ToExclude, mapCol) = 'Keep';
+    ud.setsTable.Data(ud.currentIdx, mapCol) = 'Keep';
     tblStyle = uistyle('BackgroundColor', [.77 .96 .79]);
-    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude mapCol]);
+    addStyle(ud.setsTable, tblStyle, 'cell', [ud.currentIdx mapCol]);
 
     % Update buttons   
     ud.keepBtn.Enable = 'off';
     ud.excludeBtn.Enable = 'on';
 
-    fig_h.UserData = ud;
-
     % Update plot
-    updatePlot(fig_h);
-    ud = fig_h.UserData;
+    ud.scatter.CData(ud.currentIdx,:) = [0 1 0];
+    ud.scatterSizeData(ud.currentIdx) = 25;
 
-    % Highlight set
-    setIdx = find(~strcmp(ud.setsTable.Data(:,mapCol), "Exclude"));     % set indices to plot   
-    plotIdx = find(setIdx == ud.ToExclude);
-    hold(ud.outlierPlot, 'on');
-    plot(ud.outlierPlot, ud.points(plotIdx,1), ud.points(plotIdx,2), 'or', 'MarkerFaceColor', 'g');
-    hold(ud.outlierPlot, 'off');
+    fig_h.UserData = ud;
 end
 
-function highlight(src, event, fig_h)
+function highlightSets(fig_h)
     ud = fig_h.UserData;
 
     mapCol = ud.selMap.Value;
 
-    % Update table
-    ud.setsTable.Data(ud.ToExclude, mapCol) = 'Highlight';
-    tblStyle = uistyle('BackgroundColor', [.99 .99 .59]);
-    addStyle(ud.setsTable, tblStyle, 'cell', [ud.ToExclude mapCol]);
+    if ud.selProcedure.Value == 1
+        x = ud.currentIdx;
+        y = ud.RMSE(mapCol-1,ud.currentIdx);
+    else
+        x = ud.points(mapCol-1,ud.currentIdx,1);
+        y = ud.points(mapCol-1,ud.currentIdx,2);
+    end                  
 
-    % Update buttons   
-    ud.keepBtn.Enable = 'on';
-    ud.excludeBtn.Enable = 'on';
+    hold(ud.outlierPlot, 'on');
+    if ~isempty(ud.dataTip);            delete(ud.dataTip);         end
+    if ~isempty(ud.highlightPoints);    delete(ud.highlightPoints); end
+
+    % Highlight the selected set(s)
+    ud.highlightPoints = scatter(ud.outlierPlot, x, y, 80, [1 1 0], 'LineWidth', 2.5);
+    ud.highlightPoints.ButtonDownFcn = {@axisClicked, fig_h};
+
+    if numel(ud.currentIdx) == 1
+        % Make datatip
+        ud.dataTip = datatip(ud.scatter, x, y);
+
+        % Update buttons    
+        if strcmp(ud.setsTable.Data(ud.currentIdx,mapCol), "Keep")
+            ud.keepBtn.Enable = 'off';
+            ud.excludeBtn.Enable = 'on';
+        elseif strcmp(ud.setsTable.Data(ud.currentIdx,mapCol), "Exclude")
+            ud.keepBtn.Enable = 'on';
+            ud.excludeBtn.Enable = 'off';
+        else
+            ud.keepBtn.Enable = 'on';
+            ud.excludeBtn.Enable = 'on';
+        end
+
+        % Select set in table
+        ud.setsTable.Selection = [ud.currentIdx mapCol];
+        scroll(ud.setsTable, 'row', ud.currentIdx);
+    
+        % Plot map of selected set    
+        X = cell2mat({ud.chanlocs.X});
+        Y = cell2mat({ud.chanlocs.Y});
+        Z = cell2mat({ud.chanlocs.Z});
+        Background = ud.MSMaps(ud.currentIdx).ColorMap(mapCol-1,:);
+        dspCMap3(ud.MapAxes, double(ud.MSMaps(ud.currentIdx).Maps(mapCol-1,:)),[X;Y;Z],'NoScale','Resolution',2,'Background',Background,'ShowNose',15);
+        title(ud.MapAxes, ud.MSMaps(ud.currentIdx).Labels{mapCol-1},'FontSize', 9, 'Interpreter','none');
+        ud.MapAxes.Position = [0 0 .9 .9];
+        ud.MapPanel.Visible = 'on';
+     end        
 
     fig_h.UserData = ud;
+end
+
+function procedureChanged(src, event, fig_h)
+    ud = fig_h.UserData;
+
+    % Change threshold label and edit field
+    if src.Value == 1
+        ud.editLabel.Text = 'No. of MADs';
+        ud.editBox.Value = '3';
+    else
+        ud.editLabel.Text = 'p value';
+        ud.editBox.Value = '0.05';
+    end
+
+    % Hide map and clear selection
+    ud.MapPanel.Visible = 'off';
+    ud.setsTable.Selection = [];
+
+    % Update plot
+    updatePlot(fig_h);
 end
 
 function mapChanged(src, event, fig_h)
@@ -685,10 +563,13 @@ function mapChanged(src, event, fig_h)
     % Add back coloring to the column of the currently selected map
     keepStyle = uistyle('BackgroundColor', [.77 .96 .79]);
     excludeStyle = uistyle('BackgroundColor', [.97 .46 .46]);
+    reviewStyle = uistyle('BackgroundColor', [.929 .694 .125]);
     keepIdx = find(strcmp(ud.setsTable.Data(:, mapCol), "Keep"));
     addStyle(ud.setsTable, keepStyle, 'cell', [keepIdx repmat(mapCol, numel(keepIdx), 1)]);
     excludeIdx = find(strcmp(ud.setsTable.Data(:, mapCol), "Exclude"));
     addStyle(ud.setsTable, excludeStyle, 'cell', [excludeIdx repmat(mapCol, numel(excludeIdx), 1)]);
+    reviewIdx = find(strcmp(ud.setsTable.Data(:,mapCol), "Review"));
+    addStyle(ud.setsTable, reviewStyle, 'cell', [reviewIdx repmat(mapCol, numel(reviewIdx), 1)]);
 
     % Make only the column of the currently selected map editable
     editable = false(1, numel(src.Items)+1);
@@ -696,6 +577,8 @@ function mapChanged(src, event, fig_h)
     ud.setsTable.ColumnEditable = editable;
 
     scroll(ud.setsTable, 'column', mapCol);
+
+    % Hide map and clear selection
     ud.MapPanel.Visible = 'off';
     ud.setsTable.Selection = [];
 
