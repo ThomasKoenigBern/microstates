@@ -642,7 +642,7 @@ function [EEGout, CurrentSet, MSStats, fig_h, com, EpochData] = pop_QuantMSTempl
             figVisible = 'off';
         end        
         fig_h = figure('Name', figName, 'NumberTitle', 'off', 'Units', 'normalized', ...
-        'Position', [.1 .1 .8 .8], 'ToolBar', 'none', 'Visible', figVisible);
+        'Position', [.1 .1 .8 .8], 'Visible', figVisible);
         
         t = tiledlayout(fig_h, 2, 3);
         t.TileSpacing = 'tight';
@@ -663,7 +663,7 @@ function [EEGout, CurrentSet, MSStats, fig_h, com, EpochData] = pop_QuantMSTempl
         % Duration
         durAx = nexttile(t, 2);
         if numel(SelectedSets)  == 1
-            bar(durAx, x, MSStats.Duration*1000);
+            bar(durAx, x, MSStats.MeanDuration*1000);
         else
             Durations = cell2mat(arrayfun(@(x) double(MSStats(x).MeanDuration*1000), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(durAx, x, Durations, 25, [0 0.4470 0.7410],'filled');
@@ -675,7 +675,7 @@ function [EEGout, CurrentSet, MSStats, fig_h, com, EpochData] = pop_QuantMSTempl
         % Occurrence
         occAx = nexttile(t, 4);
         if numel(SelectedSets) == 1
-            bar(occAx, x, MSStats.Occurrence);
+            bar(occAx, x, MSStats.MeanOccurrence);
         else
             Occurrences = cell2mat(arrayfun(@(x) double(MSStats(x).MeanOccurrence), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(occAx, x, Occurrences, 25, [0 0.4470 0.7410],'filled');
