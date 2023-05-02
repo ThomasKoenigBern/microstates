@@ -687,7 +687,7 @@ function [EEGout, CurrentSet, MSStats, fig_h, com, EpochData] = pop_QuantMSTempl
         % Coverage
         covAx = nexttile(t, 5);
         if numel(SelectedSets) == 1
-            bar(covAx, x, MSStats.Contribution*100);
+            bar(covAx, x, MSStats.Coverage*100);
         else
             Coverages = cell2mat(arrayfun(@(x) double(MSStats(x).Coverage*100), 1:numel(SelectedSets), 'UniformOutput', false));
             swarmchart(covAx, x, Coverages, 25, [0 0.4470 0.7410],'filled');
