@@ -65,11 +65,14 @@
 %
 %   Section 9 will perform backfitting and quantification of temporal
 %   dynamics according to different template maps. It will save 3 different
-%   files, one containing temporal dynamics information from using
-%   individual maps for backfitting, one from using the grand mean
-%   templates for backfitting, and one from using a published template for
-%   backfitting. The published template to use for backfitting can be
-%   modified in the parameters section.
+%   files for each solution used for backfitting, one containing temporal 
+%   parameters from using individual maps for backfitting, one from using 
+%   the grand mean templates for backfitting, and one from using a 
+%   published template for backfitting. It will also save figures
+%   containing the plotted distribution of temporal parameters across all
+%   datasets, as well as return the extracted temporal parameters in the
+%   "MSStats" structure array for further analysis. The published template 
+%   to use for backfitting can be modified in the parameters section.
 %
 %   Section 10 will export the generated microstate maps to the Ragu 
 %   software for further optional analysis. This section will only occur if
@@ -92,19 +95,16 @@ ClustPar.IgnorePolarity = true;         % whether maps of inverted polarities sh
 ClustPar.Normalize = true;              % Set to false if using AAHC
 
 % Set backfitting parameters
-% NOTE: If more than 7 maps are used for backfitting, please either update 
-% the "TemplateNames" and "SortClasses" variables below with your own
-% template, or use the interactive explorer to manually sort maps.
-FitPar.nClasses = 4;                    % number of maps to use for quantifying
-FitPar.PeakFit = ClustPar.GFPPeaks;     % whether to backfit only on global field power peaks
-FitPar.lambda = 0.3;                    % smoothness penalty
-FitPar.b = 30;                          % smoothing window (ms)
-FitPar.BControl = true;                 % remove potentially truncated microstates
+FitPar.Classes = ClustPar.MinClasses:ClustPar.MaxClasses;   % cluster solutions to use for backfitting
+FitPar.PeakFit = ClustPar.GFPPeaks;                         % whether to backfit only on global field power peaks
+FitPar.lambda = 0.3;                                        % smoothness penalty - ignored if FitPar.PeakFit = 1
+FitPar.b = 30;                                              % smoothing window (ms) - ignored if FitPar.PeakFit = 1
     
-FittingTemplate = 'Koenig2002';         % published template to use for quantifying - recommend using Koenig2002 for 4-6 maps and Custo2017 for 7 maps
-
 % Template sorting - by default, 4-6 cluster solutions will be sorted by
 % Koenig 2002 maps and 7 cluster solution will be sorted by Custo maps
+% NOTE: If more than 7 maps are identified, please either update 
+% the "TemplateNames" and "SortClasses" variables below with your own
+% template, or use the interactive explorer to manually sort maps.
 TemplateNames = {'Koenig2002', 'Custo2017'};
 SortClasses   = {4:6,           7         };
 
@@ -135,19 +135,21 @@ subjDir = fullfile(subDir, '1_Set files with individual microstate maps');
 meanDir = fullfile(subDir, '2_Set files with group level and grand mean microstate maps');
 subjFigDir = fullfile(subDir, '3_Png files with individual microstate maps');
 meanFigDir = fullfile(subDir, '4_Png files with group level and grand mean microstate maps');
-quantDir = fullfile(subDir, '5_Quantification of temporal dynamics');
+quantDir = fullfile(subDir, '5_Csv files of temporal dynamics parameters');
+quantFigDir = fullfile(subDir, '6_Png files of plotted temporal dynamics parameters');
 
 mkdir(subjDir);
 mkdir(meanDir);
 mkdir(subjFigDir);
 mkdir(meanFigDir);
 mkdir(quantDir);
+mkdir(quantFigDir);
 
 % Save copy of current script to output folder to document which parameters were used
 scriptPath = [mfilename('fullpath') '.m'];
 copyfile(scriptPath, subDir);
 
-[ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
+[ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab('nogui');
 
 GroupIdx = cell(1, nGroups);
 lastGroupIdx = 1;
@@ -176,7 +178,6 @@ for i=1:nGroups
     lastGroupIdx = numel(ALLEEG) + 1;    
 end
 
-eeglab redraw
 AllSubjects = 1:numel(ALLEEG);
 
 %% 4. Identify individual template maps
@@ -202,8 +203,6 @@ if nGroups > 1
 else
     GrandMeanIdx = GroupMeanIdx;
 end
-
-eeglab redraw
 
 %% 7. Sorting
 % Sort the grand mean maps by the specified published template(s)
@@ -234,48 +233,82 @@ for i=1:nGroups
     for j=1:numel(currGroupIdx)
         % Save figures with individual microstate maps
         fig = pop_ShowIndMSMaps(ALLEEG, currGroupIdx(j), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
-        saveas(fig, fullfile(subjFigDir, [EEG.setname '.png']));
+        saveas(fig, fullfile(subjFigDir, [ALLEEG(currGroupIdx(j)).setname '.png']));
         close(fig);
 
         % Save individual set files with microstates data    
-        pop_saveset(EEG, 'filename', EEG.setname, 'filepath', subjDir);    
+        pop_saveset(ALLEEG(currGroupIdx(j)), 'filename', ALLEEG(currGroupIdx(j)).setname, 'filepath', subjDir);    
     end
 
     % Save figures with group level microstate maps
     fig = pop_ShowIndMSMaps(ALLEEG, GroupMeanIdx(i), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
-    saveas(fig, fullfile(meanFigDir, [EEG.setname '.png']));
+    saveas(fig, fullfile(meanFigDir, [ALLEEG(GroupMeanIdx(i)).setname '.png']));
     close(fig);
 
     % Save group level set files with microstates data
-    pop_saveset(EEG, 'filename', EEG.setname, 'filepath', meanDir);
+    pop_saveset(ALLEEG(GroupMeanIdx(i)), 'filename', ALLEEG(GroupMeanIdx(i)).setname, 'filepath', meanDir);
 end
 
 % Save figures with grand mean microstate maps
 disp('Plotting and saving grand mean maps...');
 fig = pop_ShowIndMSMaps(ALLEEG, GrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
-saveas(fig, fullfile(meanFigDir, [EEG.setname '.png']));
+saveas(fig, fullfile(meanFigDir, [ALLEEG(GrandMeanIdx).setname '.png']));
 close(fig);
 % Save grand mean set files with microstates data
-pop_saveset(EEG, 'filename', EEG.setname, 'filepath', meanDir);
+pop_saveset(ALLEEG(GrandMeanIdx), 'filename', ALLEEG(GrandMeanIdx).setname, 'filepath', meanDir);
 
-%% 9. Quantify microstate dynamics
-disp('Quantifying microstate dynamics...');
-% Quantify according to individual microstate template maps
-[EEG, CURRENTSET, IndStats, fig] = pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', 'own', 'FitPar', FitPar, 'Filename', fullfile(quantDir, 'MicrostateDynamics_IndividualTemplates.csv'), 'gui', 1, 'Visible', 0);
-saveas(fig, fullfile(quantDir, 'MicrostateDynamics_IndividualTemplates.png'));
-close(fig);
-% Quantify according to grand mean microstate template maps
-[EEG, CURRENTSET, GrandMeanStats, fig] = pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', GrandMeanIdx, 'FitPar', FitPar, 'Filename', fullfile(quantDir, 'MicrostateDynamics_GrandMeanTemplate.csv'), 'gui', 1, 'Visible', 0);
-saveas(fig, fullfile(quantDir, 'MicrostateDynamics_GrandMeanTemplate.png'));
-close(fig);
-% Quantify according to specified published microstate template maps
-[EEG, CURRENTSET, PublishedSetStats, fig] = pop_QuantMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', FittingTemplate, 'FitPar', FitPar, 'Filename', fullfile(quantDir, ['MicrostateDynamics_' FittingTemplate '.csv']), 'gui', 1, 'Visible', 0);
-saveas(fig, fullfile(quantDir, ['MicrostateDynamics_' FittingTemplate '.png']));
-close(fig);
+%% 9. Backfit and quantify temporal dynamics
+disp('Backfitting and extracting temporal dynamics...');
+
+% Backfit using individual microstate template maps
+[EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', 'own', 'FitPar', FitPar);
+[ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
+for c=FitPar.Classes
+    filename = sprintf('TemporalParameters_%i classes_IndividualTemplates', c);
+    % use the MSStats variable to perform further analysis witin MATLAB
+    % save results to csv
+    MSStats = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Filename', fullfile(quantDir, [filename '.csv']));
+    % save plotted temporal parameters
+    fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Visible', false);                    
+    saveas(fig, fullfile(quantFigDir, [filename '.png']));
+    close(fig);
+end
+
+% Backfit using grand mean microstate template maps
+[EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', GrandMeanIdx, 'FitPar', FitPar);
+[ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
+for c=FitPar.Classes
+    filename = sprintf('TemporalParameters_%i classes_GrandMeanTemplate', c);
+    % use the MSStats variable to perform further analysis witin MATLAB
+     % save results to csv
+    MSStats = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Filename', fullfile(quantDir, [filename '.csv']));
+    % save plotted temporal parameters
+    fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Visible', false);                    
+    saveas(fig, fullfile(quantFigDir, [filename '.png']));
+    close(fig);
+end
+
+% Backfit using published microstate template maps
+tmpFitPar = FitPar;
+for i=1:numel(TemplateNames)
+    tmpFitPar.Classes = SortClasses{i};
+    [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', TemplateNames{i}, 'FitPar', tmpFitPar);
+    [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
+    for c=tmpFitPar.Classes
+        filename = sprintf('TemporalParameters_%i classes_%s', c, TemplateNames{i});
+        % use the MSStats variable to perform further analysis witin MATLAB
+        % save results to csv
+        MSStats = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Filename', fullfile(quantDir, [filename '.csv']));
+        % save plotted temporal parameters
+        fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Visible', false);                    
+        saveas(fig, fullfile(quantFigDir, [filename '.png']));
+        close(fig);
+    end
+end
 
 %% 10. Export microstate maps to Ragu
 if numel(which('Ragu')) > 1
-    pop_RaguMSTemplates(ALLEEG, AllSubjects, 'Classes', FitPar.nClasses);
+    for c=FitPar.Classes
+        pop_RaguMSTemplates(ALLEEG, AllSubjects, 'Classes', c);
+    end
 end
-
-eeglab redraw

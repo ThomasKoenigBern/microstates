@@ -15,7 +15,7 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
             warning(['Backfitting on all timepoints rather than only GFP peaks is not recommended if microstates were clustered' ...
                 ' using only GFP peaks. For consistency, set FitPar.PeakFit to true.']);
         end
-        if ~matches('nClasses', FitParDefaults)
+        if ~matches('Classes', FitParDefaults)
             showPeakFit = false;
         end
     elseif PeakFit == 0
@@ -23,33 +23,34 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
             warning(['Backfitting on only GFP peaks is not recommended if microstates were clustered from all timepoints. ' ...
                 'For consistency, set FitPar.PeakFit to false.']);
         end
-        if ~matches('nClasses', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
+        if ~matches('Classes', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
             showPeakFit = false;
         end
     elseif PeakFit == -1
-        if FitPar.PeakFit && ~matches('nClasses', FitParDefaults)
+        if FitPar.PeakFit && ~matches('Classes', FitParDefaults)
             showPeakFit = false;
         end
-        if ~FitPar.PeakFit && ~matches('nClasses', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
+        if ~FitPar.PeakFit && ~matches('Classes', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
             showPeakFit = false;
         end           
     end
 
     % Add all fitting parameters that were filled in with default values as
     % gui elements
-    if matches('nClasses', FitParDefaults)
+    if matches('Classes', FitParDefaults)
         classChoices = sprintf('%i Classes|', PossibleNs);
         classChoices(end) = [];
 
         guiElements = [guiElements, ...
-            {{ 'Style', 'text', 'string', 'Number of classes', 'fontweight', 'bold'}} ...
-            {{ 'Style', 'listbox', 'string', classChoices, 'Value', 1, 'Tag', 'nClasses'}}];
-        guiGeom = [guiGeom [1 1]];
-        guiGeomV = [guiGeomV 3];
+            {{ 'Style', 'text', 'string', 'Select cluster solutions for backfitting', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'text', 'string', 'Use ctrl or shift for multiple selection'}} ...
+            {{ 'Style', 'listbox', 'string', classChoices, 'Value', 1, 'Min', 0, 'Max', 2, 'Tag', 'Classes'}}];
+        guiGeom = [guiGeom 1 1 1];
+        guiGeomV = [guiGeomV 1 1 3];
     end
 
     if matches('PeakFit', FitParDefaults) && showPeakFit
-        if matches('nClasses', FitParDefaults)
+        if matches('Classes', FitParDefaults)
             guiElements = [guiElements, {{ 'Style', 'text', 'string', ''}}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
@@ -118,8 +119,8 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
             return; 
         end
         
-        if isfield(outstruct, 'nClasses')
-            FitPar.nClasses = PossibleNs(outstruct.nClasses);
+        if isfield(outstruct, 'Classes')
+            FitPar.Classes = PossibleNs(outstruct.Classes);
         end
 
         if isfield(outstruct, 'PeakFit')
@@ -199,9 +200,9 @@ function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, AddOptions,
     % Numeric inputs
     addParameter(p, 'b', 0, @(x) validateattributes(x, numClass, numAttributes, funcName, 'FitPar.b'));
     addParameter(p, 'lambda', 0.3, @(x) validateattributes(x, numClass, numAttributes, funcName, 'FitPar.lambda'));
-    addParameter(p, 'nClasses', min(PossibleNs), ...
-        @(x) validateattributes(x, numClass, [numAttributes, '>=', min(PossibleNs), '<=', max(PossibleNs)], ...
-        funcName, 'FitPar.nClasses'));
+    addParameter(p, 'Classes', min(PossibleNs), ...
+        @(x) validateattributes(x, numClass, {'integer', 'positive', 'vector', 'nonnan', '>=', min(PossibleNs), '<=', max(PossibleNs)}, ...
+        funcName, 'FitPar.Classes'));
     
     % Logical inputs
     addParameter(p, 'PeakFit', (PeakFit == 1), @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.PeakFit'));
