@@ -1,4 +1,4 @@
-function rd = MSMapsAndDesign4Ragu(EEGs,nMaps)
+function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
 
     
     [rd.GroupLabels,rd.IndFeature] = GetUniqueIdentifiers(EEGs,'group');

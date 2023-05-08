@@ -233,11 +233,11 @@ for i=1:nGroups
     for j=1:numel(currGroupIdx)
         % Save figures with individual microstate maps
         fig = pop_ShowIndMSMaps(ALLEEG, currGroupIdx(j), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
-        saveas(fig, fullfile(subjFigDir, [ALLEEG(currGroupIdx(j)).setname '.png']));
+        saveas(fig, fullfile(subjFigDir, [ALLEEG(currGroupIdx(j)).filename(1:end-4) '.png']));
         close(fig);
 
         % Save individual set files with microstates data    
-        pop_saveset(ALLEEG(currGroupIdx(j)), 'filename', ALLEEG(currGroupIdx(j)).setname, 'filepath', subjDir);    
+        pop_saveset(ALLEEG(currGroupIdx(j)), 'filename', ALLEEG(currGroupIdx(j)).filename, 'filepath', subjDir);    
     end
 
     % Save figures with group level microstate maps
@@ -263,13 +263,13 @@ disp('Backfitting and extracting temporal dynamics...');
 % Backfit using individual microstate template maps
 [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', 'own', 'FitPar', FitPar);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
-for c=FitPar.Classes
-    filename = sprintf('TemporalParameters_%i classes_IndividualTemplates', c);
-    % use the MSStats variable to perform further analysis witin MATLAB
+IndStats = cell(1, length(FitPar.Classes));
+for c=1:length(FitPar.Classes)
+    filename = sprintf('TemporalParameters_%i classes_IndividualTemplates', FitPar.Classes(c));
     % save results to csv
-    MSStats = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Filename', fullfile(quantDir, [filename '.csv']));
+    IndStats{c} = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', FitPar.Classes(c), 'Filename', fullfile(quantDir, [filename '.csv']));
     % save plotted temporal parameters
-    fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Visible', false);                    
+    fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', FitPar.Classes(c), 'Visible', false);                    
     saveas(fig, fullfile(quantFigDir, [filename '.png']));
     close(fig);
 end
@@ -277,38 +277,38 @@ end
 % Backfit using grand mean microstate template maps
 [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', GrandMeanIdx, 'FitPar', FitPar);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
-for c=FitPar.Classes
-    filename = sprintf('TemporalParameters_%i classes_GrandMeanTemplate', c);
-    % use the MSStats variable to perform further analysis witin MATLAB
-     % save results to csv
-    MSStats = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Filename', fullfile(quantDir, [filename '.csv']));
+GrandMeanStats = cell(1, length(FitPar.Classes));
+for c=1:length(FitPar.Classes)
+    filename = sprintf('TemporalParameters_%i classes_GrandMeanTemplate', FitPar.Classes(c));
+    % save results to csv
+    GrandMeanStats{c} = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', FitPar.Classes(c), 'Filename', fullfile(quantDir, [filename '.csv']));
     % save plotted temporal parameters
-    fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Visible', false);                    
+    fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', FitPar.Classes(c), 'Visible', false);                    
     saveas(fig, fullfile(quantFigDir, [filename '.png']));
     close(fig);
 end
 
 % Backfit using published microstate template maps
 tmpFitPar = FitPar;
+TemplateStats = cell(1, numel(TemplateNames));
 for i=1:numel(TemplateNames)
     tmpFitPar.Classes = SortClasses{i};
     [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', TemplateNames{i}, 'FitPar', tmpFitPar);
     [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
-    for c=tmpFitPar.Classes
-        filename = sprintf('TemporalParameters_%i classes_%s', c, TemplateNames{i});
-        % use the MSStats variable to perform further analysis witin MATLAB
+    tempStats = cell(1, length(tmpFitPar.Classes));
+    for c=1:length(tmpFitPar.Classes)
+        filename = sprintf('TemporalParameters_%i classes_%s', tmpFitPar.Classes(c), TemplateNames{i});
         % save results to csv
-        MSStats = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Filename', fullfile(quantDir, [filename '.csv']));
+        tempStats{c} = pop_SaveMSParameters(ALLEEG, AllSubjects, 'Classes', tmpFitPar.Classes(c), 'Filename', fullfile(quantDir, [filename '.csv']));
         % save plotted temporal parameters
-        fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', c, 'Visible', false);                    
+        fig = pop_ShowMSParameters(ALLEEG, AllSubjects, 'Classes', tmpFitPar.Classes(c), 'Visible', false);                    
         saveas(fig, fullfile(quantFigDir, [filename '.png']));
         close(fig);
     end
+    TemplateStats{i} = tempStats;
 end
 
 %% 10. Export microstate maps to Ragu
-if numel(which('Ragu')) > 1
-    for c=FitPar.Classes
-        pop_RaguMSTemplates(ALLEEG, AllSubjects, 'Classes', c);
-    end
+for c=FitPar.Classes
+    pop_RaguMSTemplates(ALLEEG, AllSubjects, 'Classes', c);
 end
