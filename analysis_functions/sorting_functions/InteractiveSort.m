@@ -19,9 +19,12 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
     toolkit = java.awt.Toolkit.getDefaultToolkit();
     jframe = javax.swing.JFrame;
     insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
-    tempFig = figure('ToolBar', 'none', 'MenuBar', 'none', 'Visible', 'off');
+    tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);
     pause(0.2);
-    titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    titleBarHeight1 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    tempFig.MenuBar = 'none';
+    pause(0.2);
+    titleBarHeight2 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
     delete(tempFig);
     % Use the largest monitor available
     monitorPositions = get(0, 'MonitorPositions');
@@ -32,17 +35,18 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
     else
         screenSize = get(0, 'ScreenSize');
     end
-    figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
+    figSize1 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight1-insets.bottom-insets.top];
+    figSize2 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight2-insets.bottom-insets.top];
 
     ud.minPanelWidth = expVarWidth + minGridWidth*nCols;
     ud.minPanelHeight = minGridHeight*nRows;
 
     ud.Scroll = false;
     % Use scrolling and uifigure for large number of maps
-    if ud.minPanelWidth > figSize(3)*mapPanelNormWidth || ud.minPanelHeight > figSize(4)*mapPanelNormHeight
+    if ud.minPanelWidth > figSize1(3)*mapPanelNormWidth || ud.minPanelHeight > figSize1(4)*mapPanelNormHeight
         ud.Scroll = true;
         fig_h = uifigure('Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], 'Units', 'pixels', ...
-            'Position', figSize);
+            'Position', figSize2, 'MenuBar', 'none', 'ToolBar', 'none');
         if ud.minPanelWidth < fig_h.Position(3) - 20
             ud.minPanelWidth = fig_h.Position(3) - 50;
         end
@@ -52,8 +56,8 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
         end
     % Otherwise use a normal figure (faster rendering) 
     else
-        fig_h = figure('NumberTitle', 'off', 'WindowStyle', 'modal', ...
-            'Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], 'Position', figSize);
+        fig_h = figure('NumberTitle', 'off', 'Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], ...
+            'Position', figSize1, 'MenuBar', 'figure', 'ToolBar', 'none');
     end           
 
     ud.Visible = true;
@@ -662,22 +666,4 @@ function CompareCallback(~, ~, fh, AllEEG)
     elseif ~isempty(com)
         fh.UserData.com = [fh.UserData.com newline com];
     end        
-end
-
-%% HELPERS %%
-
-function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
-    global MSTEMPLATE;
-    TemplateNames = {MSTEMPLATE.setname};
-    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
-    [minClasses, sortOrder] = sort(minClasses, 'ascend');
-    maxClasses = maxClasses(sortOrder);
-    classRangeTxt = string(minClasses);
-    diffMaxClasses = maxClasses ~= minClasses;
-    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
-    TemplateNames = TemplateNames(sortOrder);
-    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
-    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
 end

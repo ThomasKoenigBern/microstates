@@ -186,7 +186,10 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
     tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);    
     pause(0.2);
-    titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    titleBarHeight1 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    tempFig.MenuBar = 'none';
+    pause(0.2);
+    titleBarHeight2 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
     delete(tempFig);
     % Use the largest monitor available
     monitorPositions = get(0, 'MonitorPositions');
@@ -197,7 +200,8 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     else
         screenSize = get(0, 'ScreenSize');
     end
-    figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
+    figSize1 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight1-insets.bottom-insets.top];
+    figSize2 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight2-insets.bottom-insets.top];
 
     ud.minPanelWidth = expVarWidth + minGridWidth*nCols;
     ud.minPanelHeight = minGridHeight*nRows;
@@ -210,10 +214,10 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
 
     ud.Scroll = false;
     % Use scrolling and uifigure for large number of maps
-    if ud.minPanelWidth > figSize(3) || ud.minPanelHeight > (figSize(4) - tabHeight)
+    if ud.minPanelWidth > figSize1(3) || ud.minPanelHeight > (figSize1(4) - tabHeight)
         ud.Scroll = true; 
         fig_h = uifigure('Name', 'Microstate maps', 'Units', 'pixels', ...
-            'Position', figSize, 'Visible', figVisible);
+            'Position', figSize2, 'Visible', figVisible);
         if ud.minPanelWidth < fig_h.Position(3)
             ud.minPanelWidth = fig_h.Position(3) - 50;
         end
@@ -223,7 +227,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     % Otherwise use a normal figure (faster rendering) 
     else
         fig_h = figure('ToolBar', 'none', 'MenuBar', 'figure', 'NumberTitle', 'off', ...
-            'Name', 'Microstate maps', 'Position', figSize, 'Visible', figVisible);            
+            'Name', 'Microstate maps', 'Position', figSize1, 'Visible', figVisible);            
     end
     gridWidth = fig_h.Position(3)/nCols;
     gridHeight = (fig_h.Position(4) - tabHeight)/nRows;            

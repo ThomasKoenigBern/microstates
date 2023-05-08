@@ -472,22 +472,6 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
 
 end
 
-function [TemplateNames, DisplayNames, sortOrder] = getTemplateNames()
-    global MSTEMPLATE;
-    TemplateNames = {MSTEMPLATE.setname};
-    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
-    [minClasses, sortOrder] = sort(minClasses, 'ascend');
-    maxClasses = maxClasses(sortOrder);
-    classRangeTxt = string(minClasses);
-    diffMaxClasses = maxClasses ~= minClasses;
-    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
-    TemplateNames = TemplateNames(sortOrder);
-    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
-    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
-end
-
 function isEmpty = isEmptySet(in)
     isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
 end

@@ -1,5 +1,4 @@
-function [MSMaps, com] = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange)
-    com = '';
+function MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange)
     
     if numel(nClasses) > 1        
         errordlg2('Only one cluster solution can be chosen for manual sorting.', 'Sort microstate maps error');

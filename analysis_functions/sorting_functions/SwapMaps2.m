@@ -11,6 +11,7 @@ function [Result,Assignment, pol] = SwapMaps2(MapsToSwap,MeanMap,RespectPolarity
             CorMat = abs(CorMat);
         end
         DistMat = 1-CorMat(:);
+        DistMat(isnan(DistMat)) = 1;
     else
         [TheFit] = EMMapDifference(MapsToSwap,MeanMap,chanloc,chanloc, ~RespectPolarity);
         DistMat = max(TheFit(:)) - TheFit;

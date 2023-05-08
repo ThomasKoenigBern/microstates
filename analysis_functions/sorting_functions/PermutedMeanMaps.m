@@ -27,7 +27,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
     GoBack = 1;
     BestMeanMapFit = -inf;
     BestIndex = nan;
-    in = NormDim(in,3);
+    in = L2NormDim(in,3);
     if nargin < 2;  RespectPolarity = false;    end
     Run = 0;
     while Run < Reruns
@@ -49,7 +49,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
         OldOldOrder = OldOrder;
             
         while WorkToBeDone
-            MeanMap = NormDim(MeanMap,3);
+            MeanMap = L2NormDim(MeanMap,3);
             cnt = cnt + 1;
             fprintf(1,'\b%s',progStrArray(mod(cnt-1, 4)+1));
             % See how the prototype fits
@@ -95,7 +95,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
                     else
                         [SwappedMaps,Order] = SwapMaps(SortedMaps(Idx(i),:,:),MeanMap,RespectPolarity,Montage);
                     end
-                else        % linear prgramming for larger problems
+                else        % linear programming for larger problems
                     if UseEMD == false
                         [SwappedMaps,Order] = SwapMaps2(SortedMaps(Idx(i),:,:),MeanMap,RespectPolarity);
                     else

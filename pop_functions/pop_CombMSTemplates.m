@@ -318,7 +318,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         % Here we go to the common set of channels
         for index = 1:length(SelectedSets)
             LocalToGlobal = MakeResampleMatrices(AllEEG(SelectedSets(index)).chanlocs,tmpchanlocs);
-            MapsToSort(index,:,:) = AllEEG(SelectedSets(index)).msinfo.MSMaps(n).Maps * LocalToGlobal';
+            MapsToSort(index,:,:) = L2NormDim(AllEEG(SelectedSets(index)).msinfo.MSMaps(n).Maps * LocalToGlobal',2);
         end
         % We sort out the stuff
         [BestMeanMap,~,ExpVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
