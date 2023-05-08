@@ -16,11 +16,28 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'scalar'}));
+    addParameter(p, 'Type', 'channel', @(x) validateattributes(x, {'char', 'string'}));
 
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
     nClasses = p.Results.Classes;
+    type = p.Results.Type;
+
+    %% Determine type of outlier detection
+    if ~matches('Type', p.UsingDefaults)
+        if ~strcmpi(type, 'channel') || ~strcmpi(type, 'topography')
+            error('Invalid type provided for outlier detection. Possible types are "channel" or "topography.');
+        end
+    else
+        selection = questionDialog('Select outlier detection procedure.', 'Outlier detection', ...
+            {'Bad channel detection', 'Bad topography detection'});
+        if strcmp(selection, 'Cancel') || isempty(selection)
+            return;
+        else
+            badChan = strcmp(selection, 'Bad channel detection');
+        end
+    end
 
     %% Selected sets validation
     % Make sure there are individual sets available for outlier detection
@@ -151,34 +168,25 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     CurrentSet = SelectedSets;
 
     %% Create outlier detection GUI
+    ud.badChan = badChan;
     
     fig_h = uifigure('Name', 'Outlier detection', 'Units', 'normalized', ...
-    'Position', [.15 .1 .7 .8], 'HandleVisibility', 'on');
+    'Position', [.15 .1 .7 .8], 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
 
     horzLayout = uigridlayout(fig_h, [2 1]);
     horzLayout.RowHeight = {'1x', 150};
-    vertLayout = uigridlayout(horzLayout, [1 3]);
-    vertLayout.ColumnWidth = {120, '1x', 450};
+    vertLayout = uigridlayout(horzLayout, [1 2]);
+    vertLayout.ColumnWidth = {'1x', 450};
     vertLayout.ColumnSpacing = 0;
     vertLayout.Padding = [0 0 0 0];
-    btnLayout = uigridlayout(vertLayout, [7 1]);
-    btnLayout.Padding = [0 0 0 0];
-    btnLayout.RowHeight = {'1.2x', 30, 30, 30, 30, 30, '1x'};
     
     axLayout = uigridlayout(vertLayout, [2 1]);
     axLayout.RowHeight = {70, '1x'};
     axLayout.Padding = [0 0 0 0];
     
-    selectLayout = uigridlayout(axLayout, [2 4]);
-    selectLayout.ColumnWidth = {'1x', 200, 200, '1x'};
+    selectLayout = uigridlayout(axLayout, [2 9]);
+    selectLayout.ColumnWidth = {'1x', 80, 150, 40, 65, 40, 40, 105, '1x'};
     selectLayout.Padding = [0 0 0 0];
-    
-    procedureLabel = uilabel(selectLayout, 'Text', 'Select outlier detection procedure', 'FontWeight', 'bold', 'HorizontalAlignment', 'right');
-    procedureLabel.Layout.Row = 1;
-    procedureLabel.Layout.Column = 2;
-    ud.selProcedure = uidropdown(selectLayout, 'Items', {'Bad channel detection', 'Bad topography detection'}, 'ItemsData', 1:2, 'ValueChangedFcn', {@procedureChanged, fig_h});
-    ud.selProcedure.Layout.Row = 1;
-    ud.selProcedure.Layout.Column = 3;
     
     selMapLabel = uilabel(selectLayout, 'Text', 'Select map', 'FontWeight', 'bold', 'HorizontalAlignment', 'right');
     selMapLabel.Layout.Row = 2;
@@ -187,6 +195,34 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     ud.selMap = uidropdown(selectLayout, 'Items', MapLabels, 'ItemsData', 2:numel(MapLabels)+1, 'ValueChangedFcn', {@mapChanged, fig_h});
     ud.selMap.Layout.Row = 2;
     ud.selMap.Layout.Column = 3;
+    
+    autoBtn = uibutton(selectLayout, 'Text', 'Auto select', 'ButtonPushedFcn', {@autoSelect, fig_h});
+    autoBtn.Layout.Row = 1;
+    autoBtn.Layout.Column = [5 6];
+    
+    ud.editLabel = uilabel(selectLayout);
+    if ud.badChan
+        ud.editLabel.Text = 'Threshold';
+    else
+        ud.editLabel.Text = 'p-value';
+    end
+    ud.editLabel.Layout.Row = 2;
+    ud.editLabel.Layout.Column = 5;
+    ud.editBox = uieditfield(selectLayout);
+    if ud.badChan
+        ud.editBox.Value = '0.03';
+    else
+        ud.editBox.Value = '0.05';
+    end
+    ud.editBox.Layout.Row = 2;
+    ud.editBox.Layout.Column = 6;
+    
+    ud.keepBtn = uibutton(selectLayout, 'Text', 'Keep', 'Enable', 'off', 'ButtonPushedFcn', {@keep, fig_h});
+    ud.keepBtn.Layout.Row = 1;
+    ud.keepBtn.Layout.Column = 8;
+    ud.excludeBtn = uibutton(selectLayout, 'Text', 'Exclude', 'Enable', 'off', 'ButtonPushedFcn', {@exclude, fig_h});
+    ud.excludeBtn.Layout.Row = 2;
+    ud.excludeBtn.Layout.Column = 8;
     
     ud.outlierPlot = axes(axLayout);
     ud.outlierPlot.ButtonDownFcn = {@axisClicked, fig_h};
@@ -198,17 +234,6 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', ...
         'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
-    
-    autoBtn = uibutton(btnLayout, 'Text', 'Auto select', 'ButtonPushedFcn', {@autoSelect, fig_h});
-    autoBtn.Layout.Row = 2;
-    editLayout = uigridlayout(btnLayout, [1 2]);
-    editLayout.Padding = [0 0 0 0];
-    editLayout.ColumnWidth = {75, '1x'};
-    ud.editLabel = uilabel(editLayout, 'Text', 'No. of MADs');
-    ud.editBox = uieditfield(editLayout, 'Value', '3');
-    ud.keepBtn = uibutton(btnLayout, 'Text', 'Keep', 'Enable', 'off', 'ButtonPushedFcn', {@keep, fig_h});
-    ud.keepBtn.Layout.Row = 5;
-    ud.excludeBtn = uibutton(btnLayout, 'Text', 'Exclude', 'Enable', 'off', 'ButtonPushedFcn', {@exclude, fig_h});
     
     ud.MapPanel = uipanel(horzLayout, 'BorderType', 'none', 'Visible', 'off');
     ud.MapPanel.Layout.Row = 2;
@@ -244,14 +269,49 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         ud.points(c,:,:) = v;
     end
     
+    ud.outliers = zeros(nClasses, numel(SelectedSets));
     ud.currentIdx = [];
     ud.highlightPoints = [];
-    ud.dataTip = [];
+    ud.dataTip = [];    
     
     fig_h.UserData = ud;
     
     mapChanged(ud.selMap, [], fig_h);
 
+    uiwait();
+
+    ud = fig_h.UserData;
+    delete(fig_h);
+
+    if ~isempty(ud.removeIdx)
+        disp('Removing microstate map info from excluded sets...');
+        for i=1:numel(ud.removeIdx)
+            EEGout(ud.removeIdx(i)).msinfo = [];
+        end
+    end
+
+    if badChan
+        type = 'channel';
+    else
+        type = 'topography';
+    end
+    com = sprintf('[EEG CURRENTSET] = pop_DetectOutliers(ALLEEG, %s, ''Type'', %s ''Classes'', %i);', mat2str(SelectedSets), type, nClasses);
+
+end
+
+function figClose(fig, ~)
+    ud = fig.UserData;
+    ud.removeIdx = [];
+    excludeIdx = find(any(strcmp(ud.setsTable.Data, "Exclude"), 2));
+    if ~isempty(excludeIdx)
+        selection = questionDialog('Remove microstate map info from excluded sets?', 'Outlier detection', {'Yes', 'No'});
+        if strcmp(selection, 'Yes')
+            ud.removeIdx = excludeIdx;
+        end
+    end
+
+    fig.UserData = ud;
+    uiresume();
 end
 
 function updatePlot(fig_h)
@@ -262,12 +322,12 @@ function updatePlot(fig_h)
     % Get indices of different set categories
     excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");    % sets to plot in red
     keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");          % sets to plot in green
-    reviewIdx = strcmp(ud.setsTable.Data(:,mapCol), "Review");      % sets to plot in yellow
+    reviewIdx = strcmp(ud.setsTable.Data(:,mapCol), "Review");      % sets to plot in orange
 
     cla(ud.outlierPlot);
     hold(ud.outlierPlot, 'on');
 
-    if ud.selProcedure.Value == 1
+    if ud.badChan
         % Plot RMSE of all sets as a line plot
         plot(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), '-k');        
 
@@ -286,9 +346,10 @@ function updatePlot(fig_h)
         ud.scatter = scatter(ud.outlierPlot, ud.points(mapCol-1,:,1), ud.points(mapCol-1,:,2), 10, 'black', 'filled');  
     
         % Axis formatting
-        axis(ud.outlierPlot, 'equal');
+        axis(ud.outlierPlot, 'tight');
+        axis(ud.outlierPlot, 'equal');        
         axis(ud.outlierPlot, 'square');
-        ud.max = max(abs(ud.points)*1.1, [], 'all');
+        ud.max = max(abs(ud.points(mapCol-1,:))*1.1, [], 'all');
         axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
         ud.outlierPlot.XAxisLocation = 'origin';
         ud.outlierPlot.YAxisLocation = 'origin';
@@ -320,20 +381,13 @@ end
 
 function axisClicked(~, event, fig_h)
     ud = fig_h.UserData;
-
-    mapCol = ud.selMap.Value;
     
     % Get the coordinates of where the user clicked
     x = event.IntersectionPoint(1);
     y = event.IntersectionPoint(2);
 
-    if ud.selProcedure.Value == 1
-        coords(:,1) = (1:size(ud.RMSE,2))' - x;
-        coords(:,2) = ud.RMSE(mapCol-1,:)' - y;
-    else
-        coords(:,1) = ud.points(mapCol-1,:,1) - x;
-        coords(:,2) = ud.points(mapCol-1,:,2) - y;
-    end
+    coords(:,1) = ud.scatter.XData' - x;
+    coords(:,2) = ud.scatter.YData' - y;
 
     coords = L2NormDim(coords,1);
     [~, ud.currentIdx] = min(sum(coords.^2, 2));
@@ -348,43 +402,46 @@ function autoSelect(~, ~, fig_h)
 
     mapCol = ud.selMap.Value;
 
-    if ud.selProcedure.Value == 1
-        scale = str2double(ud.editBox.Value);
+    excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");
+    keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
+    setIdx = find(~excludeIdx & ~keepIdx);
 
-        % Find median and median absolute deviation
-        med = median(ud.RMSE(mapCol-1,:));
-        MAD = mad(ud.RMSE(mapCol-1,:),1);
+    if ud.badChan
+        threshold = str2double(ud.editBox.Value);
 
-        % Calculate distance from median and determine outliers
-        dist = (ud.RMSE(mapCol-1,:)-med)/MAD;
-        outliers = dist > scale;
+        % Find all points higher than threshold
+        outliers = ud.RMSE(mapCol-1,:) > threshold;
+        outliers = find(outliers(:) & ~excludeIdx & ~keepIdx);
     else
         pval = str2double(ud.editBox.Value);    
 
-        % Consider Mahalanobis distances of all points        
-        points = squeeze(ud.points(mapCol-1,:,:));
-    
-        % Calculate robust Mahalanobis distance using Fast-MCD
-        [~, ~, dist] = robustcov(points, "Method", "fmcd", "OutlierFraction", 0.25);
-    
-        % Calculate critical distance and compare with all points
-        outliers = dist > sqrt(chi2inv(1 - pval, 2));
+        % Only consider Mahalanobis distances for unexamined sets (not marked
+        % to keep or exclude)        
+        points = squeeze(ud.points(mapCol-1,~excludeIdx & ~keepIdx,:));
+        dist = mahal(points, points);
+
+        % But include sets marked to keep in ACR computation
+        n = sum(~excludeIdx);
+        critDist = ACR(2, n, pval);
+        [maxDist, idx] = max(dist);
+
+        if maxDist > critDist
+            outliers = setIdx(idx);
+        else
+            outliers = [];
+        end
     end    
 
-    if any(outliers)
-        excludeIdx = strcmp(ud.setsTable.Data(:,mapCol), "Exclude");
-        keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
-        outlierIdx = find(outliers(:) & ~excludeIdx & ~keepIdx);
-
+    if any(outliers)        
         % Change color of points corresponding to outlier sets to yellow
         % for review and show datatips
-        ud.scatter.CData(outlierIdx,:) = repmat([.929 .694 .125], numel(outlierIdx), 1);
-        ud.scatter.SizeData(outlierIdx) = 25;        
+        ud.scatter.CData(outliers,:) = repmat([.929 .694 .125], numel(outliers), 1);
+        ud.scatter.SizeData(outliers) = 25;        
 
         % Update table to show outlier sets as "Review"
-        ud.setsTable.Data(outlierIdx, mapCol) = "Review";
+        ud.setsTable.Data(outliers, mapCol) = "Review";
         tblStyle = uistyle('BackgroundColor', [.929 .694 .125]);
-        addStyle(ud.setsTable, tblStyle, 'cell', [outlierIdx repmat(mapCol, numel(outlierIdx), 1)]);
+        addStyle(ud.setsTable, tblStyle, 'cell', [outliers repmat(mapCol, numel(outliers), 1)]);
     else
         msgbox('No outliers detected.');
     end
@@ -399,7 +456,7 @@ function autoSelect(~, ~, fig_h)
     if ~isempty(ud.highlightPoints);    delete(ud.highlightPoints);   end
     if ~isempty(ud.dataTip);         delete(ud.dataTip);        end
 
-    ud.currentIdx = outlierIdx;
+    ud.currentIdx = outliers;
     fig_h.UserData = ud;
 
     % Highlight outliers
@@ -448,6 +505,9 @@ function exclude(~, ~, fig_h)
     ud.scatter.CData(ud.currentIdx,:) = [1 0 0];
     ud.scatterSizeData(ud.currentIdx) = 25;
 
+    % Remove datatip
+    delete(ud.dataTip);
+
     fig_h.UserData = ud;
 end
 
@@ -469,6 +529,9 @@ function keep(~, ~, fig_h)
     ud.scatter.CData(ud.currentIdx,:) = [0 1 0];
     ud.scatterSizeData(ud.currentIdx) = 25;
 
+    % Remove datatip
+    delete(ud.dataTip);
+
     fig_h.UserData = ud;
 end
 
@@ -477,7 +540,7 @@ function highlightSets(fig_h)
 
     mapCol = ud.selMap.Value;
 
-    if ud.selProcedure.Value == 1
+    if ud.badChan
         x = ud.currentIdx;
         y = ud.RMSE(mapCol-1,ud.currentIdx);
     else
@@ -527,27 +590,7 @@ function highlightSets(fig_h)
     fig_h.UserData = ud;
 end
 
-function procedureChanged(src, event, fig_h)
-    ud = fig_h.UserData;
-
-    % Change threshold label and edit field
-    if src.Value == 1
-        ud.editLabel.Text = 'No. of MADs';
-        ud.editBox.Value = '3';
-    else
-        ud.editLabel.Text = 'p value';
-        ud.editBox.Value = '0.05';
-    end
-
-    % Hide map and clear selection
-    ud.MapPanel.Visible = 'off';
-    ud.setsTable.Selection = [];
-
-    % Update plot
-    updatePlot(fig_h);
-end
-
-function mapChanged(src, event, fig_h)
+function mapChanged(src, ~, fig_h)
     ud = fig_h.UserData;
 
     mapCol = src.Value;
