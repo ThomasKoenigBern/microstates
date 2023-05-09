@@ -205,6 +205,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
     addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
     addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
+    addParameter(p, 'TemplateClasses', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
     addParameter(p, 'SortOrder', [],  @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
     addParameter(p, 'NewLabels', [], @(x) validateattributes(x, {'char', 'string', 'cell'}, {'vector'}));
     addParameter(p, 'SortAll', false, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
@@ -215,6 +216,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     IgnorePolarity = p.Results.IgnorePolarity;
     TemplateSet = p.Results.TemplateSet;
     Classes = p.Results.Classes;    
+    TemplateClasses = p.Results.TemplateClasses;
     SortOrder = p.Results.SortOrder;
     NewLabels = p.Results.NewLabels;
     SortAll = p.Results.SortAll;
@@ -322,6 +324,8 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
         else
             if strcmpi(TemplateSet, 'manual')
                 manualSort = true;
+            elseif strcmpi(TemplateSet, 'own')
+                TemplateName = TemplateSet;
             elseif matches(TemplateSet, publishedSetnames)
                 usingPublished = true;
                 TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
@@ -466,12 +470,14 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
 
             return;
         else
-            [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSets);
+            [AllEEG, EEGout, CurrentSet, com] = InteractiveSort2(AllEEG, SelectedSets);
             return;
         end
     end
 
-    if usingPublished
+    if strcmp(TemplateSet, 'own')
+        ChosenTemplate = AllEEG(SelectedSets);
+    elseif usingPublished
         ChosenTemplate = MSTEMPLATE(TemplateIndex);
     else
         ChosenTemplate = AllEEG(AvailableMeanSets(TemplateIndex));
@@ -513,7 +519,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     %% Verify compatibility between selected sets to sort and template set
     % If the template set chosen is a mean set, make sure it is a parent
     % set of all the selected sets
-    if ~usingPublished
+    if ~usingPublished && ~strcmp(TemplateSet, 'own')
         warningSetnames = {};
         for index = 1:length(SelectedSets)          
             sIndex = SelectedSets(index);
@@ -542,10 +548,6 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
         fprintf('Sorting dataset %i of %i\n', index, numel(SelectedSets));
         sIndex = SelectedSets(index);
 
-        if matches(AllEEG(sIndex).setname, ChosenTemplate.setname)
-            continue
-        end
-
         if ~any(ismember(Classes, AllEEG(sIndex).msinfo.ClustPar.MinClasses:AllEEG(sIndex).msinfo.ClustPar.MaxClasses))
             continue
         end
@@ -561,12 +563,16 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
             end            
 
             % find the number of template classes to use
-            if n < TemplateMinClasses
-                TemplateClassesToUse = TemplateMinClasses;
-            elseif n > TemplateMaxClasses
-                TemplateClassesToUse = TemplateMaxClasses;
+            if strcmp(TemplateSet, 'own') || ~isempty(TemplateClasses)
+                TemplateClassesToUse = TemplateClasses;
             else
-                TemplateClassesToUse = n;
+                if n < TemplateMinClasses
+                    TemplateClassesToUse = TemplateMinClasses;
+                elseif n > TemplateMaxClasses
+                    TemplateClassesToUse = TemplateMaxClasses;
+                else
+                    TemplateClassesToUse = n;
+                end
             end
 
             if max(n, TemplateClassesToUse) >= 10 && (~license('test','optimization_toolbox') || isempty(which('intlinprog')))

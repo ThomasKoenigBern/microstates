@@ -1,160 +1,160 @@
-AllEEG = ALLEEG;
-SelectedSet = 1;
-
-EEGout = AllEEG(SelectedSet);
-CurrentSet = SelectedSet;
-com = '';
-Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
-
-% Compute initial figure size and whether scrolling is needed
-% (for larger number of solutions/maps)
-minGridHeight = 90;     
-minGridWidth = 60;    
-expVarWidth = 55;
-mapPanelNormHeight = .75;
-mapPanelNormWidth = .98;
-nRows = numel(Classes);
-nCols = max(Classes);          
-
-% Get usable screen size
-toolkit = java.awt.Toolkit.getDefaultToolkit();
-jframe = javax.swing.JFrame;
-insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
-tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);
-pause(0.2);
-titleBarHeight1 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
-tempFig.MenuBar = 'none';
-pause(0.2);
-titleBarHeight2 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
-delete(tempFig);
-% Use the largest monitor available
-monitorPositions = get(0, 'MonitorPositions');
-if size(monitorPositions, 1) > 1
-    screenSizes = arrayfun(@(x) monitorPositions(x, 3)*monitorPositions(x,4), 1:size(monitorPositions, 1));
-    [~, i] = max(screenSizes);
-    screenSize = monitorPositions(i, :);
-else
-    screenSize = get(0, 'ScreenSize');
-end
-figSize1 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight1-insets.bottom-insets.top];
-figSize2 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight2-insets.bottom-insets.top];
-
-ud.minPanelWidth = expVarWidth + minGridWidth*nCols;
-ud.minPanelHeight = minGridHeight*nRows;
-
-ud.Scroll = false;
-% Use scrolling and uifigure for large number of maps
-if ud.minPanelWidth > figSize1(3)*mapPanelNormWidth || ud.minPanelHeight > figSize1(4)*mapPanelNormHeight
-    ud.Scroll = true;
-    fig_h = uifigure('Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], 'Units', 'pixels', ...
-        'Position', figSize2, 'MenuBar', 'none', 'ToolBar', 'none');
-    if ud.minPanelWidth < fig_h.Position(3) - 20
-        ud.minPanelWidth = fig_h.Position(3) - 50;
+function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort2(AllEEG, SelectedSet)
+    
+    EEGout = AllEEG(SelectedSet);
+    CurrentSet = SelectedSet;
+    com = '';
+    Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
+    
+    % Compute initial figure size and whether scrolling is needed
+    % (for larger number of solutions/maps)
+    minGridHeight = 80;     
+    minGridWidth = 60;    
+    expVarWidth = 55;
+    mapPanelNormHeight = .75;
+    mapPanelNormWidth = .98;
+    nRows = numel(Classes);
+    nCols = max(Classes);          
+    
+    % Get usable screen size
+    toolkit = java.awt.Toolkit.getDefaultToolkit();
+    jframe = javax.swing.JFrame;
+    insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
+    tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);
+    pause(0.2);
+    titleBarHeight1 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    tempFig.MenuBar = 'none';
+    pause(0.2);
+    titleBarHeight2 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    delete(tempFig);
+    % Use the largest monitor available
+    monitorPositions = get(0, 'MonitorPositions');
+    if size(monitorPositions, 1) > 1
+        screenSizes = arrayfun(@(x) monitorPositions(x, 3)*monitorPositions(x,4), 1:size(monitorPositions, 1));
+        [~, i] = max(screenSizes);
+        screenSize = monitorPositions(i, :);
+    else
+        screenSize = get(0, 'ScreenSize');
     end
-    selPanelHeight = 175;       % combined height of button area and padding
-    if ud.minPanelHeight < fig_h.Position(4) - selPanelHeight
-        ud.minPanelHeight = fig_h.Position(4) - selPanelHeight - 30;
-    end
-% Otherwise use a normal figure (faster rendering) 
-else
-    fig_h = figure('NumberTitle', 'off', 'Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], ...
-        'Position', figSize1, 'MenuBar', 'figure', 'ToolBar', 'none');
-end           
-
-ud.Visible = true;
-ud.AllMaps = AllEEG(SelectedSet).msinfo.MSMaps;
-ud.chanlocs = AllEEG(SelectedSet).chanlocs;
-ud.setname = AllEEG(SelectedSet).setname;
-ud.ClustPar = AllEEG(SelectedSet).msinfo.ClustPar;
-ud.wasSorted = false;
-ud.SelectedSet = SelectedSet;
-ud.com = '';
-if isfield(AllEEG(SelectedSet).msinfo, 'children')
-    ud.Children = AllEEG(SelectedSet).msinfo.children;
-else
-    ud.Children = [];
-end
-ud.Edit = true;
-
-for j = ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses    
-    if isfield(ud.AllMaps(j),'Labels')
-        if ~isempty(ud.AllMaps(j).Labels)
-            continue
+    figSize1 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight1-insets.bottom-insets.top];
+    figSize2 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight2-insets.bottom-insets.top];
+    
+    ud.minPanelWidth = expVarWidth + minGridWidth*nCols;
+    ud.minPanelHeight = minGridHeight*nRows;
+    
+    ud.Scroll = false;
+    % Use scrolling and uifigure for large number of maps
+    if ud.minPanelWidth > figSize1(3)*mapPanelNormWidth || ud.minPanelHeight > figSize1(4)*mapPanelNormHeight
+        ud.Scroll = true;
+        fig_h = uifigure('Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], 'Units', 'pixels', ...
+            'Position', figSize2, 'MenuBar', 'none', 'ToolBar', 'none');
+        if ud.minPanelWidth < fig_h.Position(3) - 20
+            ud.minPanelWidth = fig_h.Position(3) - 50;
         end
-    end 
-    % Fill in generic labels if dataset does not have them
-    for k = 1:j
-        ud.AllMaps(j).Labels{k} = sprintf('MS_%i.%i',j,k);
+        selPanelHeight = 175;       % combined height of button area and padding
+        if ud.minPanelHeight < fig_h.Position(4) - selPanelHeight
+            ud.minPanelHeight = fig_h.Position(4) - selPanelHeight - 30;
+        end
+    % Otherwise use a normal figure (faster rendering) 
+    else
+        fig_h = figure('NumberTitle', 'off', 'Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], ...
+            'Position', figSize1, 'MenuBar', 'figure', 'ToolBar', 'none');
+    end           
+    
+    ud.Visible = true;
+    ud.AllMaps = AllEEG(SelectedSet).msinfo.MSMaps;
+    ud.chanlocs = AllEEG(SelectedSet).chanlocs;
+    ud.setname = AllEEG(SelectedSet).setname;
+    ud.ClustPar = AllEEG(SelectedSet).msinfo.ClustPar;
+    ud.wasSorted = false;
+    ud.SelectedSet = SelectedSet;
+    ud.com = '';
+    if isfield(AllEEG(SelectedSet).msinfo, 'children')
+        ud.Children = AllEEG(SelectedSet).msinfo.children;
+    else
+        ud.Children = [];
     end
-    ud.Labels(j,1:j) = ud.AllMaps(j).Labels(1:j);
+    ud.Edit = true;
+    
+    for j = ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses    
+        if isfield(ud.AllMaps(j),'Labels')
+            if ~isempty(ud.AllMaps(j).Labels)
+                continue
+            end
+        end 
+        % Fill in generic labels if dataset does not have them
+        for k = 1:j
+            ud.AllMaps(j).Labels{k} = sprintf('MS_%i.%i',j,k);
+        end
+        ud.Labels(j,1:j) = ud.AllMaps(j).Labels(1:j);
+    end
+    
+    global MSTEMPLATE;
+    [ud.MeanIdx, ud.MeanNames] = FindParentSets(AllEEG, ud.SelectedSet);
+    [ud.TemplateNames, ud.TemplateDisplayNames, templateIdx] = getTemplateNames();
+    meanMinClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, ud.MeanIdx);
+    tempMinClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, templateIdx);
+    meanMaxClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, ud.MeanIdx);
+    tempMaxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, templateIdx);
+    ud.TemplateMinClasses = [ud.ClustPar.MinClasses meanMinClasses tempMinClasses];
+    ud.TemplateMaxClasses = [ud.ClustPar.MaxClasses meanMaxClasses tempMaxClasses];
+    
+    % Build figure
+    fig_h.UserData = ud;
+    if ud.Scroll
+        buildUIFig(fig_h, AllEEG);
+    else
+        buildFig(fig_h, AllEEG);
+    end
+    fig_h.CloseRequestFcn = {@figClose, fig_h};                            
+    PlotMSMaps(fig_h, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
+    if ~isvalid(fig_h)
+        return
+    end
+    
+    uiwait();
+    if ~isvalid(fig_h)
+        return
+    end
+    ud = fig_h.UserData;
+    delete(fig_h);
+    
+    if ud.wasSorted
+        hasChildren = ~isempty(ud.Children);
+        [yesPressed, selection] = questDlg(hasChildren);
+    
+        if yesPressed
+            AllEEG(SelectedSet).msinfo.MSMaps = ud.AllMaps;                                        
+            AllEEG(SelectedSet).saved = 'no';
+            EEGout = AllEEG(SelectedSet);
+            CurrentSet = SelectedSet;
+            com = ud.com;
+    
+            sortCom = '';
+            if hasChildren            
+                if strcmp(selection, 'Clear dependent sorting')
+                    AllEEG = ClearDataSortedByParent(AllEEG, AllEEG(SelectedSet).msinfo.children);
+                elseif strcmp(selection, 'Sort dependent sets by this set')
+                    childIdx = FindChildSets(AllEEG, SelectedSet);
+                    if ~isempty(childIdx)
+                        IgnorePolarity = AllEEG(SelectedSet).msinfo.ClustPar.IgnorePolarity;
+                        Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
+                        [AllEEG, childEEG, childIdx, sortCom] = pop_SortMSTemplates(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
+                            'IgnorePolarity', IgnorePolarity, 'Classes', Classes);
+                        AllEEG = eeg_store(AllEEG, childEEG, childIdx);
+                    else
+                        disp('Could not find dependent sets for resorting');
+                    end
+                end
+            end
+    
+            if ~isempty(sortCom)
+                com = [com newline sortCom];
+            end
+        else
+            disp('Changes abandoned');
+        end                
+    end
 end
-
-global MSTEMPLATE;
-[ud.MeanIdx, ud.MeanNames] = FindParentSets(AllEEG, ud.SelectedSet);
-[ud.TemplateNames, ud.TemplateDisplayNames, templateIdx] = getTemplateNames();
-meanMinClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, ud.MeanIdx);
-tempMinClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, templateIdx);
-meanMaxClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, ud.MeanIdx);
-tempMaxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, templateIdx);
-ud.TemplateMinClasses = [meanMinClasses tempMinClasses];
-ud.TemplateMaxClasses = [meanMaxClasses tempMaxClasses];
-
-% Build figure
-fig_h.UserData = ud;
-if ud.Scroll
-    buildUIFig(fig_h, AllEEG);
-else
-    buildFig(fig_h, AllEEG);
-end
-fig_h.CloseRequestFcn = {@figClose, fig_h};                            
-PlotMSMaps(fig_h, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
-% if ~isvalid(fig_h)
-%     return
-% end
-% 
-% uiwait();
-% if ~isvalid(fig_h)
-%     return
-% end
-% ud = fig_h.UserData;
-% delete(fig_h);
-% 
-% if ud.wasSorted
-%     hasChildren = ~isempty(ud.Children);
-%     [yesPressed, selection] = questDlg(hasChildren);
-% 
-%     if yesPressed
-%         AllEEG(SelectedSet).msinfo.MSMaps = ud.AllMaps;                                        
-%         AllEEG(SelectedSet).saved = 'no';
-%         EEGout = AllEEG(SelectedSet);
-%         CurrentSet = SelectedSet;
-%         com = ud.com;
-% 
-%         sortCom = '';
-%         if hasChildren            
-%             if strcmp(selection, 'Clear dependent sorting')
-%                 AllEEG = ClearDataSortedByParent(AllEEG, AllEEG(SelectedSet).msinfo.children);
-%             elseif strcmp(selection, 'Sort dependent sets by this set')
-%                 childIdx = FindChildSets(AllEEG, SelectedSet);
-%                 if ~isempty(childIdx)
-%                     IgnorePolarity = AllEEG(SelectedSet).msinfo.ClustPar.IgnorePolarity;
-%                     Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
-%                     [AllEEG, childEEG, childIdx, sortCom] = pop_SortMSTemplates(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
-%                         'IgnorePolarity', IgnorePolarity, 'Classes', Classes);
-%                     AllEEG = eeg_store(AllEEG, childEEG, childIdx);
-%                 else
-%                     disp('Could not find dependent sets for resorting');
-%                 end
-%             end
-%         end
-% 
-%         if ~isempty(sortCom)
-%             com = [com newline sortCom];
-%         end
-%     else
-%         disp('Changes abandoned');
-%     end                
-% end
 
 %% GUI LAYOUT %%
 
@@ -183,7 +183,7 @@ function buildFig(fig_h, AllEEG)
     uicontrol(panel1, 'Style', 'Text', 'String', 'Sorting procedure', 'Units', 'normalized', 'Position', [.005 .6 .2 .33], 'HorizontalAlignment', 'left');
     Actions = {'1) Reorder maps in selected solution manually by map index','2) Reorder maps in selected solution(s) based on template set'};               
     if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1
-        Actions = [Actions '3) Use selected solution to reorder all other solutions','4) First 1), then 3)', '5) First 2), then 3)'];
+        Actions = [Actions '3) Use own template maps to perform stepwise sorting on selected solution(s)','4) First 1), then 3)', '5) First 2), then 3)'];
     end
     ud.ActChoice = uicontrol(panel1, 'Style', 'popupmenu','String', Actions, 'Units','Normalized','Position', [.2 .8 .785 .15], 'Callback',{@ActionChangedCallback,fig_h});
     
@@ -197,8 +197,8 @@ function buildFig(fig_h, AllEEG)
     ud.LabelsTxt = uicontrol(panel2, 'Style', 'Text', 'String', 'New Labels', 'Units', 'normalized', 'Position', [.01 .38 .2 .23], 'HorizontalAlignment', 'left');
     ud.LabelsEdit = uicontrol(panel2, 'Style', 'Edit', 'String', "", 'Units', 'normalized', 'Position', [.35 .45 .64 .18]);
 
-    ud.SelTemplateLabel = uicontrol(panel2, 'Style', 'Text', 'String', 'Select template set', 'Units', 'normalized', 'Position', [.01 .6 .3 .3], 'Visible', 'off', 'HorizontalAlignment', 'left', 'Callback', {@templateSetChanged, fig_h});    
-    ud.SelTemplate = uicontrol(panel2, 'Style', 'popupmenu', 'String', [ud.MeanNames ud.TemplateDisplayNames], 'Units', 'normalized', 'Position', [.31 .82 .68 .1], 'Visible', 'off');
+    ud.SelTemplateLabel = uicontrol(panel2, 'Style', 'Text', 'String', 'Select template set', 'Units', 'normalized', 'Position', [.01 .6 .3 .3], 'Visible', 'off', 'HorizontalAlignment', 'left');    
+    ud.SelTemplate = uicontrol(panel2, 'Style', 'popupmenu', 'String', ['Own' ud.MeanNames ud.TemplateDisplayNames], 'Units', 'normalized', 'Position', [.31 .82 .68 .1], 'Visible', 'off', 'Callback', {@templateSetChanged, fig_h});
 
     ud.SelClassesLabel = uicontrol(panel2, 'Style', 'Text', 'String', 'Select template solution', 'Units', 'normalized', 'Position', [.01 .38 .3 .26], 'Visible', 'off', 'HorizontalAlignment', 'left');
     ud.SelClasses = uicontrol(panel2, 'Style', 'popupmenu', 'String', '', 'Units', 'normalized', 'Position', [.31 .56 .68 .1], 'Visible', 'off', 'HorizontalAlignment', 'left');
@@ -397,10 +397,20 @@ function templateSetChanged(~,~,fh)
     ud = fh.UserData;
     
     templateSetIdx = ud.SelTemplate.Value;
-    minClasses = ud.TemplateMinClasses(templateSetIdx);
-    maxClasses = ud.TemplateMaxClasses(templateSetIdx);
-    classesTxt = arrayfun(@(x) {sprintf('%i classes', x)}, minClasses:maxClasses);
+    classRange = ud.TemplateMinClasses(templateSetIdx):ud.TemplateMaxClasses(templateSetIdx);
+    classesTxt = arrayfun(@(x) {sprintf('%i classes', x)}, classRange);
     ud.SelClasses.String = classesTxt;
+
+    sortClasses = ud.ClassList.Value;  
+    if ~ud.Scroll
+        sortClasses = ud.ClustPar.MinClasses + sortClasses - 1;
+    end
+    overlapClasses = find(ismember(classRange, sortClasses));
+    if ~isempty(overlapClasses)
+        ud.SelClasses.Value = overlapClasses(end);
+    else
+        ud.SelClasses.Value = 1;
+    end
 
     fh.UserData = ud;
 end
@@ -508,7 +518,7 @@ function ActionChangedCallback(~,~,fh)
         end
     else
         if numel(ud.ClassList.Value) > 1
-            ud.ClassList.Value = ud.ClassList.Value(end);
+            ud.ClassList.Value = ud.ClassList.Value(end); 
         end
         if ud.Scroll
             ud.ClassList.Multiselect = 'off';
@@ -559,14 +569,21 @@ function Sort(~,~,fh,AllEEG)
         if ud.Scroll
             TemplateSet = ud.SelTemplate.Value;
         else
-            if ud.SelTemplate.Value <= numel(ud.MeanIdx)
-                TemplateSet = ud.MeanIdx(ud.SelTemplate.Value);
+            templateSetIdx = ud.SelTemplate.Value;
+            if ud.SelTemplate.Value == 1
+                TemplateSet = 'own';
+            elseif ud.SelTemplate.Value <= numel(ud.MeanIdx)
+                TemplateSet = ud.MeanIdx(templateSetIdx-1);
             else
-                TemplateSet = ud.TemplateNames{ud.SelTemplate.Value - numel(ud.MeanIdx)};
+                TemplateSet = ud.TemplateNames{templateSetIdx - numel(ud.MeanIdx)-1};
             end
+            minClasses = ud.TemplateMinClasses(templateSetIdx);
+            maxClasses = ud.TemplateMaxClasses(templateSetIdx);
+            classRange = minClasses:maxClasses;
+            TemplateClasses = classRange(ud.SelClasses.Value);
         end
 
-        [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'IgnorePolarity', IgnorePolarity, 'TemplateSet', TemplateSet, 'Classes', nClasses, 'SortAll', SortAll);
+        [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'IgnorePolarity', IgnorePolarity, 'TemplateSet', TemplateSet, 'Classes', nClasses, 'TemplateClasses', TemplateClasses, 'SortAll', SortAll);
     else
         IgnorePolarity = ud.IgnorePolarity.Value;
 

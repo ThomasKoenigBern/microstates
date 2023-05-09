@@ -1,4 +1,4 @@
-function MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange)
+function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange)
     
     if numel(nClasses) > 1        
         errordlg2('Only one cluster solution can be chosen for manual sorting.', 'Sort microstate maps error');
@@ -45,7 +45,15 @@ function MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange)
         SortOrder = absSortOrder;
         MSMaps(nClasses).Maps = MSMaps(nClasses).Maps(SortOrder,:).*repmat(sortOrderSign',1,size(MSMaps(nClasses).Maps,2));
         MSMaps(nClasses).Labels = NewLabels(:)';
-        MSMaps(nClasses).ColorMap = getColors(nClasses);
+        letters = 'A':'Z';
+        letters = arrayfun(@(x) {letters(x)}, 1:26);
+        if all(matches(NewLabels(:)', letters))
+            colorIdx = find(matches(letters, NewLabels(:)'));
+            colors = getColors(max(colorIdx));
+            MSMaps(nClasses).ColorMap = colors(colorIdx,:);
+        else
+            MSMaps(nClasses).ColorMap = getColors(nClasses);
+        end
         if numel(MSMaps(nClasses).ExpVar) > 1
             MSMaps(nClasses).ExpVar = MSMaps(nClasses).ExpVar(SortOrder);
         end
