@@ -210,7 +210,7 @@ function buildFig(fig_h, AllEEG)
     ud.Info    = uicontrol(fig_h, 'Style', 'pushbutton','String', 'Info'    , 'Units','Normalized','Position', [.9 .155 .09 .045], 'Callback', {@MapInfo, fig_h});                
     ud.ShowDyn = uicontrol(fig_h, 'Style', 'pushbutton','String', 'Dynamics', 'Units','Normalized','Position', [.9 .105 .09 .045], 'Callback', {@ShowDynamics, fig_h, AllEEG}, 'Enable', DynEnable);
     ud.Compare = uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Compare', 'Units','Normalized','Position', [.9 .055 .09 .045], 'Callback', {@CompareCallback, fig_h, AllEEG});
-    ud.Done    = uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Close'  , 'Units','Normalized','Position', [.9 .005 .09 .045], 'Callback', {@figClose,fig_h});
+    ud.Done    = uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Save'  , 'Units','Normalized','Position', [.9 .005 .09 .045], 'Callback', {@figClose,fig_h});
     
     fig_h.UserData = ud;
 
@@ -292,7 +292,7 @@ function buildUIFig(fig_h, AllEEG)
     ud.Compare = uibutton(ud.SortLayout, 'Text', 'Compare maps', 'ButtonPushedFcn', {@CompareCallback, fig_h, AllEEG});
     ud.Compare.Layout.Row = 3;
     ud.Compare.Layout.Column = 5;
-    ud.Done = uibutton(ud.SortLayout, 'Text', 'Close', 'ButtonPushedFcn', {@figClose, fig_h});
+    ud.Done = uibutton(ud.SortLayout, 'Text', 'Save', 'ButtonPushedFcn', {@figClose, fig_h});
     ud.Done.Layout.Row = 4;
     ud.Done.Layout.Column = 5;
     
