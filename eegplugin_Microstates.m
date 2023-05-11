@@ -161,7 +161,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     comRaguMSTemplates     = [try_strings.no_check 'LASTCOM                                 = pop_RaguMSTemplates(ALLEEG);'                        catch_strings.add_to_hist];
     
     comShowIndMSMaps       = [try_strings.no_check '[~, LASTCOM]                            = pop_ShowIndMSMaps(ALLEEG);'                          catch_strings.add_to_hist];
-    comShowIndMSDyn        = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_ShowIndMSDyn(ALLEEG);'                           catch_strings.store_and_hist];
+    comShowIndMSDyn        = [try_strings.no_check 'LASTCOM                                 = pop_ShowIndMSDyn(ALLEEG);'                           catch_strings.store_and_hist];
     comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                            = pop_ShowMSParameters(ALLEEG);'                       catch_strings.add_to_hist];
 
     toolsmenu = findobj(fig, 'tag', 'tools');
