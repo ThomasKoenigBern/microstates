@@ -1,8 +1,9 @@
-% pop_QuantMSTemplates() Generates plots of the temporal dynamics
+% pop_ShowMSParameters() Generates plots of the temporal dynamics
 % parameters for all included datasets. If one dataset is selected,
 % individual parameters will be displayed as bar graphs, otherwise the
 % distribution of parameters across datasets will be displayed as swarm
-% charts.
+% charts. pop_FitMSTemplates() must be used before calling this function
+% to extract temporal parameters.
 %
 % Usage:
 %   >> fig_h = pop_ShowMSParameters(ALLEEG, SelectedSets, 'key1', value1, 
@@ -87,8 +88,6 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
-    global MSTEMPLATE;
-    global guiOpts;
     fig_h = [];
 
     %% Parse inputs and perform initial validation
@@ -123,7 +122,8 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            error('The following sets do not contain temporal parameters: %s', invalidSetsTxt);
+            error(['The following sets do not contain temporal parameters: %s. ' ...
+                'Use pop_FitMSTemplates() to extract temporal dynamics first.'], invalidSetsTxt);
         end
     % Otherwise, prompt user to choose sets
     else
@@ -146,6 +146,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
             return;
         end
     end        
+
 
     SelectedEEG = AllEEG(SelectedSets);    
 
@@ -180,7 +181,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         if ~ismember(nClasses, commonClasses)
             classesTxt = sprintf('%i, ', commonClasses);
             classesTxt = classesTxt(1:end-2);
-            errorMessage = sprintf(['Not all selected sets to export contain microstate statistics for the %i cluster solution. ' ...
+            errorMessage = sprintf(['Not all selected sets to plot contain microstate statistics for the %i cluster solution. ' ...
                 'Valid class numbers include: %s.'], nClasses, classesTxt);
             if ~isempty(p.UsingDefaults)
                 errordlg2(errorMessage, 'Plot temporal parameters error');

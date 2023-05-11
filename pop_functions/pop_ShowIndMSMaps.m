@@ -1,6 +1,7 @@
 % pop_ShowIndMSMaps() - Display microstate maps, with the option to display
-% only certain cluster solutions. To plot individual maps in their own 
-% windows, right-click a map and select "Plot map in new window."
+% only certain cluster solutions. If multiple sets are selected to plot,
+% they will be plotted in separate tabs. To plot individual maps in their  
+% own windows, right-click a map and select "Plot map in new window."
 %
 % Usage:
 %   >> [fig_h, com] = pop_ShowIndMSMaps(ALLEEG, 
@@ -134,8 +135,12 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
             'title', 'Plot microstate maps');
 
         if isempty(res);    return; end
-
         SelectedSets = AvailableSets(outstruct.SelectedSets);
+
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one set of microstate maps','Plot temporal dynamics error');
+            return;
+        end
     end
 
     SelectedEEG = AllEEG(SelectedSets);

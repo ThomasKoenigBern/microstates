@@ -35,14 +35,16 @@
 %   transition probabilities is computed from the number of appearances of
 %   each microstate class.
 %   - DurationDist: 1 x number of classes cell array of vectors containing
-%   the entire distribution of durations for each template map
+%   the entire distribution of durations for each template map (not
+%   included in exported file)
 %   - GFPDist: 1 x number of classes cell array of vectors containing the
 %   entire distribution of global field power values of the timepoints
-%   assigned to each template map
+%   assigned to each template map (not included in exported file)
 %   - MSClass: number of epochs x number of timeframes/epoch array of
-%   microstate class labels assigned to the entire recording period
+%   microstate class labels assigned to the entire recording period (not
+%   included in exported file)
 %   - GFP: number of epochs x number of timeframes/epoch array of global
-%   field power values at each timepoint
+%   field power values at each timepoint (not included in exported file)
 %   - FittingTemplate: name of the template set whose maps were used for
 %   backfitting
 %   - SortedBy: sorting information for the fitting template
@@ -134,8 +136,6 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
-    global MSTEMPLATE;
-    global guiOpts;
     MSStats = [];
 
     %% Parse inputs and perform initial validation
@@ -159,7 +159,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit template maps to EEG to extract temporal dynamics.'], 'Export temporal parameters error');
+            'Use Tools->Backfit template maps to EEG to extract temporal dynamics first.'], 'Export temporal parameters error');
         return;
     end
 
@@ -170,9 +170,8 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets do not contain temporal parameters: ' invalidSetsTxt];
-            errordlg2(errorMessage, 'Export temporal parameters error');
-            return;
+            error(['The following sets do not contain temporal parameters: %s. ' ...
+                'Use pop_FitMSTemplates() to extract temporal dynamics first.'], invalidSetsTxt);
         end
     % Otherwise, prompt user to choose sets
     else

@@ -454,7 +454,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
                 [b_model,~,~,exp_var] = eeg_kMeans(MapsToUse',nClusters,ClustPar.Restarts,[],flags,AllEEG(sIndex).chanlocs);
        
-                msinfo.MSMaps(nClusters).Maps = b_model;
+                msinfo.MSMaps(nClusters).Maps = double(b_model);
                 msinfo.MSMaps(nClusters).ExpVar = double(exp_var);
                 msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
@@ -468,8 +468,8 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize);
     
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
-                msinfo.MSMaps(nClusters).Maps = b_model{nClusters-ClustPar.MinClasses+1};
-                msinfo.MSMaps(nClusters).ExpVar = exp_var{nClusters-ClustPar.MinClasses+1};
+                msinfo.MSMaps(nClusters).Maps = double(b_model{nClusters-ClustPar.MinClasses+1});
+                msinfo.MSMaps(nClusters).ExpVar = double(exp_var{nClusters-ClustPar.MinClasses+1});
                 msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
                     msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
