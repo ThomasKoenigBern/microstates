@@ -179,8 +179,8 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,'Separator','on', 'userdata', 'study:on');
     
     plotmenu = findobj(fig, 'tag', 'plot');
-    uimenu( plotmenu, 'Label', 'Plot microstate maps',      'CallBack', comShowIndMSMaps,'userdata', 'study:on', 'Separator','on');
-    uimenu( plotmenu, 'Label', 'Plot microstate dynamics',  'CallBack', comShowIndMSDyn, 'userdata', 'study:on');    
+    uimenu( plotmenu, 'Label', 'Plot template maps',        'CallBack', comShowIndMSMaps,'userdata', 'study:on', 'Separator','on');
+    uimenu( plotmenu, 'Label', 'Plot temporal dynamics',    'CallBack', comShowIndMSDyn, 'userdata', 'study:on');    
     uimenu( plotmenu, 'Label', 'Plot temporal parameters',  'CallBack', comShowMSParam,  'userdata', 'study:on');
     uimenu( plotmenu, 'Label', 'Compare template maps',     'CallBack', comCompareMaps,  'userdata', 'study:on');  
 end
