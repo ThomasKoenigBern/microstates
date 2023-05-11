@@ -150,6 +150,7 @@ scriptPath = [mfilename('fullpath') '.m'];
 copyfile(scriptPath, subDir);
 
 [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab('nogui');
+addpath(genpath(fileparts(which('eegplugin_Microstates'))));
 
 GroupIdx = cell(1, nGroups);
 lastGroupIdx = 1;
