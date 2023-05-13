@@ -205,7 +205,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
         else
             % Look for the fitting template in ALLEEG and MSTEMPLATE
             if matches(TemplateName, meanSetnames)
-                meanIdx = find(matches(meanSetnames, TemplateNames));
+                meanIdx = meanSets(matches(meanSetnames, TemplateName));
                 if numel(meanIdx) > 1
                     warning(['Multiple mean sets found that match the fitting template "%s" ' ...
                         'for dataset %i. Template maps will not be displayed.'], TemplateName, SelectedSets(s));
