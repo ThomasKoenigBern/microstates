@@ -56,12 +56,6 @@
 %   "Show maps when done"
 %   -> Show maps when done. If multiple sets are selected, a tab will be
 %   opened for each.
-%   -> Command line equivalent: "ShowMaps"
-%
-%   "Show dynamics when done"
-%   -> Show microstate dynamics when done. If multiple sets are selected, a
-%   window will be opened for each.
-%   -> Command line equivalent: "ShowDyn"
 %
 % Inputs:
 %
@@ -109,16 +103,6 @@
 %       power of 1 before clustering, 0 = do not normalize data.
 %        Normalization will only apply to clustering and not modify data 
 %       stored in the EEG set.
-%
-%   "ShowMaps"
-%   -> 1 = Show maps after clustering. If multiple sets are selected, a tab
-%   will be opened for each. 0 = Do not show maps.
-%   -> Default = do not show maps
-%
-%   "ShowDyn"
-%   -> 1 = Show microstate dynamics after clustering. If multiple sets are
-%   selected, a window will be opened for each. 0 = Do not show dynamics.
-%   -> Default = do not show dynamics
 %
 % Outputs:
 %
@@ -177,17 +161,14 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'nonnegative', '<=', numel(AllEEG)})); % Took out the 'vector attirbute to allow for [] input
     addParameter(p, 'ClustPar', []);
-    addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
-    addParameter(p, 'ShowDyn', false, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'TTFrD', false, @(x) validateattributes(x, logClass, logAttributes));
 
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
     ClustPar = p.Results.ClustPar;
-    ShowMaps = p.Results.ShowMaps;
-    ShowDyn = p.Results.ShowDyn;
     DoTTFrD = p.Results.TTFrD;
+    ShowMaps = false;
 
     %% SelectedSets validation
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
@@ -304,28 +285,15 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         end
     end
 
-    %% Add other options as gui elements if they were not provided
+    %% Add other options as gui elements
     % (Only display in GUI if other cluster parameters are already being
     % displayed, otherwise use defaults)
     if ~isempty(p.UsingDefaults) && ~isempty(ClustParDefaults)
         guiElements = [guiElements ...
-            {{ 'Style', 'text', 'string', 'Additional options', 'fontweight', 'bold'}}];
-        guiGeom = [guiGeom 1];
-        guiGeomV = [guiGeomV 1];
-
-        if matches('ShowMaps', p.UsingDefaults)
-            guiElements = [guiElements ...
-                {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
-            guiGeom = [guiGeom 1];
-            guiGeomV = [guiGeomV 1];
-        end
-    
-        if matches('ShowDyn', p.UsingDefaults)
-            guiElements = [guiElements ...
-                {{ 'Style', 'checkbox', 'string','Show dynamics when done','tag','ShowDyn','Value', ShowDyn }}];
-            guiGeom = [guiGeom 1];
-            guiGeomV = [guiGeomV 1];
-        end
+            {{ 'Style', 'text', 'string', 'Additional options', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
+        guiGeom = [guiGeom 1 1];
+        guiGeomV = [guiGeomV 1 1];
     end
     
 
@@ -367,9 +335,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         if isfield(outstruct, 'ShowMaps')
             ShowMaps = outstruct.ShowMaps;
         end
-        if isfield(outstruct, 'ShowDyn')
-            ShowDyn = outstruct.ShowDyn;
-        end
     end
 
     if numel(SelectedSets) < 1
@@ -382,10 +347,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     if ClustPar.UseAAHC && ClustPar.Normalize
         warndlg2('There is an issue with the currently implemented AAHC algorithm and normalization, normalization has been set to false.','Clustering algorithm selection');
         ClustPar.Normalize = false;
-    end
-
-    if ~isfield(ClustPar,'UseEMD')
-        ClustPar.UseEMD = false;
     end
     
     FailedSets = [];
@@ -446,8 +407,10 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             flags = [flags 'n'];
         end
         
-        if ClustPar.UseEMD == true
-            flags = [flags 'e'];
+        if isfield(ClustPar, 'UseEMD')
+            if ClustPar.UseEMD == true
+                flags = [flags 'e'];
+            end
         end
         
         if ClustPar.UseAAHC == false
@@ -489,20 +452,17 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     SelectedSets(FailedSets) = [];
 
     EEGout = AllEEG(SelectedSets);
-    CurrentSet = SelectedSets;
+    CurrentSet = SelectedSets;    
+    
+    %% Command string generation
+    com = sprintf('[EEG, CURRENTSET] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar));
 
     %% Show maps
     if ShowMaps
         pop_ShowIndMSMaps(EEGout, 1:numel(EEGout), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses);
+        com = [com newline ...
+            sprintf('fig_h = pop_ShowIndMSMaps(EEG, %s, ''Classes'', %s, ''Visible'', 1)', mat2str(1:numel(SelectedSets)), mat2str(ClustPar.MinClasses:ClustPar.MaxClasses))];
     end
-
-    %% Show dynamics
-    if ShowDyn
-        [EEGout, CurrentSet, ~] = pop_ShowIndMSDyn(EEGout, 1:numel(EEGout), 'TemplateSet', 'own');
-    end
-    
-    %% Command string generation
-    com = sprintf('[EEG, CURRENTSET] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s, ''ShowMaps'', %i, ''ShowDyn'', %i);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar), ShowMaps, ShowDyn);
 end
 
 function algorithmChanged(obj, ~)
