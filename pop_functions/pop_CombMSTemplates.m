@@ -74,10 +74,11 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
+function [AllEEG, EEGout, com, sortCom] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
+    sortCom = '';
     global MSTEMPLATE;
     global guiOpts;
     global EEG;
@@ -374,9 +375,6 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Command string generation
     com = sprintf('[ALLEEG, EEG] = pop_CombMSTemplates(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
-    if ~isempty(sortCom)
-        com = [com newline sortCom];
-    end
 end
 
 function isEmpty = isEmptySet(in)

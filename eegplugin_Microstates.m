@@ -149,39 +149,38 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     
     MSTEMPLATE = MSTemplate;
     
-    comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_FindMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
-    comCombineMSTemplates  = [try_strings.no_check '[ALLEEG, EEG, LASTCOM]                  = pop_CombMSTemplates(ALLEEG);'                        catch_strings.new_and_hist];
-    comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]      = pop_SortMSTemplates(ALLEEG);'                        catch_strings.store_and_hist];
-    comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_DetectOutliers(ALLEEG);'                         catch_strings.store_and_hist];
-    comCompareMaps         = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_CompareMSTemplates(ALLEEG);'                     catch_strings.store_and_hist];
-    comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_GetMSDynamics(ALLEEG);'                          catch_strings.new_and_hist];
-    comFitMSTemplates      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]              = pop_FitMSTemplates(ALLEEG);'                         catch_strings.store_and_hist];
-    comSaveMSParam         = [try_strings.no_check '[~, LASTCOM]                            = pop_SaveMSParameters(ALLEEG);'                       catch_strings.add_to_hist];
-%     comQuantMSTemplates    = [try_strings.no_check '[EEG, CURRENTSET, ~, ~, LASTCOM]        = pop_QuantMSTemplates(ALLEEG);'                       catch_strings.store_and_hist];
-    comRaguMSTemplates     = [try_strings.no_check 'LASTCOM                                 = pop_RaguMSTemplates(ALLEEG);'                        catch_strings.add_to_hist];
-    
-    comShowIndMSMaps       = [try_strings.no_check '[~, LASTCOM]                            = pop_ShowIndMSMaps(ALLEEG);'                          catch_strings.add_to_hist];
-    comShowIndMSDyn        = [try_strings.no_check 'LASTCOM                                 = pop_ShowIndMSDyn(ALLEEG);'                           catch_strings.store_and_hist];
-    comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                            = pop_ShowMSParameters(ALLEEG);'                       catch_strings.add_to_hist];
+    % Tools menu
+    comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FindMSTemplates(ALLEEG);'       catch_strings.store_and_hist];
+    comCombineMSTemplates  = [try_strings.no_check '[ALLEEG, EEG, LASTCOM, SORTCOM]       = pop_CombMSTemplates(ALLEEG);'       catch_strings.new_and_hist ...
+        ' if ~isempty(SORTCOM), eegh(SORTCOM); end;'];
+    comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]    = pop_SortMSTemplates(ALLEEG);'       catch_strings.store_and_hist];
+    comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_DetectOutliers(ALLEEG);'        catch_strings.store_and_hist];
+    comCompareMaps         = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_CompareMSTemplates(ALLEEG);'    catch_strings.store_and_hist];
+    comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_GetMSDynamics(ALLEEG);'         catch_strings.new_and_hist];
+    comFitMSTemplates      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FitMSTemplates(ALLEEG);'        catch_strings.store_and_hist];
+    comSaveMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_SaveMSParameters(ALLEEG);'      catch_strings.add_to_hist];
+    comRaguMSTemplates     = [try_strings.no_check 'LASTCOM                               = pop_RaguMSTemplates(ALLEEG);'       catch_strings.add_to_hist];
 
+    % Plot menu
+    comShowIndMSMaps       = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowIndMSMaps(ALLEEG);'         catch_strings.add_to_hist];
+    comShowIndMSDyn        = [try_strings.no_check 'LASTCOM                               = pop_ShowIndMSDyn(ALLEEG);'          catch_strings.store_and_hist];
+    comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowMSParameters(ALLEEG);'      catch_strings.add_to_hist];    
+    
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
-
-    uimenu( toolssubmenu, 'Label', 'Identify individual template maps',                         'CallBack', comFindMSTemplates,     'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Identify group level or grand mean template maps',          'CallBack', comCombineMSTemplates,  'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Edit & sort template maps',                                 'CallBack', comSortMSTemplates,     'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Outlier detection',                                         'Callback', comDetectOutliers,      'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Backfit template maps to EEG',                              'Callback', comFitMSTemplates,      'userdata', 'study:on');
-%     uimenu( toolssubmenu, 'Label', 'Quantify microstate dynamics',                              'CallBack', comQuantMSTemplates,    'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Export temporal parameters',                                'Callback', comSaveMSParam,         'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',       'CallBack', comGetMSDynamics,       'userdata', 'study:on', 'Separator', 'on');    
-
-    uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,'Separator','on', 'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Identify individual template maps',                               'CallBack', comFindMSTemplates,    'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Identify group level or grand mean template maps',                'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Edit & sort template maps',                                       'CallBack', comSortMSTemplates,    'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Outlier detection',                                               'Callback', comDetectOutliers,     'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Backfit template maps to EEG',                                    'Callback', comFitMSTemplates,     'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Export temporal parameters',                                      'Callback', comSaveMSParam,        'userdata', 'study:on');
+    uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',             'CallBack', comGetMSDynamics,      'userdata', 'study:on', 'Separator', 'on');    
+    uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,    'userdata', 'study:on', 'Separator', 'on');
     
     plotmenu = findobj(fig, 'tag', 'plot');
-    uimenu( plotmenu, 'Label', 'Plot template maps',        'CallBack', comShowIndMSMaps,'userdata', 'study:on', 'Separator','on');
-    uimenu( plotmenu, 'Label', 'Plot temporal dynamics',    'CallBack', comShowIndMSDyn, 'userdata', 'study:on');    
-    uimenu( plotmenu, 'Label', 'Plot temporal parameters',  'CallBack', comShowMSParam,  'userdata', 'study:on');
-    uimenu( plotmenu, 'Label', 'Compare template maps',     'CallBack', comCompareMaps,  'userdata', 'study:on');  
+    uimenu( plotmenu,     'Label', 'Plot template maps',                                              'CallBack', comShowIndMSMaps,      'userdata', 'study:on', 'Separator','on');
+    uimenu( plotmenu,     'Label', 'Plot temporal dynamics',                                          'CallBack', comShowIndMSDyn,       'userdata', 'study:on');    
+    uimenu( plotmenu,     'Label', 'Plot temporal parameters',                                        'CallBack', comShowMSParam,        'userdata', 'study:on');
+    uimenu( plotmenu,     'Label', 'Compare template maps',                                           'CallBack', comCompareMaps,        'userdata', 'study:on');  
 end
 
