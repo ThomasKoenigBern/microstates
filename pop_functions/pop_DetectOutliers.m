@@ -169,14 +169,47 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
 
     %% Create outlier detection GUI
     ud.badChan = badChan;
+    MapLabels = unique(AllLabels);
+
+    % Get usable screen size
+    toolkit = java.awt.Toolkit.getDefaultToolkit();
+    jframe = javax.swing.JFrame;
+    insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
+    tempFig = figure('ToolBar', 'none', 'MenuBar', 'none', 'Visible', 'off');
+    pause(0.2);
+    titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    delete(tempFig);
+    % Use the largest monitor available
+    monitorPositions = get(0, 'MonitorPositions');
+    if size(monitorPositions, 1) > 1
+        screenSizes = arrayfun(@(x) monitorPositions(x, 3)*monitorPositions(x,4), 1:size(monitorPositions, 1));
+        [~, i] = max(screenSizes);
+        screenSize = monitorPositions(i, :);
+    else
+        screenSize = get(0, 'ScreenSize');
+    end
+    figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
+
+    maxSubjWidth = max(cellfun(@length, {AllEEG.setname}))*9;
+    if maxSubjWidth > 200;  maxSubjWidth = 200; end
+    colWidth = 65;
+    tblWidth = maxSubjWidth + colWidth*numel(MapLabels);
+
+    fig_h = uifigure('Name', 'Outlier detection', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
     
-    fig_h = uifigure('Name', 'Outlier detection', 'Units', 'normalized', ...
-    'Position', [.15 .1 .7 .8], 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
+    if tblWidth > .4*figSize(3)
+        tblWidth = .4*figSize;
+        fig_h.Units = 'pixels';
+        fig_h.Position = figSize;
+    else
+        fig_h.Units = 'normalized';
+        fig_h.Position = [.1 .1 .8 .8];
+    end
 
     horzLayout = uigridlayout(fig_h, [2 1]);
     horzLayout.RowHeight = {'1x', 150};
     vertLayout = uigridlayout(horzLayout, [1 2]);
-    vertLayout.ColumnWidth = {'1x', 450};
+    vertLayout.ColumnWidth = {'1x', tblWidth};
     vertLayout.ColumnSpacing = 0;
     vertLayout.Padding = [0 0 0 0];
     
@@ -190,8 +223,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     
     selMapLabel = uilabel(selectLayout, 'Text', 'Select map', 'FontWeight', 'bold', 'HorizontalAlignment', 'right');
     selMapLabel.Layout.Row = 2;
-    selMapLabel.Layout.Column = 2;
-    MapLabels = unique(AllLabels);
+    selMapLabel.Layout.Column = 2;    
     ud.selMap = uidropdown(selectLayout, 'Items', MapLabels, 'ItemsData', 2:numel(MapLabels)+1, 'ValueChangedFcn', {@mapChanged, fig_h});
     ud.selMap.Layout.Row = 2;
     ud.selMap.Layout.Column = 3;
@@ -231,7 +263,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     opts = {'Keep', 'Exclude'};
     % Find indices with missing maps and populate table data
     tblData = [ud.setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
-    ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', ...
+    ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', 'ColumnWidth', ['auto' repmat({colWidth}, 1, numel(MapLabels))], ...
         'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
     
@@ -454,7 +486,7 @@ function autoSelect(~, ~, fig_h)
     ud.MapPanel.Visible = 'off';
     ud.setsTable.Selection = [];
     if ~isempty(ud.highlightPoints);    delete(ud.highlightPoints);   end
-    if ~isempty(ud.dataTip);         delete(ud.dataTip);        end
+    if ~isempty(ud.dataTip);            delete(ud.dataTip);           end
 
     ud.currentIdx = outliers;
     fig_h.UserData = ud;
@@ -641,7 +673,7 @@ function hasDyn = isDynamicsSet(in)
     end
     
     % check if set is a dynamics set
-    if ~isfield(in.msinfo, 'DynamicsInfo')
+    if ~isfield(in.msinfo, 'Dynamics')
         return;
     else
         hasDyn = true;
