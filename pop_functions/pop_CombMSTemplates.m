@@ -74,11 +74,10 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, EEGout, com, sortCom] = pop_CombMSTemplates(AllEEG, varargin)
+function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
-    sortCom = '';
     global MSTEMPLATE;
     global guiOpts;
     global EEG;
@@ -113,6 +112,7 @@ function [AllEEG, EEGout, com, sortCom] = pop_CombMSTemplates(AllEEG, varargin)
     IgnorePolarity = p.Results.IgnorePolarity;
     MeanName = p.Results.MeanName;
     Classes = p.Results.Classes;
+    ShowMaps = false;
 
     %% SelectedSets validation
     % First make sure there are enough sets to combine (at least 2)
@@ -228,16 +228,16 @@ function [AllEEG, EEGout, com, sortCom] = pop_CombMSTemplates(AllEEG, varargin)
         guiGeomV = [guiGeomV 1];
     end
 
-    % Add option to sort when done if other elements are being shown
+    % Add option to show maps when done if other elements are being shown
     if any(matches({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
         guiElements = [guiElements ...
-            {{ 'Style', 'checkbox', 'string', 'Edit & sort maps when done', 'tag', 'SortMaps', 'Value', 1}}];
+            {{ 'Style', 'checkbox', 'string', 'Show maps when done', 'tag', 'ShowMaps', 'Value', 1}}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
     end
 
     %% Prompt user to fill in remaining parameters if necessary
-    SortMaps = false;
+    ShowMaps = false;
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Identify group level or grand mean maps');
@@ -256,8 +256,8 @@ function [AllEEG, EEGout, com, sortCom] = pop_CombMSTemplates(AllEEG, varargin)
             IgnorePolarity = outstruct.IgnorePolarity;
         end
 
-        if isfield(outstruct, 'SortMaps')
-            SortMaps = outstruct.SortMaps;
+        if isfield(outstruct, 'ShowMaps')
+            ShowMaps = outstruct.ShowMaps;
         end
     end
 
@@ -363,18 +363,17 @@ function [AllEEG, EEGout, com, sortCom] = pop_CombMSTemplates(AllEEG, varargin)
     EEGout.srate       = 1;
     EEGout.xmin        = 1;
     EEGout.times       = 1:EEGout.pnts;
-    EEGout.xmax        = EEGout.times(end);
-
-    %% Edit and sort maps
-    sortCom = '';
-    if SortMaps        
-        newEEG = pop_newset(AllEEG, EEGout, numel(AllEEG), 'gui', 'off');
-        [newEEG, EEGout, ~, sortCom] = pop_SortMSTemplates(newEEG, numel(newEEG), 'TemplateSet', 'manual');
-        AllEEG = eeg_store(AllEEG, newEEG(1:end-1), 1:numel(newEEG)-1);
-    end
+    EEGout.xmax        = EEGout.times(end);    
 
     %% Command string generation
     com = sprintf('[ALLEEG, EEG] = pop_CombMSTemplates(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
+
+    %% Show maps
+    if ShowMaps        
+        pop_ShowIndMSMaps(EEGout, 1, 'Classes', MinClasses:MaxClasses);
+        com = [com newline ...
+            sprintf('fig_h = pop_ShowIndMSMaps(EEG, 1, ''Classes'', %i:%i, ''Visible'', 1);', MinClasses, MaxClasses)];
+    end
 end
 
 function isEmpty = isEmptySet(in)
@@ -390,7 +389,7 @@ function hasDyn = isDynamicsSet(in)
     end
     
     % check if set is a dynamics set
-    if ~isfield(in.msinfo, 'DynamicsInfo')
+    if ~isfield(in.msinfo, 'Dynamics')
         return;
     else
         hasDyn = true;

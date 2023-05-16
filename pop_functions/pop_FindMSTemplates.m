@@ -461,7 +461,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     if ShowMaps
         pop_ShowIndMSMaps(EEGout, 1:numel(EEGout), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses);
         com = [com newline ...
-            sprintf('fig_h = pop_ShowIndMSMaps(EEG, %s, ''Classes'', %s, ''Visible'', 1)', mat2str(1:numel(SelectedSets)), mat2str(ClustPar.MinClasses:ClustPar.MaxClasses))];
+            sprintf('fig_h = pop_ShowIndMSMaps(EEG, %s, ''Classes'', %i:%i, ''Visible'', 1);', mat2str(1:numel(SelectedSets)), ClustPar.MinClasses, ClustPar.MaxClasses)];
     end
 end
 
@@ -540,7 +540,7 @@ function hasDyn = isDynamicsSet(in)
     end
     
     % check if set is a dynamics set
-    if ~isfield(in.msinfo, 'DynamicsInfo')
+    if ~isfield(in.msinfo, 'Dynamics')
         return;
     else
         hasDyn = true;
