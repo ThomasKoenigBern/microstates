@@ -45,10 +45,15 @@ function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange
         SortOrder = absSortOrder;
         MSMaps(nClasses).Maps = MSMaps(nClasses).Maps(SortOrder,:).*repmat(sortOrderSign',1,size(MSMaps(nClasses).Maps,2));
         MSMaps(nClasses).Labels = NewLabels(:)';
-        letters = 'A':'Z';
-        letters = arrayfun(@(x) {letters(x)}, 1:26);
-        if all(matches(NewLabels(:)', letters))
-            colorIdx = find(matches(letters, NewLabels(:)'));
+        letters1 = 'A':'Z';
+        letters2 = 'a':'z';
+        letters1 = arrayfun(@(x) {letters1(x)}, 1:26);
+        letters2 = arrayfun(@(x) {letters2(x)}, 1:26);
+        if all(matches(NewLabels(:)', letters1)) || all(matches(NewLabels(:)', letters2))
+            colorIdx = find(matches(letters1, NewLabels(:)'));
+            if isempty(colorIdx)
+                colorIdx = find(matches(letters2, NewLabels(:)'));
+            end
             colors = getColors(max(colorIdx));
             MSMaps(nClasses).ColorMap = colors(colorIdx,:);
         else

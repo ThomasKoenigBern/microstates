@@ -130,4 +130,5 @@ function res = QuantifyMSDynamics(MSClass, gfp, SamplingRate, TemplateInfo, IndG
     else
         res.SortedBy = TemplateInfo.SortedBy;
     end
+    res.TemplateLabels = TemplateInfo.TemplateLabels;
 end

@@ -238,8 +238,23 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         return;
     end
 
+    % Check for consistent labels if fitting template is own maps
+    if strcmp(FittingTemplates{1}, '<<own>>')
+        labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
+        labels = horzcat(labels{:});
+        if numel(unique(labels)) > nClasses
+            errorMessage = 'Template map labels differ across datasets.';
+            if ~isempty(p.UsingDefaults)
+                errordlg2(errorMessage, 'Plot temporal parameters error');
+            else
+                error(errorMessage);
+            end
+            return;
+        end
+    end
+
     %% Show GUI with plotted temporal parameters
-    Labels = arrayfun(@(x) sprintf('MS %i.%i', nClasses, x), 1:nClasses, 'UniformOutput', false);
+    Labels = SelectedEEG(1).msinfo.MSStats(nClasses).TemplateLabels;
     if numel(SelectedSets) == 1
         figName = ['Microstate temporal parameters: ' SelectedEEG.setname];
         x = categorical(Labels);

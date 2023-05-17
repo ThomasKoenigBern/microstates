@@ -283,6 +283,21 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         return;
     end
 
+    % Check for consistent labels if fitting template is own maps
+    if strcmp(FittingTemplates{1}, '<<own>>')
+        labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
+        labels = horzcat(labels{:});
+        if numel(unique(labels)) > nClasses
+            errorMessage = 'Template map labels differ across datasets.';
+            if ~isempty(p.UsingDefaults)
+                errordlg2(errorMessage, 'Export temporal parameters error');
+            else
+                error(errorMessage);
+            end
+            return;
+        end
+    end
+
     %% Generate output file
 
     % Get MSStats from all selected sets
@@ -297,12 +312,12 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         MSStats(s).Condition = SelectedEEG(s).condition;        
     end
     nFields = length(fieldnames(MSStats));
-    MSStats = orderfields(MSStats, [(nFields-3):nFields, 1:(nFields-4)]);               % reorder struct fields so dataset info is first
+    MSStats = orderfields(MSStats, [(nFields-3):nFields, 1:(nFields-4)]);                               % reorder struct fields so dataset info is first
 
-    outputStats = rmfield(MSStats, {'DurationDist', 'GFPDist', 'MSClass', 'GFP'});      % remove fields with extra info for output file
+    outputStats = rmfield(MSStats, {'DurationDist', 'GFPDist', 'MSClass', 'GFP', 'TemplateLabels'});    % remove fields with extra info for output file
 
     % Set labels for output
-    Labels = arrayfun(@(x) sprintf('MS %i.%i', nClasses, x), 1:nClasses, 'UniformOutput', false);
+    Labels = SelectedEEG(1).msinfo.MSStats(nClasses).TemplateLabels;
 
     if ~strcmp(FileName, 'none')
         if isempty(FileName)

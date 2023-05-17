@@ -403,10 +403,10 @@ function [EEGout, CurrentSet, com] = pop_FitMSTemplates(AllEEG, varargin)
             SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
             emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
             SortedBy(emptyIdx) = [];
-            if any(contains(SortedBy, '->'))
-                multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
-                SortedBy(contains(SortedBy, '->')) = multiSortedBys;
-            end
+%             if any(contains(SortedBy, '->'))
+%                 multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
+%                 SortedBy(contains(SortedBy, '->')) = multiSortedBys;
+%             end
             if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
                 warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
                     'sort all sets according to the same template before proceeding?'];
@@ -453,7 +453,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSTemplates(AllEEG, varargin)
             if ~noSort && ~noSameSort && numel(unique(labels)) > c && guiOpts.showQuantWarning5
                 warningMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
                     'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
-                    'and assigned the same set of labels, or sorted using a template set with an equal number of maps. Would you like to re-sort before proceeding?'];
+                    'and assigned the same set of labels, or sorted by a template set solution with an equal number of maps. Would you like to re-sort before proceeding?'];
                 [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Backfit template maps warning');
                 if boxChecked;  guiOpts.showQuantWarning5 = false;   end
                 if yesPressed
@@ -488,6 +488,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSTemplates(AllEEG, varargin)
                 TemplateInfo.name = ChosenTemplate.setname;
             end
             TemplateInfo.SortedBy = msinfo.MSMaps(FitPar.Classes(c)).SortedBy;
+            TemplateInfo.TemplateLabels = msinfo.MSMaps(FitPar.Classes(c)).Labels;
             Maps = L2NormDim(msinfo.MSMaps(FitPar.Classes(c)).Maps, 2);
             
             if strcmp(TemplateMode, 'own')
