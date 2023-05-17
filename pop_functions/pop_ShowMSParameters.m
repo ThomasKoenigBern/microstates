@@ -377,7 +377,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     h2.XLabel = 'To';
     h2.YLabel = 'From';
 
-    com = sprintf('[fig_h, com] = pop_SaveMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
+    com = sprintf('[fig_h, com] = pop_ShowMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
 
 end
 

@@ -288,7 +288,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     %% Add other options as gui elements
     % (Only display in GUI if other cluster parameters are already being
     % displayed, otherwise use defaults)
-    if ~isempty(p.UsingDefaults) && ~isempty(ClustParDefaults)
+    if ~isempty(ClustParDefaults)
         guiElements = [guiElements ...
             {{ 'Style', 'text', 'string', 'Additional options', 'fontweight', 'bold'}} ...
             {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
