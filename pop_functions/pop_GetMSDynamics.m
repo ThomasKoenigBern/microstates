@@ -2,24 +2,17 @@
 % dynamics of microstates over time. For each set chosen, a new dataset
 % will be generated with one data channel for each microstate map, whose
 % values over time are the activations of that microstate map over time.
-% Useful for other downstream analyses.
+% pop_FitMSTemplates() must be used before calling this function to extract
+% temporal parameters.
 %
 % Usage:
-%   >> [EEG, CURRENTSET, com] = pop_GetMSDynamics(ALLEEG, SelectedSets,
-%       'key1', value1, 'key2', value2)
+%   >> [EEG, CURRENTSET] = pop_GetMSDynamics(ALLEEG, SelectedSets, 'key1', 
+%       value1)
 %
-% To use each subject's own microstate maps for backfitting, specify
-% "TemplateSet" as "own."
+% Specify the number of classes in the fitting solution using the "Classes" 
+% argument.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_GetMSDynamics(ALLEEG, 1:5, 'TemplateSet',
-%       'own')
-%
-% To use a mean set or published set for backfitting, specify either the
-% index of the mean set in ALLEEG, the name of the mean set, or the name of
-% the published set.
-% Ex:
-%   >> [EEG, CURRENTSET] = pop_GetMSDynamics(ALLEEG, 1:5, 'TemplateSet',
-%       'Koenig2002')
+%   >> [EEG, CURRENTSET] = pop_GetMSDynamics(ALLEEG, 1:5, 'Classes', 4);
 %
 % Graphical interface:
 %
@@ -28,41 +21,9 @@
 %   temporal dynamics
 %   -> Command line equivalent: "SelectedSets"
 %
-%   "Name of template set"
-%   -> Name of template set whose maps will be used for backfitting and
-%   extracting temporal dynamics. Select "Own" to use each subject's own
-%   maps to backfit their own data, or select the name of a template set
-%   to use its maps for backfitting for all subjects.
-%   -> Command line equivalent: "TemplateSet"
-%
-%   "Microstate fitting parameters"
-%   ------------------------------
-%
-%   "Number of classes"
-%   -> Number of classes to use for backfitting
-%   -> Command line equivalent: "FitPar.nClasses"
-%
-%   "Fitting only on GFP peaks"
-%   -> Controls whether to backfit maps only at global field power peaks
-%   and interpolate microstae assignments in between peaks, or to backfit
-%   maps at all timepoints.
-%   -> Command line equivalent: "FitPar.PeakFit"
-%
-%   "Remove potentially truncated microstates"
-%   -> Controls whether to remove microstate assignments around boundary
-%   events in the EEG data
-%   -> Command line equivalent: "FitPar.BControl"
-%
-%   "Label smoothing window"
-%   -> Window size in ms to use for temporal smoothing of microstate
-%   assignments. Use 0 to skip temporal smoothing. Ignored if fitting only
-%   on GFP peaks.
-%   -> Command line equivalent: "FitPar.b"
-%
-%   "Non-Smoothness penality"
-%   -> Penalty for non-smoothness in the temporal smoothing algorithm.
-%   Ignored if fitting only on GFP peaks.
-%   -> Command line equivalent: "FitPar.lambda"
+%   "Select number of classes"   
+%   -> Select which fitting solution should be used
+%   -> Command line equivalent: "Classes"
 %
 % Inputs:
 %
@@ -76,37 +37,9 @@
 %
 % Key, Value inputs (optional):
 %
-%   "FitPar"
-%   -> Structure containing fields specifying parameters for backfitting.
-%   If some required fields are not included, a GUI will appear with the
-%   unincluded fields. Required fields:
-%       "FitPar.nClasses"
-%       -> Number of classes to use for backfitting
-%
-%       "FitPar.PeakFit"
-%       -> 1 = backfit maps only at global field power peaks and
-%       interpolate in between, 0 = backfit maps at all timepoints
-%
-%       "FitPar.BControl"
-%       -> 1 = Remove microstate assignments around boundary events in the
-%       EEG data, 0 = keep all microstate assignments
-%
-%       "FitPar.b"
-%       -> Window size in ms to use for temporal smoothing of microstate
-%       assignments. Use 0 to skip temporal smoothing. Ignored if fitting
-%       only on GFP peaks.
-%
-%       "FitPar.lambda"
-%       > Penalty for non-smoothness in the temporal smoothing algorithm.
-%       Ignored if fitting only on GFP peaks.
-%
-%   "TemplateSet"
-%   -> Integer, string, or character vector specifying the template set
-%   whose maps should be used for backfitting. Can be either the index of 
-%   a mean set in ALLEEG, the name of a mean set in ALLEEG, the name of a 
-%   published template set in the microstates/Templates folder, or "own" to
-%   use each subject's own maps for backfitting. If not provided, a GUI 
-%   will appear to select a template set.
+%   "Classes"
+%   -> Scalar integer value indicating the fitting solution whose
+%   associated temporal parameters will be plotted.
 %
 % Outputs:
 %
@@ -149,7 +82,6 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     global CURRENTSET;
     EEGout = EEG;
     CurrentSet = CURRENTSET;
-
     guiElements = {};
     guiGeom = {};
     guiGeomV = [];
@@ -158,356 +90,255 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     p = inputParser;
     funcName = 'pop_GetMSDynamics';
     p.FunctionName = funcName;
-    p.StructExpand = false;         % do not expand FitPar struct input into key, value args
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
-    addParameter(p, 'FitPar', []);
-    addParameter(p, 'TemplateSet', '', @(x) validateattributes(x, {'char', 'string', 'numeric'}, {}));
+    addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'scalar'}));
+    addParameter(p, 'Rectify', false, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
+    addParameter(p, 'Normalize', false, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));    
     
     parse(p, AllEEG, varargin{:});
 
-    if isnumeric(p.Results.TemplateSet)
-        validateattributes(p.Results.TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, funcName, 'TemplateSet');
-    else
-        validateattributes(p.Results.TemplateSet, {'char', 'string'}, {'scalartext'});
-    end
-
     SelectedSets = p.Results.SelectedSets;
-    FitPar = p.Results.FitPar;
-    TemplateSet = p.Results.TemplateSet;
+    nClasses = p.Results.Classes;
+    Rectify = p.Results.Rectify;
+    Normalize = p.Results.Normalize;
 
-    %% SelectedSets validation
-    HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
-    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
-    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-%    AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
-    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet));
-
+    %% SelectedSets validation    
+    AvailableSets = find(arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG)));
+    
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for extracting dynamics found.'], 'Obtain microstate activation time series error');
+        errordlg2(['No sets with temporal parameters found. ' ...
+            'Use Tools->Backfit template maps to EEG to extract temporal dynamics.'], 'Obtain microstate activation time series error');
         return;
     end
 
     % If the user has provided sets, check their validity
     if ~isempty(SelectedSets)
         SelectedSets = unique(SelectedSets, 'stable');
-
-        isValid = ismember(SelectedSets, AvailableSets); % This needs to be checked
+        isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['Dynamics cannot be extracted for the following sets: ' invalidSetsTxt ...
-                '. Make sure you have not selected empty sets, mean sets, existing dynamics sets, ' ...
-                'or sets without microstate maps.'];
-            errordlg2(errorMessage, 'Obtain microstate activation time series error');
-            return;
+            error(['The following sets do not contain temporal parameters: %s. ' ...
+                'Use pop_FitMSTemplates() to extract temporal dynamics first.'], invalidSetsTxt);
         end
-    % Otherwise, add set selection gui elements
+    % Otherwise, prompt user to choose sets
     else
         defaultSets = find(ismember(AvailableSets, CurrentSet));
-        if isempty(defaultSets);    defaultSets = 1;    end        
         AvailableSetnames = {AllEEG(AvailableSets).setname};
-        guiElements = [guiElements, ....
-                    {{ 'Style', 'text'    , 'string', 'Choose sets for obtaining dynamics'}} ...
-                    {{ 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'}} ...
-                    {{ 'Style', 'text'    , 'string', 'If multiple are chosen, new sets will be created for each with default names.'}} ...
-                    {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
-        guiGeom  = [guiGeom  1 1 1 1];
-        guiGeomV = [guiGeomV  1 1 1 4];
-    end
+        [res,~,~,outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', {
+                    { 'Style', 'text'    , 'string', 'Choose sets for obtaining dynamics', 'fontweight', 'bold'} ...
+                    { 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'} ...
+                    { 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}, ...
+                    'title', 'Obtain microstate activation time series');
 
+        if isempty(res); return; end
+        SelectedSets = AvailableSets(outstruct.SelectedSets);
 
-    %% TemplateSet validation
-    % If the user has provided a template set number or name, check its
-    % validity
-    meanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
-
-    meanSetnames = {AllEEG(meanSets).setname};
-    [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
-    TemplateIndex = 1;
-    if ~isempty(TemplateSet)
-        % If the template set is a number, make sure it is one of the
-        % mean sets in ALLEEG
-        if isnumeric(TemplateSet)
-            if ~ismember(TemplateSet, meanSets)
-                errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
-                    'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
-                errordlg2([errorMessage], 'Obtain microstate activation time series error');
-                return;
-            else
-                TemplateMode = 'mean';
-                TemplateIndex = find(ismember(meanSets, TemplateSet));
-                TemplateName = meanSetnames{TemplateIndex};
-            end
-        % Else if the template set is a string, make sure it matches one of
-        % the mean setnames, published template setnames, or "own"
-        else
-            if strcmpi(TemplateSet, 'own')
-                TemplateMode = 'own';                           
-            elseif matches(TemplateSet, publishedSetnames)
-                TemplateMode = 'published';
-                TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
-                TemplateName = TemplateSet;
-            elseif matches(TemplateSet, meanSetnames)
-                % If there are multiple mean sets with the same name
-                % provided, notify the suer
-                if numel(find(matches(meanSetnames, TemplateSet))) > 1
-                    errorMessage = sprintf(['There are multiple mean sets with the name "%s." ' ...
-                        'Please specify the set number instead ot the set name.'], TemplateSet);
-                    errordlg2([errorMessage], 'Obtain microstate activation time series error');
-                    return;
-                else
-                    TemplateMode = 'mean';
-                    TemplateIndex = find(matches(meanSetnames, TemplateSet));
-                    TemplateName = TemplateSet;
-                    TemplateSet = meanSets(TemplateIndex);
-                end
-            else
-                errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
-                    'mean sets or in the microstates/Templates folder.'], TemplateSet);
-                errordlg2([errorMessage], 'Obtain microstate activation time series error');
-                return;
-            end
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one set of microstate maps','Obtain microstate activation time series error');
+            return;
         end
+    end         
+    SelectedEEG = AllEEG(SelectedSets);
 
-    % Otherwise, add template set selection gui elements
-    else
-        combinedSetnames = ['Own' meanSetnames publishedDisplayNames];
-        guiElements = [guiElements ...
-            {{ 'Style', 'text', 'string', 'Name of template set', 'fontweight', 'bold'}} ...
-            {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
-        guiGeom = [guiGeom 1 1];
-        guiGeomV = [guiGeomV 1 1];
+    %% Classes validation
+    classRanges = arrayfun(@(x) SelectedEEG(x).msinfo.FitPar.Classes, 1:numel(SelectedEEG), 'UniformOutput', false)';
+    commonClasses = classRanges{1};
+    for i=2:numel(SelectedSets)
+        commonClasses = intersect(commonClasses, classRanges{i});
     end
 
-    %% Prompt user to choose SelectedSets and TemplateSet if necessary
+    if isempty(commonClasses)
+        errorMessage = 'No overlap in cluster solutions used for fitting found between all selected sets.';
+        if ~isempty(p.UsingDefaults)
+            errordlg2(errorMessage, 'Obtain microstate activation time series error');
+        else
+            error(errorMessage);
+        end
+        return;
+    end
+    if matches('Classes', p.UsingDefaults)
+        classChoices = sprintf('%i Classes|', commonClasses);
+        classChoices(end) = [];
+
+        guiElements = [guiElements ...
+            {{ 'Style', 'text', 'string', 'Select number of classes' }} ...
+            {{ 'Style', 'listbox', 'string', classChoices, 'Value', 1, 'Tag', 'Classes' }}];
+        guiGeom = [guiGeom 1 1];
+        guiGeomV = [guiGeomV 1 4];
+    else
+        if ~ismember(nClasses, commonClasses)
+            classesTxt = sprintf('%i, ', commonClasses);
+            classesTxt = classesTxt(1:end-2);
+            errorMessage = sprintf(['Not all selected sets contain microstate dynamics information for the %i cluster solution. ' ...
+                'Valid class numbers include: %s.'], nClasses, classesTxt);
+            if ~isempty(p.UsingDefaults)
+                errordlg2(errorMessage, 'Obtain microstate activation time series error');
+            else
+                error(errorMessage);
+            end
+            return;
+        end
+    end
+
+    %% Add other gui elements
+    if matches('Rectify', p.UsingDefaults)
+        guiElements = [guiElements ...
+            {{ 'Style', 'checkbox', 'string', 'Rectify', 'tag', 'Rectify', 'Value', Rectify}}];
+        guiGeom = [guiGeom 1];
+        guiGeomV = [guiGeomV 1];
+    end
+
+    if matches('Normalize', p.UsingDefaults)
+        guiElements = [guiElements ...
+            {{ 'Style', 'checkbox', 'string', 'Normalize', 'tag', 'Normalize', 'Value', Normalize}}];
+        guiGeom = [guiGeom 1];
+        guiGeomV = [guiGeomV 1];
+    end
+
+    %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Obtain microstate activation time series');
 
         if isempty(res); return; end
         
-        if isfield(outstruct, 'SelectedSets')
-            SelectedSets = AvailableSets(outstruct.SelectedSets);
+        if isfield(outstruct, 'Classes')
+            nClasses = commonClasses(outstruct.Classes);
         end
 
-        if isfield(outstruct, 'TemplateIndex')
-            if outstruct.TemplateIndex == 1
-                TemplateMode = 'own';
-            elseif outstruct.TemplateIndex <= numel(meanSetnames)+1
-                TemplateMode = 'mean';
-                TemplateIndex = outstruct.TemplateIndex - 1;
-                TemplateSet = meanSets(TemplateIndex);
-                TemplateName = meanSetnames{TemplateIndex};
-            else
-                TemplateMode = 'published';
-                TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames) - 1;
-                TemplateSet = publishedSetnames{TemplateIndex};
-                TemplateName = TemplateSet;
-                TemplateIndex = sortOrder(TemplateIndex);
-            end
+        if isfield(outstruct, 'Rectify')
+            Rectify = outstruct.Rectify;
+        end
+
+        if isfield(outstruct, 'Normalize')
+            Normalize = outstruct.Normalize;
         end
     end
-
-    if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Obtain microstate activation time series error');
-        return;
-    end
-
-    if strcmp(TemplateMode, 'published')
-        ChosenTemplate = MSTEMPLATE(TemplateIndex);
-    elseif strcmp(TemplateMode, 'mean')
-        ChosenTemplate = AllEEG(meanSets(TemplateIndex));
-    end
-
-    %% Verify compatibility between selected sets and template set
-    % If the template set chosen is a mean set, make sure it is a parent
-    % set of all the selected sets
-    if strcmp(TemplateMode, 'mean')
-        warningSetnames = {};
-        for index = 1:length(SelectedSets)
-            sIndex = SelectedSets(index);
-            containsChild = checkSetForChild(AllEEG, meanSets(TemplateIndex), AllEEG(sIndex).setname);
-            if ~containsChild
-                warningSetnames = [warningSetnames, AllEEG(sIndex).setname];
-            end
-        end
-
-        if ~isempty(warningSetnames) && guiOpts.showGetWarning
-            warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets. Are you sure you would like to proceed?'], TemplateName);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Obtain microstate activation time series warning', warningSetnames);
-            if boxChecked;  guiOpts.showGetWarning = false;     end
-            if ~yesPressed; return;                             end
-        end
-    end
-
-    %% Validate and get FitPar
-    if strcmp(TemplateMode, 'own')
-        AllMinClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets);
-        AllMaxClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets);
-        MinClasses = max(AllMinClasses);
-        MaxClasses = min(AllMaxClasses);
-        if MaxClasses < MinClasses
-            errorMessage = ['No overlap in microstate classes found between all selected sets.'];
-            errordlg2(errorMessage, 'Obtain microstate activation time series error');
-        end
-
-        GFPPeaks = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.GFPPeaks, SelectedSets);
-        IgnorePolarity = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.IgnorePolarity, SelectedSets);
-        if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0)) || ~(all(IgnorePolarity == 1) || all(IgnorePolarity == 0))
-            errordlg2(['Microstate clustering parameters differ between selected sets. Sets selected for backfitting should ' ...
-                'have consistent parameters for ignoring polarity and clustering on GFP peaks.'], 'Obtain microstate activation time series error');
-            return;
-        end
-        PeakFit = all(GFPPeaks == 1);
-    else
-        MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
-        MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-
-        PeakFit = ChosenTemplate.msinfo.ClustPar.GFPPeaks;
-    end
-
-    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, PeakFit, true);
-    if isempty(FitPar);  return; end
-
-    %% Obtain dynamics
-    for index=1:length(SelectedSets)
-        sIndex = SelectedSets(index);
-
-        if strcmp(TemplateMode, 'own')
-            msinfo = AllEEG(sIndex).msinfo;
+    
+    %% Obtain dynamics    
+    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
+    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
+    meanSets = find(HasChildren & ~isEmpty);
+    meanSetnames = {AllEEG(meanSets).setname};
+    publishedSetnames = {MSTEMPLATE.setname};
+    for s=1:length(SelectedSets)
+        TemplateName = SelectedEEG(s).msinfo.MSStats(nClasses).FittingTemplate;
+        if strcmp(TemplateName, '<<own>>')
+            MSMaps = SelectedEEG(s).msinfo.MSMaps(nClasses);
+            templateChanlocs = SelectedEEG(s).chanlocs;
         else
-            msinfo = ChosenTemplate.msinfo;
-        end
-        Maps = msinfo.MSMaps(FitPar.nClasses).Maps;
-
-        Labels = [];  
-        if isfield(msinfo.MSMaps(FitPar.nClasses),'Labels')
-            Labels = msinfo.MSMaps(FitPar.nClasses).Labels;
-        end
-
-        if ~strcmp(TemplateMode, 'own')
-            [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(AllEEG(sIndex).chanlocs,ChosenTemplate.chanlocs);
-            if AllEEG(sIndex).nbchan > ChosenTemplate.nbchan
-                [MSClass, gfp, fit] = AssignMStates(AllEEG(sIndex), Maps, FitPar, msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
+            % Look for the fitting template in ALLEEG and MSTEMPLATE
+            if matches(TemplateName, meanSetnames)
+                meanIdx = meanSets(matches(meanSetnames, TemplateName));
+                if numel(meanIdx) > 1
+                    errorMessage = sprintf(['Multiple mean sets found that match the fitting template "%s" ' ...
+                            'for dataset %i. Please rename duplicate mean sets.'], TemplateName, SelectedSets(s));
+                    if isempty(p.UsingDefaults)
+                        error(errorMessage);
+                    else
+                        errordlg2(errorMessage, 'Obtain microstate activation time series error');
+                        return;
+                    end
+                else
+                    MSMaps = AllEEG(meanIdx).msinfo.MSMaps(nClasses);     
+                    templateChanlocs = AllEEG(meanIdx).chanlocs;
+                end
+            elseif matches(TemplateName, publishedSetnames)
+                meanIdx = matches(publishedSetnames, TemplateName);
+                MSMaps = MSTEMPLATE(meanIdx).msinfo.MSMaps(nClasses);
+                templateChanlocs = MSTEMPLATE(meanIdx).chanlocs;
             else
-                Maps = Maps*GlobalToLocal';
-                [MSClass, gfp, fit] = AssignMStates(AllEEG(sIndex), Maps, FitPar, msinfo.ClustPar.IgnorePolarity);
-            end
-        else
-            [MSClass, gfp, fit] = AssignMStates(AllEEG(sIndex), Maps, FitPar, msinfo.ClustPar.IgnorePolarity);
+                errorMessage = sprintf('Fitting template "%s" for dataset %i could not be found.', TemplateName, SelectedSets(s));
+                if isempty(p.UsingDefaults)
+                    error(errorMessage);
+                else
+                    errordlg2(errorMessage, 'Obtain microstate activation time series error');
+                    return;
+                end
+            end   
         end
 
+        [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(SelectedEEG(s).chanlocs, templateChanlocs);
+
+        MSClass = SelectedEEG(s).msinfo.MSStats(nClasses).MSClass;
         if isempty(MSClass);    return; end
 
-        newEEG(index) = AllEEG(sIndex);
-        newEEG(index).setname = [AllEEG(sIndex).setname '_dynamics'];
-        newEEG(index).nbchan = FitPar.nClasses;
-        newEEG(index).msinfo.FitPar = FitPar;
-        % replace msinfo.MSMaps with only the relevant maps
+        newEEG(s) = SelectedEEG(s);
+        newEEG(s).setname = [SelectedEEG(s).setname '_dynamics'];
+        newEEG(s).nbchan = nClasses;
+
+        % replace MSMaps and MSStats with only the relevant maps        
+        newEEG(s).msinfo = rmfield(newEEG(s).msinfo, 'MSMaps');
+        newEEG(s).msinfo.MSMaps(nClasses) = MSMaps;
+        newEEG(s).msinfo.MSStats([1:nClasses-1, nClasses+1:end]) = [];
+
+        % add new fitting parameters
+        newEEG(s).msinfo.FitPar.Rectify = Rectify;
+        newEEG(s).msinfo.FitPar.Normalize = Normalize;
+
+        newData = zeros(nClasses, SelectedEEG(s).pnts, SelectedEEG(s).trials);
         
-        if isfield(newEEG(index),'msinfo')
-            if isfield(newEEG(index).msinfo,'MSMaps')
-                newEEG(index).msinfo.MSMaps(1:end) = [];
-            end
-        end
-        %newEEG(index).msinfo.MSMaps(FitPar.nClasses) = AllEEG(sIndex).msinfo.MSMaps(FitPar.nClasses);
-        newEEG(index).msinfo.MSMaps(FitPar.nClasses) = msinfo.MSMaps(FitPar.nClasses);
-        newEEG(index).msinfo.MSMaps(FitPar.nClasses).Maps = Maps;
-
-        % add dynamics info
-        newEEG(index).msinfo.DynamicsInfo.TemplateMode = TemplateMode;
-        if ~strcmp(TemplateMode, 'own')
-            newEEG(index).msinfo.DynamicsInfo.FittingTemplate = TemplateName;
-        end
-
-        newData = zeros(FitPar.nClasses, AllEEG(sIndex).pnts, AllEEG(sIndex).trials);
-
-        for class=1:FitPar.nClasses
-            if isempty(Labels)
-                ChanName = sprintf('MS_%i.%i', FitPar.nClasses, class);
+        for class=1:nClasses
+            if isempty(MSMaps.Labels)
+                ChanName = sprintf('MS_%i.%i', nClasses, class);
             else
-                ChanName = Labels{class};
+                ChanName = MSMaps.Labels{class};
             end
             
             chanlocs(class) = struct('labels',ChanName,'type','','theta', nan,'radius',nan,'X',nan,'Y',nan,'Z',nan,'sph_theta',nan,'sph_phi',nan,'sph_radius',nan,'urchan',nan,'ref','none');
 
-            for s=1:AllEEG(sIndex).trials
-                assigned = MSClass(:,s) == class;
-                if FitPar.Normalize
-                    newData(class, :, s) = assigned;
-                else
-                    if ~strcmp(TemplateMode, 'own')
-                        if AllEEG(sIndex).nbchan > ChosenTemplate.nbchan
-                            newData(class, assigned, s) = Maps(class, :)*(LocalToGlobal*AllEEG(sIndex).data(:, assigned, s));
-                        else
-                            newData(class, assigned, s) = Maps(class, :)*AllEEG(sIndex).data(:, assigned, s);
-                        end
+            for e=1:SelectedEEG(s).trials
+                assigned = MSClass(:,e) == class;
+                if Normalize
+                    newData(class, :, e) = assigned;
+                else                    
+                    if SelectedEEG(s).nbchan > length(templateChanlocs)
+                        newData(class, assigned, e) = MSMaps.Maps(class, :)*(LocalToGlobal*SelectedEEG(s).data(:, assigned, e));
+                    elseif SelectedEEG(s).nbchan < length(templateChanlocs)
+                        newData(class, assigned, e) = (MSMaps.Maps(class, :)*GlobalToLocal')*SelectedEEG(s).data(:, assigned, e);
                     else
-                        newData(class, assigned, s) = Maps(class, :)*AllEEG(sIndex).data(:, assigned, s);
+                        newData(class, assigned, e) = MSMaps.Maps(class, :)*SelectedEEG(s).data(:, assigned, e);
                     end
-                    if FitPar.Rectify
-                        newData(class, assigned, s) = abs(newData(class, assigned, s));
+
+                    if Rectify
+                        newData(class, assigned, e) = abs(newData(class, assigned, e));
                     end
                 end
             end
 
-            newEEG(index).chanlocs = chanlocs;
-            newEEG(index).data = newData;
+            newEEG(s).chanlocs = chanlocs;
+            newEEG(s).data = newData;
         end
     end
 
     EEGout = newEEG;
     CurrentSet = numel(AllEEG);     % update CurrentSet so new datasets will be appended to the end of ALLEEG
 
-    if ischar(TemplateSet) || isstring(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_GetMSDynamics(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
-    elseif isnumeric(TemplateSet)
-        com = sprintf('[EEG, CURRENTSET, com] = pop_GetMSDynamics(%s, %s, ''FitPar'', %s, ''TemplateSet'', %i);', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
-    end
+    com = sprintf('[EEG, CURRENTSET, com] = pop_GetMSDynamics(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), nClasses);
+end
 
+function hasStats = hasStats(in)
+    hasStats = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if set has MSStats
+    if ~isfield(in.msinfo, 'MSStats')
+        return;
+    else
+        hasStats = true;
+    end
 end
 
 function isEmpty = isEmptySet(in)
     isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
 end
-
-function hasDyn = isDynamicsSet(in)
-    hasDyn = false;
-
-    % check if set includes msinfo
-    if ~isfield(in,'msinfo')
-        return;
-    end
-    
-    % check if set is a dynamics set
-    if ~isfield(in.msinfo, 'DynamicsInfo')
-        return;
-    else
-        hasDyn = true;
-    end
-end
-
-function hasMS = hasMicrostates(in)
-    hasMS = false;
-
-    % check if set includes msinfo
-    if ~isfield(in,'msinfo')
-        return;
-    end
-    
-    % check if msinfo is empty
-    if isempty(in.msinfo)
-        return;
-    else
-        hasMS = true;
-    end
-end
-
 
 function Answer = DoesItHaveChildren(in)
     Answer = false;
