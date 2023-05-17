@@ -16,7 +16,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'scalar'}));
-    addParameter(p, 'Type', 'channel', @(x) validateattributes(x, {'char', 'string'}));
+    addParameter(p, 'Type', 'channel', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
 
     parse(p, AllEEG, varargin{:});
 
@@ -26,8 +26,10 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
 
     %% Determine type of outlier detection
     if ~matches('Type', p.UsingDefaults)
-        if ~strcmpi(type, 'channel') || ~strcmpi(type, 'topography')
+        if ~(strcmpi(type, 'channel') || strcmpi(type, 'topography'))
             error('Invalid type provided for outlier detection. Possible types are "channel" or "topography.');
+        else
+            badChan = strcmp(type, 'channel');
         end
     else
         selection = questionDialog('Select outlier detection procedure.', 'Outlier detection', ...
@@ -198,7 +200,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     fig_h = uifigure('Name', 'Outlier detection', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
     
     if tblWidth > .4*figSize(3)
-        tblWidth = .4*figSize;
+        tblWidth = floor(.4*figSize(3));
         fig_h.Units = 'pixels';
         fig_h.Position = figSize;
     else
