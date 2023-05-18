@@ -73,7 +73,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         [res, ~, ~, outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', { ...
-            { 'Style', 'text'    , 'string', 'Choose sets for outlier detection'} ...
+            { 'Style', 'text'    , 'string', 'Choose sets for outlier detection', 'fontweight', 'bold'} ...
             { 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'} ...
             { 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}, ...
             'title', 'Outlier detection');
@@ -111,7 +111,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     else
         if (nClasses < MinClasses) || (nClasses > MaxClasses)
             errorMessage = sprintf(['The specified number of classes %i is invalid.' ...
-                '. Valid class numbers are in the range %i-%i.'], nClasses, MinClasses, MaxClasses);
+                ' Valid class numbers are in the range %i-%i.'], nClasses, MinClasses, MaxClasses);
             errordlg2(errorMessage, 'Outlier detection error');
             return;
         end
@@ -368,9 +368,11 @@ function updatePlot(fig_h)
         % Plot RMSE of all sets as points
         ud.scatter = scatter(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), 10, 'black', 'filled');
 
-        % Axis formatting
-        axis(ud.outlierPlot, 'normal');        
-        axis(ud.outlierPlot, 'padded');
+        % Axis formatting        
+        axis(ud.outlierPlot, 'normal');     
+%         axis(ud.outlierPlot, 'padded');
+        maxY = max(ud.RMSE, [], 'all');
+        ylim(ud.outlierPlot, [0 maxY]);
         ud.outlierPlot.XAxisLocation = 'bottom';
         ud.outlierPlot.YAxisLocation = 'left';
         ud.outlierPlot.XAxis.Color = [0 0 0];
