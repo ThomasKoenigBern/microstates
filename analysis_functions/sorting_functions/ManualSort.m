@@ -13,24 +13,26 @@ function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange
     end
 
     % Validate SortOrder
-    sortOrderSign = sign(SortOrder(:)');
-    absSortOrder = abs(SortOrder(:)');
-    if (numel(absSortOrder) ~= nClasses)
-        MSMaps = [];
-        errordlg2('Invalid manual sort order given','Sort microstate maps error');
-        return
-    end
-
-    if numel(unique(absSortOrder)) ~= nClasses
-        MSMaps = [];
-        errordlg2('Invalid manual sort order given','Sort microstate maps error');
-        return
-    end
-
-    if any(unique(absSortOrder) ~= unique(1:nClasses))
-        MSMaps = [];
-        errordlg2('Invalid manual sort order given','Sort microstate maps error');
-        return
+    if ~isempty(SortOrder)
+        sortOrderSign = sign(SortOrder(:)');
+        absSortOrder = abs(SortOrder(:)');
+        if (numel(absSortOrder) ~= nClasses)
+            MSMaps = [];
+            errordlg2('Invalid manual sort order given','Sort microstate maps error');
+            return
+        end
+    
+        if numel(unique(absSortOrder)) ~= nClasses
+            MSMaps = [];
+            errordlg2('Invalid manual sort order given','Sort microstate maps error');
+            return
+        end
+    
+        if any(unique(absSortOrder) ~= unique(1:nClasses))
+            MSMaps = [];
+            errordlg2('Invalid manual sort order given','Sort microstate maps error');
+            return
+        end
     end
 
     % Validate NewLabels
@@ -40,35 +42,42 @@ function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange
         return;
     end
 
-    % Manual sort    
-    if ~all(SortOrder == 1:nClasses) || ~all(string(NewLabels) == string(MSMaps(nClasses).Labels))
+    % Reorder maps
+    if ~isempty(SortOrder)
         SortOrder = absSortOrder;
         MSMaps(nClasses).Maps = MSMaps(nClasses).Maps(SortOrder,:).*repmat(sortOrderSign',1,size(MSMaps(nClasses).Maps,2));
-        MSMaps(nClasses).Labels = NewLabels(:)';
-        letters1 = 'A':'Z';
-        letters2 = 'a':'z';
-        letters1 = arrayfun(@(x) {letters1(x)}, 1:26);
-        letters2 = arrayfun(@(x) {letters2(x)}, 1:26);
-        if all(matches(NewLabels(:)', letters1)) || all(matches(NewLabels(:)', letters2))
-            colorIdx = find(matches(letters1, NewLabels(:)'));
-            if isempty(colorIdx)
-                colorIdx = find(matches(letters2, NewLabels(:)'));
-            end
-            colors = getColors(max(colorIdx));
-            MSMaps(nClasses).ColorMap = colors(colorIdx,:);
-        else
-            MSMaps(nClasses).ColorMap = getColors(nClasses);
-        end
+
         if numel(MSMaps(nClasses).ExpVar) > 1
             MSMaps(nClasses).ExpVar = MSMaps(nClasses).ExpVar(SortOrder);
         end
         if isfield(MSMaps(nClasses), 'SharedVar')
             MSMaps(nClasses).SharedVar = MSMaps(nClasses).SharedVar(SortOrder);
-        end        
-        if ~all(SortOrder == 1:nClasses)
-            MSMaps(nClasses).SortMode = 'manual';
-            MSMaps(nClasses).SortedBy = 'user';
-            MSMaps(nClasses).SpatialCorrelation = [];
+        end     
+    end
+
+    % Assign new labels
+    MSMaps(nClasses).Labels = NewLabels(:)';
+
+    % Assign new colors
+    letters1 = 'A':'Z';
+    letters2 = 'a':'z';
+    letters1 = arrayfun(@(x) {letters1(x)}, 1:26);
+    letters2 = arrayfun(@(x) {letters2(x)}, 1:26);
+    if all(matches(NewLabels(:)', letters1)) || all(matches(NewLabels(:)', letters2))
+        colorIdx = find(matches(letters1, NewLabels(:)'));
+        if isempty(colorIdx)
+            colorIdx = find(matches(letters2, NewLabels(:)'));
         end
+        colors = getColors(max(colorIdx));
+        MSMaps(nClasses).ColorMap = colors(colorIdx,:);
+    else
+        MSMaps(nClasses).ColorMap = getColors(nClasses);
+    end
+       
+    % Update sorting information
+    if ~all(SortOrder == 1:nClasses)
+        MSMaps(nClasses).SortMode = 'manual';
+        MSMaps(nClasses).SortedBy = 'user';
+        MSMaps(nClasses).SpatialCorrelation = [];
     end
 end

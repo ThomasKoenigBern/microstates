@@ -1,7 +1,7 @@
-function MSMaps = SortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)    
+function MSMaps = StepwiseSort(MSMaps, ClustPar, setname, nClasses, IgnorePolarity)
 
     % First sort the solutions with less classes than the template solution
-    for i=(nClasses-1):-1:min(ClassRange)    
+    for i=(nClasses-1):-1:ClustPar.MinClasses    
         % If the template set has unassigned maps, remove them (only base 
         % sorting on assigned maps)
         TemplateMaps = MSMaps(i+1).Maps;
@@ -11,9 +11,9 @@ function MSMaps = SortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)
         end
 
         if max(i, nAssignedLabels) >= 10 && (~license('test','optimization_toolbox') || isempty(which('intlinprog')))
-            warning(['Sorting using 10 or more classes requires the Optimization toolbox. ' ...
-                'Please install the toolbox using the Add-On Explorer. Skipping large cluster solutions...']);
-            return;
+            MSMaps = [];
+            error(['Sorting using 10 or more classes requires the Optimization toolbox. ' ...
+                'Please install the toolbox using the Add-On Explorer.']);
         end
 
         [SortedMaps, SortOrder, SpatialCorrelation, polarity] = ArrangeMapsBasedOnMean(MSMaps(i).Maps, TemplateMaps, ~IgnorePolarity);
@@ -22,8 +22,8 @@ function MSMaps = SortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)
         [Labels, Colors] = UpdateMicrostateLabels(MSMaps(i).Labels, MSMaps(i+1).Labels, SortOrder, MSMaps(i+1).ColorMap);
         MSMaps(i).Labels = Labels(1:i);
         MSMaps(i).ColorMap = Colors(1:i, :);
-        MSMaps(i).SortMode = [MSMaps(i+1).SortMode '->alternate solution in set'];
-        MSMaps(i).SortedBy = sprintf('%s->this set (%i classes)', MSMaps(i+1).SortedBy, i+1);
+        MSMaps(i).SortMode = 'own template maps';
+        MSMaps(i).SortedBy = sprintf('%s->%s (%i classes)', MSMaps(i+1).SortedBy, setname, i+1);
         MSMaps(i).SpatialCorrelation = SpatialCorrelation;
         if numel(MSMaps(i).ExpVar) > 1
             MSMaps(i).ExpVar = MSMaps(i).ExpVar(SortOrder(SortOrder <= i));
@@ -51,7 +51,7 @@ function MSMaps = SortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)
     end
 
     % Then sort the solutions with more classes than the template solution
-    for i=(nClasses+1):max(ClassRange)
+    for i=(nClasses+1):ClustPar.MaxClasses
         % If the template set has unassigned maps, remove them (only base 
         % sorting on assigned maps)
         TemplateMaps = MSMaps(i-1).Maps;
@@ -72,8 +72,8 @@ function MSMaps = SortAllSolutions(MSMaps, ClassRange, nClasses, IgnorePolarity)
         [Labels, Colors] = UpdateMicrostateLabels(MSMaps(i).Labels, MSMaps(i-1).Labels, SortOrder, MSMaps(i-1).ColorMap);
         MSMaps(i).Labels = Labels(1:i);
         MSMaps(i).ColorMap = Colors(1:i, :);
-        MSMaps(i).SortMode = [MSMaps(i-1).SortMode '->alternate solution in set'];
-        MSMaps(i).SortedBy = sprintf('%s->this set (%i classes)', MSMaps(i-1).SortedBy, i+1);
+        MSMaps(i).SortMode = 'own template maps';
+        MSMaps(i).SortedBy = sprintf('%s->%s (%i classes)', MSMaps(i-1).SortedBy, setname, i-1);
         MSMaps(i).SpatialCorrelation = SpatialCorrelation;
         if numel(MSMaps(i).ExpVar) > 1
             MSMaps(i).ExpVar = MSMaps(i).ExpVar(SortOrder(SortOrder <= i));

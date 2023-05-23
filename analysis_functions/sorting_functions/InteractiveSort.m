@@ -1,20 +1,22 @@
-function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet)
+function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort2(AllEEG, SelectedSet)
     
     EEGout = AllEEG(SelectedSet);
     CurrentSet = SelectedSet;
+    childIdx = [];
+    childEEG = [];
     com = '';
     Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
-
+    
     % Compute initial figure size and whether scrolling is needed
     % (for larger number of solutions/maps)
-    minGridHeight = 90;     
+    minGridHeight = 80;     
     minGridWidth = 60;    
     expVarWidth = 55;
     mapPanelNormHeight = .75;
     mapPanelNormWidth = .98;
     nRows = numel(Classes);
     nCols = max(Classes);          
-
+    
     % Get usable screen size
     toolkit = java.awt.Toolkit.getDefaultToolkit();
     jframe = javax.swing.JFrame;
@@ -37,10 +39,10 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
     end
     figSize1 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight1-insets.bottom-insets.top];
     figSize2 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight2-insets.bottom-insets.top];
-
+    
     ud.minPanelWidth = expVarWidth + minGridWidth*nCols;
     ud.minPanelHeight = minGridHeight*nRows;
-
+    
     ud.Scroll = false;
     % Use scrolling and uifigure for large number of maps
     if ud.minPanelWidth > figSize1(3)*mapPanelNormWidth || ud.minPanelHeight > figSize1(4)*mapPanelNormHeight
@@ -59,7 +61,7 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
         fig_h = figure('NumberTitle', 'off', 'Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], ...
             'Position', figSize1, 'MenuBar', 'figure', 'ToolBar', 'none');
     end           
-
+    
     ud.Visible = true;
     ud.AllMaps = AllEEG(SelectedSet).msinfo.MSMaps;
     ud.chanlocs = AllEEG(SelectedSet).chanlocs;
@@ -74,7 +76,7 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
         ud.Children = [];
     end
     ud.Edit = true;
-
+    
     for j = ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses    
         if isfield(ud.AllMaps(j),'Labels')
             if ~isempty(ud.AllMaps(j).Labels)
@@ -87,10 +89,17 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
         end
         ud.Labels(j,1:j) = ud.AllMaps(j).Labels(1:j);
     end
-
+    
+    global MSTEMPLATE;
     [ud.MeanIdx, ud.MeanNames] = FindParentSets(AllEEG, ud.SelectedSet);
-    [ud.TemplateNames, ud.TemplateDisplayNames] = getTemplateNames();
-
+    [ud.TemplateNames, ud.TemplateDisplayNames, templateIdx] = getTemplateNames();
+    meanMinClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, ud.MeanIdx);
+    tempMinClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, templateIdx);
+    meanMaxClasses = arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, ud.MeanIdx);
+    tempMaxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, templateIdx);
+    ud.TemplateMinClasses = [ud.ClustPar.MinClasses meanMinClasses tempMinClasses];
+    ud.TemplateMaxClasses = [ud.ClustPar.MaxClasses meanMaxClasses tempMaxClasses];
+    
     % Build figure
     fig_h.UserData = ud;
     if ud.Scroll
@@ -110,36 +119,39 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
     end
     ud = fig_h.UserData;
     delete(fig_h);
-
+    
     if ud.wasSorted
         hasChildren = ~isempty(ud.Children);
         [yesPressed, selection] = questDlg(hasChildren);
-
+    
         if yesPressed
-            AllEEG(SelectedSet).msinfo.MSMaps = ud.AllMaps;                                        
-            AllEEG(SelectedSet).saved = 'no';
+            AllEEG(SelectedSet).msinfo.MSMaps = ud.AllMaps;
             EEGout = AllEEG(SelectedSet);
+            EEGout.saved = 'no';
             CurrentSet = SelectedSet;
             com = ud.com;
-
+    
             sortCom = '';
             if hasChildren            
+                childIdx = FindChildSets(AllEEG, SelectedSet);
                 if strcmp(selection, 'Clear dependent sorting')
                     AllEEG = ClearDataSortedByParent(AllEEG, AllEEG(SelectedSet).msinfo.children);
-                elseif strcmp(selection, 'Sort dependent sets by this set')
-                    childIdx = FindChildSets(AllEEG, SelectedSet);
+                    childEEG = AllEEG(childIdx);
+                elseif strcmp(selection, 'Sort dependent sets by this set')                    
                     if ~isempty(childIdx)
                         IgnorePolarity = AllEEG(SelectedSet).msinfo.ClustPar.IgnorePolarity;
                         Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
-                        [AllEEG, childEEG, childIdx, sortCom] = pop_SortMSTemplates(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
+                        [~, childEEG, childIdx, sortCom] = pop_SortMSTemplates(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
                             'IgnorePolarity', IgnorePolarity, 'Classes', Classes);
-                        AllEEG = eeg_store(AllEEG, childEEG, childIdx);
                     else
                         disp('Could not find dependent sets for resorting');
                     end
                 end
+                for s=1:numel(childIdx)
+                    childEEG(s).saved = 'no';
+                end
             end
-
+    
             if ~isempty(sortCom)
                 com = [com newline sortCom];
             end
@@ -147,7 +159,6 @@ function [AllEEG, EEGout, CurrentSet, com] = InteractiveSort(AllEEG, SelectedSet
             disp('Changes abandoned');
         end                
     end
-    
 end
 
 %% GUI LAYOUT %%
@@ -155,11 +166,6 @@ end
 function buildFig(fig_h, AllEEG)
     ud = fig_h.UserData;
         
-    if ~isempty(ud.Children)
-        DynEnable = 'off';
-    else
-        DynEnable = 'on';
-    end
     warning('off', 'MATLAB:hg:uicontrol:StringMustBeNonEmpty');
     
     if isempty(ud.Children)
@@ -177,7 +183,7 @@ function buildFig(fig_h, AllEEG)
     uicontrol(panel1, 'Style', 'Text', 'String', 'Sorting procedure', 'Units', 'normalized', 'Position', [.005 .6 .2 .33], 'HorizontalAlignment', 'left');
     Actions = {'1) Reorder maps in selected solution manually by map index','2) Reorder maps in selected solution(s) based on template set'};               
     if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1
-        Actions = [Actions '3) Use selected solution to reorder all other solutions','4) First 1), then 3)', '5) First 2), then 3)'];
+        Actions = [Actions '3) Use stepwise sorting to reorder all solutions by selected template solution'];
     end
     ud.ActChoice = uicontrol(panel1, 'Style', 'popupmenu','String', Actions, 'Units','Normalized','Position', [.2 .8 .785 .15], 'Callback',{@ActionChangedCallback,fig_h});
     
@@ -186,22 +192,24 @@ function buildFig(fig_h, AllEEG)
     ud.ClassList = uicontrol(panel1, 'Style', 'listbox','String', AvailableClassesText, 'Units','Normalized','Position', [.2 .05 .785 .65], 'Callback',{@solutionChanged, fig_h}, 'Min', 0, 'Max', 1);
     
     ud.OrderTxt = uicontrol(panel2, 'Style', 'Text', 'String', 'Sort Order (negative to flip polarity)', 'Units', 'normalized', 'Position', [.01 .6 .34 .32], 'HorizontalAlignment', 'left');
-    ud.OrderEdit = uicontrol(panel2, 'Style', 'edit', 'String', "", 'Units', 'normalized', 'Position', [.35 .78 .64 .18]);
-    
-    ud.SelTemplateLabel = uicontrol(panel2, 'Style', 'Text', 'String', 'Select template set', 'Units', 'normalized', 'Position', [.01 .38 .25 .26], 'Visible', 'off', 'HorizontalAlignment', 'left');    
-    ud.SelTemplate = uicontrol(panel2, 'Style', 'popupmenu', 'String', [ud.MeanNames ud.TemplateDisplayNames], 'Units', 'normalized', 'Position', [.27 .55 .72 .1], 'Visible', 'off');
+    ud.OrderEdit = uicontrol(panel2, 'Style', 'edit', 'String', "", 'Units', 'normalized', 'Position', [.35 .78 .64 .18]);    
     
     ud.LabelsTxt = uicontrol(panel2, 'Style', 'Text', 'String', 'New Labels', 'Units', 'normalized', 'Position', [.01 .38 .2 .23], 'HorizontalAlignment', 'left');
     ud.LabelsEdit = uicontrol(panel2, 'Style', 'Edit', 'String', "", 'Units', 'normalized', 'Position', [.35 .45 .64 .18]);
+
+    ud.SelTemplateLabel = uicontrol(panel2, 'Style', 'Text', 'String', 'Select template set', 'Units', 'normalized', 'Position', [.01 .6 .3 .3], 'Visible', 'off', 'HorizontalAlignment', 'left');    
+    ud.SelTemplate = uicontrol(panel2, 'Style', 'popupmenu', 'String', ['Own' ud.MeanNames ud.TemplateDisplayNames], 'Units', 'normalized', 'Position', [.31 .82 .68 .1], 'Visible', 'off', 'Callback', {@templateSetChanged, fig_h});
+
+    ud.SelClassesLabel = uicontrol(panel2, 'Style', 'Text', 'String', 'Select template solution', 'Units', 'normalized', 'Position', [.01 .38 .3 .26], 'Visible', 'off', 'HorizontalAlignment', 'left');
+    ud.SelClasses = uicontrol(panel2, 'Style', 'popupmenu', 'String', '', 'Units', 'normalized', 'Position', [.31 .56 .68 .1], 'Visible', 'off', 'HorizontalAlignment', 'left');
     
     ud.IgnorePolarity = uicontrol(panel2, 'Style', 'checkbox', 'String', ' Ignore Polarity', 'Value', 1, 'Units', 'normalized', 'Position', [.01 .27 .99 .15], 'Visible', 'off');
     
     uicontrol(panel2, 'Style', 'pushbutton', 'String', 'Sort', 'Units', 'normalized', 'Position', [.01 .01 .98 .2], 'Callback', {@Sort, fig_h, AllEEG});
     
-    ud.Info    = uicontrol(fig_h, 'Style', 'pushbutton','String', 'Info'    , 'Units','Normalized','Position', [.9 .155 .09 .045], 'Callback', {@MapInfo, fig_h});                
-    ud.ShowDyn = uicontrol(fig_h, 'Style', 'pushbutton','String', 'Dynamics', 'Units','Normalized','Position', [.9 .105 .09 .045], 'Callback', {@ShowDynamics, fig_h, AllEEG}, 'Enable', DynEnable);
-    ud.Compare = uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Compare', 'Units','Normalized','Position', [.9 .055 .09 .045], 'Callback', {@CompareCallback, fig_h, AllEEG});
-    ud.Done    = uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Close'  , 'Units','Normalized','Position', [.9 .005 .09 .045], 'Callback', {@figClose,fig_h});
+    ud.Info    = uicontrol(fig_h, 'Style', 'pushbutton','String', 'Info'    , 'Units','Normalized','Position', [.9 .14 .09 .06], 'Callback', {@MapInfo, fig_h});                
+    ud.Compare = uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Compare', 'Units','Normalized','Position', [.9 .0725 .09 .06], 'Callback', {@CompareCallback, fig_h, AllEEG});
+    ud.Done    = uicontrol(fig_h, 'Style', 'pushbutton', 'String', 'Save'  , 'Units','Normalized','Position', [.9 .005 .09 .06], 'Callback', {@figClose,fig_h});
     
     fig_h.UserData = ud;
 
@@ -211,11 +219,6 @@ end
 function buildUIFig(fig_h, AllEEG)
     ud = fig_h.UserData;
 
-    if ~isempty(ud.Children)
-        DynEnable = 'off';
-    else
-        DynEnable = 'on';
-    end
     warning('off', 'MATLAB:hg:uicontrol:StringMustBeNonEmpty');
     
     ud.FigLayout = uigridlayout(fig_h, [3 1]);
@@ -232,15 +235,18 @@ function buildUIFig(fig_h, AllEEG)
     ud.MapPanel.Scrollable = 'on';
     ud.TilePanel = uipanel(ud.MapPanel, 'Units', 'pixels', 'Position', [0 0 ud.minPanelWidth ud.minPanelHeight], 'BorderType', 'none');
     
-    ud.SortLayout = uigridlayout(ud.FigLayout, [4 5]);
+    vertLayout = uigridlayout(ud.FigLayout, [1 2]);
+    vertLayout.Padding = [0 0 0 0];
+    vertLayout.ColumnWidth = {'1x', 150};
+    ud.SortLayout = uigridlayout(vertLayout, [4 4]);
     ud.SortLayout.Padding = [0 0 0 0];
-    ud.SortLayout.ColumnWidth = {110, '1x', 210, '1x', 150};
+    ud.SortLayout.ColumnWidth = {110, '1x', 210, '1x'};
     ud.SortLayout.RowSpacing = 5;
     
     uilabel(ud.SortLayout, 'Text', 'Sorting procedure');
     Actions = {'1) Reorder maps in selected solution manually by map index','2) Reorder maps in selected solution(s) based on template set'};               
     if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1
-        Actions = [Actions '3) Use selected solution to reorder all other solutions','4) First 1), then 3)', '5) First 2), then 3)'];
+        Actions = [Actions '3) Use stepwise sorting to reorder all solutions by selected template solution'];
     end
     ud.ActChoice = uidropdown(ud.SortLayout, 'Items', Actions, 'ItemsData', 1:numel(Actions), 'ValueChangedFcn', {@ActionChangedCallback, fig_h});
     
@@ -248,23 +254,23 @@ function buildUIFig(fig_h, AllEEG)
     classLabel.Layout.Row = [2 4];
     classLabel.Layout.Column = 1;
     AvailableClassesText = arrayfun(@(x) {sprintf('%i Classes', x)}, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
-    ud.ClassList = uilistbox(ud.SortLayout, 'Items', AvailableClassesText, 'ItemsData', ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses, 'ValueChangedFcn', {@solutionChanged, fig_h}, 'Multiselect', 'off');
+    ud.ClassList = uilistbox(ud.SortLayout, 'Items', AvailableClassesText, 'ItemsData', 1:length(AvailableClassesText), 'ValueChangedFcn', {@solutionChanged, fig_h}, 'Multiselect', 'off');
     ud.ClassList.Layout.Row = [2 4];
     ud.ClassList.Layout.Column = 2;
     
-    ud.OrderTxt = uilabel(ud.SortLayout, 'Text', 'Sort Order (negative to flip polarity)');
-    ud.OrderTxt.Layout.Row = 1;
-    ud.OrderTxt.Layout.Column = 3;
-    ud.OrderEdit = uieditfield(ud.SortLayout);
-    ud.OrderEdit.Layout.Row = 1;
-    ud.OrderEdit.Layout.Column = 4;
+    ud.Label1 = uilabel(ud.SortLayout, 'Text', 'Sort Order (negative to flip polarity)');
+    ud.Label1.Layout.Row = 1;
+    ud.Label1.Layout.Column = 3;
+    ud.Edit1 = uieditfield(ud.SortLayout);
+    ud.Edit1.Layout.Row = 1;
+    ud.Edit1.Layout.Column = 4;
     
-    ud.LabelsTxt = uilabel(ud.SortLayout, 'Text', 'New Labels');
-    ud.LabelsTxt.Layout.Row = 2;
-    ud.LabelsTxt.Layout.Column = 3;
-    ud.LabelsEdit = uieditfield(ud.SortLayout);
-    ud.LabelsEdit.Layout.Row = 2;
-    ud.LabelsEdit.Layout.Column = 4;
+    ud.Label2 = uilabel(ud.SortLayout, 'Text', 'New Labels');
+    ud.Label2.Layout.Row = 2;
+    ud.Label2.Layout.Column = 3;
+    ud.Edit2 = uieditfield(ud.SortLayout);
+    ud.Edit2.Layout.Row = 2;
+    ud.Edit2.Layout.Column = 4;
     
     ud.IgnorePolarity = uicheckbox(ud.SortLayout, 'Text', 'Ignore Polarity', 'Value', true, 'Visible', 'off');
     ud.IgnorePolarity.Layout.Row = 3;
@@ -274,18 +280,12 @@ function buildUIFig(fig_h, AllEEG)
     sortBtn.Layout.Row = 4;
     sortBtn.Layout.Column = [3 4];
     
-    ud.Info = uibutton(ud.SortLayout, 'Text', 'Info', 'ButtonPushedFcn', {@MapInfo, fig_h});
-    ud.Info.Layout.Row = 1;
-    ud.Info.Layout.Column = 5;
-    ud.ShowDyn = uibutton(ud.SortLayout, 'Text', 'Dynamics', 'ButtonPushedFcn', {@ShowDynamics, fig_h, AllEEG}, 'Enable', DynEnable);
-    ud.ShowDyn.Layout.Row = 2;
-    ud.ShowDyn.Layout.Column = 5;
-    ud.Compare = uibutton(ud.SortLayout, 'Text', 'Compare maps', 'ButtonPushedFcn', {@CompareCallback, fig_h, AllEEG});
-    ud.Compare.Layout.Row = 3;
-    ud.Compare.Layout.Column = 5;
-    ud.Done = uibutton(ud.SortLayout, 'Text', 'Close', 'ButtonPushedFcn', {@figClose, fig_h});
-    ud.Done.Layout.Row = 4;
-    ud.Done.Layout.Column = 5;
+    btnLayout = uigridlayout(vertLayout, [3 1]);
+    btnLayout.Padding = [0 0 0 0];
+    btnLayout.RowSpacing = 7;
+    ud.Info = uibutton(btnLayout, 'Text', 'Info', 'ButtonPushedFcn', {@MapInfo, fig_h});
+    ud.Compare = uibutton(btnLayout, 'Text', 'Compare', 'ButtonPushedFcn', {@CompareCallback, fig_h, AllEEG});
+    ud.Done = uibutton(btnLayout, 'Text', 'Save', 'ButtonPushedFcn', {@figClose, fig_h});
     
     fig_h.UserData = ud;
     
@@ -355,142 +355,170 @@ end
 function solutionChanged(~, ~, fig)
     ud = fig.UserData;        
 
-    if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1
-        if ud.ActChoice.Value ~= 1 && ud.ActChoice.Value ~= 4
-            return;
-        end
-    else
-        if ud.ActChoice.Value ~= 1
-            return;
-        end
+    if ud.ActChoice.Value ~= 1
+        return;
     end
 
-    nClasses = ud.ClassList.Value;
-    if ~ud.Scroll
-        nClasses = ud.ClustPar.MinClasses + nClasses - 1;
-    end
+    nClasses = ud.ClustPar.MinClasses + ud.ClassList.Value - 1;
 
     if ud.Scroll
-        ud.OrderEdit.Value = sprintf('%i ', 1:nClasses);
+        ud.Edit1.Value = sprintf('%i ', 1:nClasses);
     else
         ud.OrderEdit.String = sprintf('%i ', 1:nClasses);
     end
 
     letters = 'A':'Z';
     if ud.Scroll
-        ud.LabelsEdit.Value = sprintf('%s ', string(arrayfun(@(x) {letters(x)}, 1:nClasses)));
+        ud.Edit2.Value = sprintf('%s ', string(arrayfun(@(x) {letters(x)}, 1:nClasses)));
     else
         ud.LabelsEdit.String = sprintf('%s ', string(arrayfun(@(x) {letters(x)}, 1:nClasses)));
     end
+end
+
+function templateSetChanged(~,~,fh)
+    ud = fh.UserData;
+    
+    if ud.Scroll
+        templateSetIdx = ud.Edit1.Value;
+    else
+        templateSetIdx = ud.SelTemplate.Value;
+    end
+    classRange = ud.TemplateMinClasses(templateSetIdx):ud.TemplateMaxClasses(templateSetIdx);
+    classesTxt = arrayfun(@(x) {sprintf('%i classes', x)}, classRange);
+    if length(classesTxt) > 1 && ~(templateSetIdx == 1)
+        classesTxt = ['All' classesTxt];
+    end
+    if ud.Scroll
+        ud.Edit2.Items = classesTxt;
+        ud.Edit2.ItemsData = 1:length(classesTxt);
+    else
+        ud.SelClasses.String = classesTxt;
+        ud.SelClasses.Value = 1;
+    end
+
+    fh.UserData = ud;
 end
 
 function ActionChangedCallback(~,~,fh)
     ud = fh.UserData;    
    
     choice = ud.ActChoice.Value;
+    manualSort = choice == 1;
     if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1        
-        manualSort = (choice == 1) | (choice == 4);
-        templateSort = (choice == 2) | (choice == 5);
-        showPolarity = choice ~= 1;
-        multiSelect = choice == 2;
+        templateSort = (choice == 2) | (choice == 3);
+        stepwise = choice == 3;
     else
-        manualSort = choice == 1;
-        templateSort = ~manualSort;
-        showPolarity = templateSort;
-        multiSelect = templateSort;
+        templateSort = choice == 2;
+        stepwise = false;
     end
 
-    if manualSort
-        ud.OrderTxt.Visible = 'on';
-        ud.OrderEdit.Visible = 'on';
-        ud.OrderEdit.Enable = 'on';
-
-        if ud.Scroll                      
-            if ~isfield(ud, 'LabelsEdit') || ~isvalid(ud.LabelsEdit)   
-                ud.LabelsTxt = uilabel(ud.SortLayout, 'Text', 'New Labels');
-                ud.LabelsTxt.Layout.Row = 2;
-                ud.LabelsTxt.Layout.Column = 3;
-                ud.LabelsEdit = uieditfield(ud.SortLayout);
-                ud.LabelsEdit.Layout.Row = 2;
-                ud.LabelsEdit.Layout.Column = 4;                                           
-            end 
+    if manualSort      
+        if ud.Scroll        
+            ud.Label1.Text = 'Sort Order (negative to flip polarity)';
+            ud.Label2.Text = 'New Labels';
+            ud.Edit1 = uieditfield(ud.SortLayout);
+            ud.Edit1.Layout.Row = 1;
+            ud.Edit1.Layout.Column = 4;
+            ud.Edit2 = uieditfield(ud.SortLayout);
+            ud.Edit2.Layout.Row = 2;
+            ud.Edit2.Layout.Column = 4;                                           
         else
+            ud.OrderTxt.Visible = 'on';
+            ud.OrderEdit.Visible = 'on';
+            ud.OrderEdit.Enable = 'on';
             ud.LabelsTxt.Visible = 'on';
             ud.LabelsEdit.Visible = 'on';
             ud.LabelsEdit.Enable = 'on';            
         end        
-    else
-        ud.OrderTxt.Visible = 'off';
-        ud.OrderEdit.Visible = 'off';
-        ud.OrderEdit.Enable = 'off';
-        
-        if ud.Scroll
-            if isfield(ud, 'LabelsEdit')
-                delete(ud.LabelsEdit);
-                delete(ud.LabelsTxt);
-            end
-        else
-            ud.LabelsTxt.Visible = 'off';
-            ud.LabelsEdit.Visible = 'off';
-            ud.LabelsEdit.Enable = 'off';
-        end
-    end
 
-    if templateSort
-        if ud.Scroll            
-            if ~isfield(ud, 'SelTemplate') || ~isvalid(ud.SelTemplate)
-                ud.SelTemplateLabel = uilabel(ud.SortLayout, 'Text', 'Select template set');                
-                ud.SelTemplateLabel.Layout.Row = 2;
-                ud.SelTemplateLabel.Layout.Column = 3;
-                ud.SelTemplate = uidropdown(ud.SortLayout, 'Items', [ud.MeanNames ud.TemplateDisplayNames], 'ItemsData', [num2cell(ud.MeanIdx) ud.TemplateNames]);
-                ud.SelTemplate.Layout.Row = 2;
-                ud.SelTemplate.Layout.Column = 4;
-            end            
-        else           
-            ud.SelTemplateLabel.Visible = 'on';
-            ud.SelTemplate.Visible = 'on';
-            ud.SelTemplate.Enable = 'on';                     
-        end
-    else
-        if ud.Scroll
-            if isfield(ud, 'SelTemplate')
-                delete(ud.SelTemplateLabel);
-                delete(ud.SelTemplate);
-            end
-        else
-            ud.SelTemplateLabel.Visible = 'off';
-            ud.SelTemplate.Visible = 'off';
-            ud.SelTemplate.Enable = 'off';            
-        end
-    end
-
-    if showPolarity
-        ud.IgnorePolarity.Visible = 'on';
-        ud.IgnorePolarity.Enable = 'on';
-    else
-        ud.IgnorePolarity.Visible = 'off';
-        ud.IgnorePolarity.Enable = 'off';
-    end
-
-    if multiSelect
-        if ud.Scroll
-            ud.ClassList.Multiselect = 'on';
-        else
-            ud.ClassList.Max = 2;        
-        end
-    else
+        ud.ClassList.Enable = 'on';
         if numel(ud.ClassList.Value) > 1
-            ud.ClassList.Value = ud.ClassList.Value(end);
+            ud.ClassList.Value = ud.ClassList.Value(end); 
         end
         if ud.Scroll
             ud.ClassList.Multiselect = 'off';
         else
             ud.ClassList.Max = 1;
         end
+
+        fh.UserData = ud;    
+        solutionChanged([], [], fh);
+    elseif ~ud.Scroll
+        ud.OrderTxt.Visible = 'off';
+        ud.OrderEdit.Visible = 'off';
+        ud.OrderEdit.Enable = 'off';  
+        ud.LabelsTxt.Visible = 'off';
+        ud.LabelsEdit.Visible = 'off';
+        ud.LabelsEdit.Enable = 'off';
     end
 
-    fh.UserData = ud;    
-    solutionChanged([], [], fh);
+    if templateSort        
+        if ud.Scroll            
+            ud.Label1.Text = 'Select template set';
+            ud.Label2.Text = 'Select template solution';   
+            ud.Edit1 = uidropdown(ud.SortLayout, 'ValueChangedFcn', {@templateSetChanged, fh});
+            ud.Edit1.Layout.Row = 1;
+            ud.Edit1.Layout.Column = 4;
+            ud.Edit2 = uidropdown(ud.SortLayout);
+            ud.Edit2.Layout.Row = 2;
+            ud.Edit2.Layout.Column = 4;
+
+            tempEdit = 'Edit1';
+        else           
+            ud.SelTemplateLabel.Visible = 'on';
+            ud.SelTemplate.Visible = 'on';            
+            ud.SelClassesLabel.Visible = 'on';
+            ud.SelClasses.Visible = 'on';
+            ud.SelClasses.Enable = 'on';
+
+            tempEdit = 'SelTemplate';
+        end
+        ud.IgnorePolarity.Visible = 'on';
+        ud.IgnorePolarity.Enable = 'on';      
+
+        if ud.Scroll
+            ud.ClassList.Multiselect = 'on';
+        else
+            ud.ClassList.Max = 2;        
+        end
+
+        if stepwise
+            ud.ClassList.Value = 1:(ud.ClustPar.MaxClasses-ud.ClustPar.MinClasses+1);
+            ud.ClassList.Enable = 'off';
+
+            if ud.Scroll
+                ud.Edit1.Items = {'Own'};
+                ud.Edit1.ItemsData = 1;
+            else
+                ud.SelTemplate.Value = 1;
+                ud.SelTemplate.Enable = 'off';                   
+            end
+        else        
+            ud.ClassList.Enable = 'on';            
+
+            if ud.Scroll
+                setnames = ['Own' ud.MeanNames ud.TemplateDisplayNames];
+                ud.Edit1.Items = setnames;
+                ud.Edit1.ItemsData = 1:numel(setnames);
+            end
+
+            ud.(tempEdit).Enable = 'on';            
+        end        
+        
+        fh.UserData = ud;
+        templateSetChanged([],[],fh); 
+    else
+        if ~ud.Scroll
+            ud.SelTemplateLabel.Visible = 'off';
+            ud.SelTemplate.Visible = 'off';
+            ud.SelTemplate.Enable = 'off';  
+            ud.SelClassesLabel.Visible = 'off';
+            ud.SelClasses.Visible = 'off';
+            ud.SelClasses.Enable = 'off';
+        end
+        ud.IgnorePolarity.Visible = 'off';
+        ud.IgnorePolarity.Enable = 'off';
+    end        
 end
 
 %% SORTING %%
@@ -498,68 +526,80 @@ function Sort(~,~,fh,AllEEG)
     ud = fh.UserData;
 
     AllEEG(ud.SelectedSet).msinfo.MSMaps = fh.UserData.AllMaps;
-    nClasses = ud.ClassList.Value;  
-    if ~ud.Scroll
-        nClasses = ud.ClustPar.MinClasses + nClasses - 1;
-    end
+    nClasses = ud.ClustPar.MinClasses + ud.ClassList.Value - 1;
 
     choice = ud.ActChoice.Value;
-    if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1
-        manualSort = (choice == 1) | (choice == 4);
-        templateSort = (choice == 2) | (choice == 5);
-        SortAll = (choice == 3) | (choice == 4) | (choice == 5);
-    else
-        manualSort = (choice == 1);
-        templateSort = ~manualSort;
-        SortAll = false;
+    manualSort = choice == 1;    
+    if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1        
+        templateSort = (choice == 2) | (choice == 3);
+        stepwise = choice == 3;
+    else       
+        templateSort = choice == 2;
+        stepwise = false;
     end
 
     if manualSort
         if ud.Scroll
-            SortOrder = sscanf(ud.OrderEdit.Value, '%i')';
-            NewLabels = split(ud.LabelsEdit.Value)';
+            SortOrder = sscanf(ud.Edit1.Value, '%i')';
+            NewLabels = split(ud.Edit2.Value)';
         else
             SortOrder = sscanf(ud.OrderEdit.String, '%i')';
             NewLabels = split(ud.LabelsEdit.String)';
         end
         NewLabels = NewLabels(~cellfun(@isempty, NewLabels));
 
-        [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'TemplateSet', 'manual', 'SortOrder', SortOrder, 'NewLabels', NewLabels, 'Classes', nClasses, 'SortAll', SortAll);
+        [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'TemplateSet', 'manual', 'SortOrder', SortOrder, 'NewLabels', NewLabels, 'Classes', nClasses);
     elseif templateSort
         IgnorePolarity = ud.IgnorePolarity.Value;
 
         if ud.Scroll
-            TemplateSet = ud.SelTemplate.Value;
+            templateSetIdx = ud.Edit1.Value;
+            classIdx = ud.Edit2.Value;
         else
-            if ud.SelTemplate.Value <= numel(ud.MeanIdx)
-                TemplateSet = ud.MeanIdx(ud.SelTemplate.Value);
-            else
-                TemplateSet = ud.TemplateNames{ud.SelTemplate.Value - numel(ud.MeanIdx)};
-            end
+            templateSetIdx = ud.SelTemplate.Value;
+            classIdx = ud.SelClasses.Value;
         end
 
-        [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'IgnorePolarity', IgnorePolarity, 'TemplateSet', TemplateSet, 'Classes', nClasses, 'SortAll', SortAll);
-    else
-        IgnorePolarity = ud.IgnorePolarity.Value;
+        if templateSetIdx == 1
+            TemplateSet = 'own';
+        elseif templateSetIdx <= numel(ud.MeanIdx)+1
+            TemplateSet = ud.MeanIdx(templateSetIdx-1);
+        else
+            TemplateSet = ud.TemplateNames{templateSetIdx - numel(ud.MeanIdx)-1};
+        end
+        minClasses = ud.TemplateMinClasses(templateSetIdx);
+        maxClasses = ud.TemplateMaxClasses(templateSetIdx);
+        classRange = minClasses:maxClasses;
+        if (templateSetIdx == 1) || (numel(classRange) == 1)
+            TemplateClasses = classRange(classIdx);
+        else
+            if classIdx == 1
+                TemplateClasses = 'all';
+            else
+                TemplateClasses = classRange(classIdx-1);
+            end
+        end
+        
+        if ~stepwise
+            [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'TemplateSet', TemplateSet, 'Classes', nClasses, 'TemplateClasses', TemplateClasses, 'IgnorePolarity', IgnorePolarity);
+        else
+            [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'TemplateSet', 'own', 'TemplateClasses', TemplateClasses, 'IgnorePolarity', IgnorePolarity, 'Stepwise', 1);
+        end               
+    end      
 
-        [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'IgnorePolarity', IgnorePolarity, 'TemplateSet', 'manual', 'SortOrder', 1:nClasses, 'NewLabels', ud.AllMaps(nClasses).Labels, 'Classes', nClasses, 'SortAll', true);
-    end  
-
-    fh.UserData.AllMaps = EEGout.msinfo.MSMaps;
-    if isempty(fh.UserData.com)
-        fh.UserData.com = com;
-    elseif ~isempty(com)
-        fh.UserData.com = [fh.UserData.com newline com];
-    end
-    fh.UserData.wasSorted = true;
-
-    solutionChanged([], [], fh);
-
-    if SortAll
-        PlotMSMaps(fh, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
-    else
+    if ~isempty(com)
+        fh.UserData.AllMaps = EEGout.msinfo.MSMaps;
+        fh.UserData.wasSorted = true;
         PlotMSMaps(fh, nClasses);
+
+        if isempty(fh.UserData.com)
+            fh.UserData.com = com;
+        else
+            fh.UserData.com = [fh.UserData.com newline com];
+        end
     end
+
+    solutionChanged([], [], fh);    
 end
 
 %% BUTTON CALLBACKS %% 
@@ -600,9 +640,9 @@ function [txt,tit] = GetInfoText(UserData,idx)
     NormText     = {'not ', ''};
     
     if isinf(UserData.ClustPar.MaxMaps)
-            MaxMapsText = 'all';
+        MaxMapsText = 'all';
     else
-            MaxMapsText = num2str(UserData.ClustPar.MaxMaps,'%i');
+        MaxMapsText = num2str(UserData.ClustPar.MaxMaps,'%i');
     end
     
     if ~isfield(UserData.ClustPar,'Normalize')
@@ -614,9 +654,10 @@ function [txt,tit] = GetInfoText(UserData,idx)
             sprintf('Polarity was %s',PolarityText{UserData.ClustPar.IgnorePolarity+1})...
             sprintf('EEG was %snormalized before clustering',NormText{UserData.ClustPar.Normalize+1})...
             sprintf('Extraction was based on %s',GFPText{UserData.ClustPar.GFPPeaks+1})...
-            sprintf('Extraction was based on %s maps',MaxMapsText)...
-            sprintf('Explained variance: %2.2f%%',sum(UserData.AllMaps(nClasses).ExpVar) * 100) ...
-            };
+            sprintf('Extraction was based on %s maps',MaxMapsText) };
+    if isempty(UserData.Children)
+        txt = [txt sprintf('Explained variance: %2.2f%%',sum(UserData.AllMaps(nClasses).ExpVar) * 100)];
+    end
     if isempty(UserData.AllMaps(nClasses).SortedBy)
         txt = [txt, 'Maps are unsorted'];
     else
@@ -630,18 +671,6 @@ function [txt,tit] = GetInfoText(UserData,idx)
         txt = [txt 'Children: ' childrenTxt];
     end
 
-end
-
-function ShowDynamics(~, ~, fh, AllEEG)
-    AllEEG(fh.UserData.SelectedSet).msinfo.MSMaps = fh.UserData.AllMaps;
-
-    [~, ~, com] = pop_ShowIndMSDyn(AllEEG, fh.UserData.SelectedSet, 'TemplateSet', 'own');
-
-    if isempty(fh.UserData.com)
-        fh.UserData.com = com;
-    elseif ~isempty(com)
-        fh.UserData.com = [fh.UserData.com newline com];
-    end        
 end
 
 function CompareCallback(~, ~, fh, AllEEG)
