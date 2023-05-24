@@ -585,7 +585,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
 
             return;
         else
-            [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort2(AllEEG, SelectedSets);
+            [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG, SelectedSets);
             global ALLEEG;
             AllEEG = ALLEEG;            % refresh ALLEEG in case user modified datasets while explorer was open
             AllEEG = eeg_store(AllEEG, EEGout, CurrentSet);
