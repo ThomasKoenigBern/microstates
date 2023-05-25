@@ -5,7 +5,7 @@
 % maximal communality before averaging.
 %
 % Usage:
-%   >> [ALLEEG, EEG, com] = pop_CombMSTemplates(ALLEEG, SelectedSets, 
+%   >> [EEG, com] = pop_CombMSTemplates(ALLEEG, SelectedSets, 
 %       'key1', value1, 'key2', value2, ...)
 %
 % Graphical interface:
@@ -45,10 +45,6 @@
 %
 % Outputs:
 %
-%   "ALLEEG"
-%   -> ALLEEG structure array containing all sets loaded in EEGLAB. Will
-%   include child sets with updated sorting if this option was selected.
-%
 %   "EEG" 
 %   -> EEG structure containing mean microstate maps across selected sets
 %
@@ -74,7 +70,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
+function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
@@ -201,7 +197,7 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
         defaultSets = find(ismember(AvailableSets, CurrentSet));
         if isempty(defaultSets);    defaultSets = 1;    end
         guiElements = [guiElements, ....
-                    {{ 'Style', 'text'    , 'string', 'Choose sets to combine'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Choose sets to combine', 'fontweight', 'bold'}} ...
                     {{ 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'}} ...
                     {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
         guiGeom  = [guiGeom  1 1 1];
@@ -237,7 +233,6 @@ function [AllEEG, EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     end
 
     %% Prompt user to fill in remaining parameters if necessary
-    ShowMaps = false;
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Identify group level or grand mean maps');

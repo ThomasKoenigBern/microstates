@@ -41,8 +41,10 @@
 %         |                 |               |                 | 
 %    Condition_A       Condition_B     Condition_A       Condition_B 
 %
-%   The section will also prompt you for a directory to save the analysis 
-%   results.
+%   Filenames should begin with subject IDs. If additional information is
+%   included in the filename, separate it with an underscore (e.g.
+%   's1_EC.set'). The section will also prompt you for a directory to save 
+%   the analysis results.
 %
 %   Section 3 will load the datasets from the input folder you provide and
 %   update the "group" and "condition" field of each dataset loaded. Please 
@@ -188,7 +190,7 @@ MSTEMPLATE = MSTemplate;
 GroupIdx = cell(1, nGroups);
 lastGroupIdx = 1;
 
-%% 3. Load datasets and update group and condition info
+%% 3. Load datasets and update subject, group, and condition info
 for i=1:nGroups
 
     for j=1:numel(dataDirs{i})
@@ -205,6 +207,13 @@ for i=1:nGroups
         fprintf('Updating group and condition information for group %s, condition %s...\n', groupNames{i}, condNames{i}{j});
         for k=1:numel(currGroupIdx)
             [EEG, ALLEEG, CURRENTSET] = eeg_retrieve(ALLEEG, currGroupIdx(k));
+            filename = EEG.filename(1:strfind(EEG.filename, '.')-1);
+            idx = strfind(filename, '_');
+            if isempty(idx)
+                EEG.subject = filename;
+            else
+                EEG.subject = filename(1:idx-1);
+            end
             EEG.group = groupNames{i};
             EEG.condition = condNames{i}{j};
             [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
