@@ -101,7 +101,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     AvailableSets = find(and(and(~isEmpty, ~HasDyn), HasMS));
     
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for plotting found.'], 'Plot microstate maps error');
+        errordlg2('No valid sets for plotting found.', 'Plot microstate maps error');
         return;
     end
 
@@ -208,8 +208,8 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     figSize1 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight1-insets.bottom-insets.top];
     figSize2 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight2-insets.bottom-insets.top];
 
-    ud.minPanelWidth = expVarWidth + minGridWidth*nCols;
-    ud.minPanelHeight = minGridHeight*nRows;
+    minPanelWidth = expVarWidth + minGridWidth*nCols;
+    minPanelHeight = minGridHeight*nRows;
 
     if Visible
         figVisible = 'on';
@@ -217,17 +217,17 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
         figVisible = 'off';
     end
 
-    ud.Scroll = false;
+    Scroll = false;
     % Use scrolling and uifigure for large number of maps
-    if ud.minPanelWidth > figSize1(3) || ud.minPanelHeight > (figSize1(4) - tabHeight)
-        ud.Scroll = true; 
+    if minPanelWidth > figSize1(3) || minPanelHeight > (figSize1(4) - tabHeight)
+        Scroll = true; 
         fig_h = uifigure('Name', 'Microstate maps', 'Units', 'pixels', ...
             'Position', figSize2, 'Visible', figVisible);
-        if ud.minPanelWidth < fig_h.Position(3)
-            ud.minPanelWidth = fig_h.Position(3) - 50;
+        if minPanelWidth < fig_h.Position(3)
+            minPanelWidth = fig_h.Position(3) - 50;
         end
-        if ud.minPanelHeight < fig_h.Position(4) - tabHeight
-            ud.minPanelHeight = fig_h.Position(4) - tabHeight;
+        if minPanelHeight < fig_h.Position(4) - tabHeight
+            minPanelHeight = fig_h.Position(4) - tabHeight;
         end
     % Otherwise use a normal figure (faster rendering) 
     else
@@ -240,48 +240,37 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
         heightDiff = fig_h.Position(4) - gridWidth*nRows - 200;
         fig_h.Position(2) = fig_h.Position(2) + .5*heightDiff;
         fig_h.Position(4) = gridWidth*nRows + 200;
-        ud.minPanelHeight = fig_h.Position(4) - tabHeight - 30;
+        minPanelHeight = fig_h.Position(4) - tabHeight - 30;
     end
     tabGroup = uitabgroup(fig_h, 'Units', 'normalized', 'Position', [0 0 1 1]);
 
-    for i=1:numel(SelectedEEG)   
-        ud.Visible = Visible;   
-        ud.AllMaps   = SelectedEEG(i).msinfo.MSMaps;
-        ud.chanlocs  = SelectedEEG(i).chanlocs;
-        ud.ClustPar  = SelectedEEG(i).msinfo.ClustPar;
-        ud.wasSorted = false;
-        ud.SelectedSet = SelectedSets;
-        ud.com = '';
-        if isfield(SelectedEEG(i).msinfo,'children')
-            ud.Children = SelectedEEG(i).msinfo.children;
-        else
-            ud.Children = [];
-        end           
-        ud.Edit = false;
-        
-        for j = ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses    
-            if isfield(ud.AllMaps(j),'Labels')
-                if ~isempty(ud.AllMaps(j).Labels)
+    for i=1:numel(SelectedEEG) 
+        ClassRange = SelectedEEG(i).msinfo.ClustPar.MinClasses:SelectedEEG(i).msinfo.ClustPar.MaxClasses;
+        for j = ClassRange
+            if isfield(SelectedEEG(i).msinfo.MSMaps(j),'Labels')
+                if ~isempty(SelectedEEG(i).msinfo.MSMaps(j).Labels)
                     continue
                 end
             end 
             % Fill in generic labels if dataset does not have them
             for k = 1:j
-                ud.AllMaps(j).Labels{k} = sprintf('MS_%i.%i',j,k);
+                SelectedEEG(i).msinfo.MSMaps(j).Labels{k} = sprintf('MS_%i.%i',j,k);
             end
-            ud.Labels(j,1:j) = ud.AllMaps(j).Labels(1:j);
         end
               
         % Add graphics components
         setTab = uitab(tabGroup, 'Title', ['Microstate maps of ' SelectedEEG(i).setname]);
-        tabGroup.SelectedTab = setTab;
-        ud.MapPanel = uipanel(setTab, 'Units', 'normalized', 'Position', [0 0 1 1], 'BorderType', 'none');   
-        if ud.Scroll
-            ud.MapPanel.Scrollable = 'on';
-            ud.TilePanel = uipanel(ud.MapPanel, 'Units', 'pixels', 'Position', [0 0 ud.minPanelWidth ud.minPanelHeight], 'BorderType', 'none');
+        tabGroup.SelectedTab = setTab;          
+        if Scroll
+            OuterPanel = uipanel(setTab, 'Units', 'normalized', 'Position', [0 0 1 1], 'BorderType', 'none');
+            OuterPanel.Scrollable = 'on';
+            MapPanel = uipanel(OuterPanel, 'Units', 'pixels', 'Position', [0 0 minPanelWidth minPanelHeight], 'BorderType', 'none');
+        else
+            MapPanel = uipanel(setTab, 'Units', 'normalized', 'Position', [0 0 1 1], 'BorderType', 'none');
         end
-        set(setTab,'userdata',ud);               
-        PlotMSMaps(setTab, Classes);        
+        plotClasses = ClassRange(ismember(ClassRange, Classes));        
+        PlotMSMaps2(fig_h, MapPanel, SelectedEEG(i).msinfo.MSMaps(plotClasses), SelectedEEG(i).chanlocs, ...
+            'ShowProgress', ~Visible | Scroll, 'Setname', SelectedEEG(i).setname);
     end    
     
     com = sprintf('fig_h = pop_ShowIndMSMaps(%s, %s, ''Classes'', %s, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), mat2str(Classes), Visible);

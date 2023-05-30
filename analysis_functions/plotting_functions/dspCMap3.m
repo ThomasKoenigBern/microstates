@@ -467,7 +467,7 @@ set(ax,'XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'NextPlot','re
 if vararginmatch(varargin,'Background')
     set(ax,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[]);
 else
-    axis off
+    axis(ax, 'off');
 end
 
 

@@ -192,7 +192,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     end
     figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
 
-    maxSubjWidth = max(cellfun(@length, {AllEEG.setname}))*9;
+    maxSubjWidth = max(cellfun(@length, {SelectedEEG.setname}))*9;
     if maxSubjWidth > 200;  maxSubjWidth = 200; end
     colWidth = 65;
     tblWidth = maxSubjWidth + colWidth*numel(MapLabels);
@@ -263,7 +263,6 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     
     ud.setnames = {SelectedEEG.setname};
     opts = {'Keep', 'Exclude'};
-    % Find indices with missing maps and populate table data
     tblData = [ud.setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
     ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', 'ColumnWidth', ['auto' repmat({colWidth}, 1, numel(MapLabels))], ...
         'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
@@ -363,16 +362,16 @@ function updatePlot(fig_h)
 
     if ud.badChan
         % Plot RMSE of all sets as a line plot
-        plot(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), '-k');        
+        plot(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), '-k'); 
 
         % Plot RMSE of all sets as points
         ud.scatter = scatter(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), 10, 'black', 'filled');
 
         % Axis formatting        
         axis(ud.outlierPlot, 'normal');     
-%         axis(ud.outlierPlot, 'padded');
-        maxY = max(ud.RMSE, [], 'all');
-        ylim(ud.outlierPlot, [0 maxY]);
+        axis(ud.outlierPlot, 'padded');
+%         maxY = max(ud.RMSE, [], 'all');
+%         ylim(ud.outlierPlot, [0 maxY]);
         ud.outlierPlot.XAxisLocation = 'bottom';
         ud.outlierPlot.YAxisLocation = 'left';
         ud.outlierPlot.XAxis.Color = [0 0 0];

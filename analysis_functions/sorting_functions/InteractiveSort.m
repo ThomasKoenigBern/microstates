@@ -1,4 +1,4 @@
-function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort2(AllEEG, SelectedSet)
+function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG, SelectedSet)
     
     EEGout = AllEEG(SelectedSet);
     CurrentSet = SelectedSet;
@@ -62,8 +62,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort2(AllEEG
             'Position', figSize1, 'MenuBar', 'figure', 'ToolBar', 'none');
     end           
     
-    ud.Visible = true;
-    ud.AllMaps = AllEEG(SelectedSet).msinfo.MSMaps;
+    ud.MSMaps = AllEEG(SelectedSet).msinfo.MSMaps;
     ud.chanlocs = AllEEG(SelectedSet).chanlocs;
     ud.setname = AllEEG(SelectedSet).setname;
     ud.ClustPar = AllEEG(SelectedSet).msinfo.ClustPar;
@@ -75,19 +74,17 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort2(AllEEG
     else
         ud.Children = [];
     end
-    ud.Edit = true;
     
     for j = ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses    
-        if isfield(ud.AllMaps(j),'Labels')
-            if ~isempty(ud.AllMaps(j).Labels)
+        if isfield(ud.MSMaps(j),'Labels')
+            if ~isempty(ud.MSMaps(j).Labels)
                 continue
             end
         end 
         % Fill in generic labels if dataset does not have them
         for k = 1:j
-            ud.AllMaps(j).Labels{k} = sprintf('MS_%i.%i',j,k);
+            ud.MSMaps(j).Labels{k} = sprintf('MS_%i.%i',j,k);
         end
-        ud.Labels(j,1:j) = ud.AllMaps(j).Labels(1:j);
     end
     
     global MSTEMPLATE;
@@ -108,7 +105,8 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort2(AllEEG
         buildFig(fig_h, AllEEG);
     end
     fig_h.CloseRequestFcn = {@figClose, fig_h};                            
-    PlotMSMaps(fig_h, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
+    PlotMSMaps2(fig_h, fig_h.UserData.MapPanel, ud.MSMaps(ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses), ...
+        ud.chanlocs, 'ShowExpVar', 1);
     if ~isvalid(fig_h)
         return
     end
@@ -125,7 +123,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort2(AllEEG
         [yesPressed, selection] = questDlg(hasChildren);
     
         if yesPressed
-            AllEEG(SelectedSet).msinfo.MSMaps = ud.AllMaps;
+            AllEEG(SelectedSet).msinfo.MSMaps = ud.MSMaps;
             EEGout = AllEEG(SelectedSet);
             EEGout.saved = 'no';
             CurrentSet = SelectedSet;
@@ -230,10 +228,9 @@ function buildUIFig(fig_h, AllEEG)
         uilabel(ud.FigLayout, 'Text', 'Left: mean shared variance per solution across maps. Subtitles: mean shared variance between individual and mean maps.');
     end                    
     
-    ud.MapPanel = uipanel(ud.FigLayout);
-    
-    ud.MapPanel.Scrollable = 'on';
-    ud.TilePanel = uipanel(ud.MapPanel, 'Units', 'pixels', 'Position', [0 0 ud.minPanelWidth ud.minPanelHeight], 'BorderType', 'none');
+    OuterPanel = uipanel(ud.FigLayout);    
+    OuterPanel.Scrollable = 'on';
+    ud.MapPanel = uipanel(OuterPanel, 'Units', 'pixels', 'Position', [0 0 ud.minPanelWidth ud.minPanelHeight], 'BorderType', 'none');
     
     vertLayout = uigridlayout(ud.FigLayout, [1 2]);
     vertLayout.Padding = [0 0 0 0];
@@ -525,7 +522,7 @@ end
 function Sort(~,~,fh,AllEEG)
     ud = fh.UserData;
 
-    AllEEG(ud.SelectedSet).msinfo.MSMaps = fh.UserData.AllMaps;
+    AllEEG(ud.SelectedSet).msinfo.MSMaps = fh.UserData.MSMaps;
     nClasses = ud.ClustPar.MinClasses + ud.ClassList.Value - 1;
 
     choice = ud.ActChoice.Value;
@@ -588,9 +585,9 @@ function Sort(~,~,fh,AllEEG)
     end      
 
     if ~isempty(com)
-        fh.UserData.AllMaps = EEGout.msinfo.MSMaps;
+        fh.UserData.MSMaps = EEGout.msinfo.MSMaps;
         fh.UserData.wasSorted = true;
-        PlotMSMaps(fh, nClasses);
+        PlotMSMaps2(fh, ud.MapPanel, fh.UserData.MSMaps(nClasses), ud.chanlocs, 'ShowExpVar', 1);
 
         if isempty(fh.UserData.com)
             fh.UserData.com = com;
@@ -656,13 +653,13 @@ function [txt,tit] = GetInfoText(UserData,idx)
             sprintf('Extraction was based on %s',GFPText{UserData.ClustPar.GFPPeaks+1})...
             sprintf('Extraction was based on %s maps',MaxMapsText) };
     if isempty(UserData.Children)
-        txt = [txt sprintf('Explained variance: %2.2f%%',sum(UserData.AllMaps(nClasses).ExpVar) * 100)];
+        txt = [txt sprintf('Explained variance: %2.2f%%',sum(UserData.MSMaps(nClasses).ExpVar) * 100)];
     end
-    if isempty(UserData.AllMaps(nClasses).SortedBy)
+    if isempty(UserData.MSMaps(nClasses).SortedBy)
         txt = [txt, 'Maps are unsorted'];
     else
-        txt = [txt sprintf('Sort mode was %s ',UserData.AllMaps(nClasses).SortMode)];
-        txt = [txt sprintf('Sorting was based on %s ',UserData.AllMaps(nClasses).SortedBy)];
+        txt = [txt sprintf('Sort mode was %s ',UserData.MSMaps(nClasses).SortMode)];
+        txt = [txt sprintf('Sorting was based on %s ',UserData.MSMaps(nClasses).SortedBy)];
     end
             
     if ~isempty(UserData.Children)
@@ -674,7 +671,7 @@ function [txt,tit] = GetInfoText(UserData,idx)
 end
 
 function CompareCallback(~, ~, fh, AllEEG)
-    AllEEG(fh.UserData.SelectedSet).msinfo.MSMaps = fh.UserData.AllMaps;
+    AllEEG(fh.UserData.SelectedSet).msinfo.MSMaps = fh.UserData.MSMaps;
     
     if isempty(fh.UserData.Children)
         [EEGout, ~, com] = pop_CompareMSTemplates(AllEEG, 'IndividualSets', fh.UserData.SelectedSet);
@@ -684,9 +681,10 @@ function CompareCallback(~, ~, fh, AllEEG)
 
     % If the command contains sorting function calls, we should replot the maps
     if contains(com, 'pop_Sort')
-        fh.UserData.AllMaps = EEGout.msinfo.MSMaps;
+        fh.UserData.MSMaps = EEGout.msinfo.MSMaps;
         fh.UserData.wasSorted = true;
-        PlotMSMaps(fh, fh.UserData.ClustPar.MinClasses:fh.UserData.ClustPar.MaxClasses);  
+        PlotMSMaps2(fh, fh.UserData.MapPanel, fh.UserData.MSMaps(fh.UserData.ClustPar.MinClasses:fh.UserData.ClustPar.MaxClasses), ...
+            fh.UserData.chanlocs, 'ShowExpVar', 1);
         ActionChangedCallback([], [], fh);
     end
     
