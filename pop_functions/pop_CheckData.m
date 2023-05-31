@@ -174,7 +174,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     ud.scatter.CData = repmat([0 0 0], length(SelectedSets), 1);
 
     ud.scatter.ButtonDownFcn = {@axisClicked, fig_h};
-    row = dataTipTextRow('Subject', ud.setnames);
+    row = dataTipTextRow('Subject:', ud.setnames);
     ud.scatter.DataTipTemplate.DataTipRows = row;
     ud.scatter.DataTipTemplate.Interpreter = 'none';
     
