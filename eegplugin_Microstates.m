@@ -150,6 +150,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     MSTEMPLATE = MSTemplate;
     
     % Tools menu
+    comCheckData           = [try_strings.no_check '[~, LASTCOM]                          = pop_CheckData(ALLEEG);'             catch_strings.add_to_hist];
     comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FindMSTemplates(ALLEEG);'       catch_strings.store_and_hist];
     comCombineMSTemplates  = [try_strings.no_check '[EEG, LASTCOM]                        = pop_CombMSTemplates(ALLEEG);'       catch_strings.new_and_hist];
     comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]    = pop_SortMSTemplates(ALLEEG);'       catch_strings.store_and_hist];
@@ -167,6 +168,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     
     toolsmenu = findobj(fig, 'tag', 'tools');
     toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
+    uimenu( toolssubmenu, 'Label', 'Data quality check',                                              'CallBack', comCheckData,          'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Identify individual template maps',                               'CallBack', comFindMSTemplates,    'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Identify group level or grand mean template maps',                'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
     uimenu( toolssubmenu, 'Label', 'Edit & sort template maps',                                       'CallBack', comSortMSTemplates,    'userdata', 'study:on');
