@@ -51,17 +51,17 @@
 %   note that this script assumes your files are in .set format and may 
 %   need to be modified if your datasets are in a different format.
 %
-%   Section 4 will perform clustering to identify individual template maps 
+%   Section 4 will perform clustering to identify individual microstate maps 
 %   for all loaded datasets.
 %
-%   Section 5 will identify group level template maps for each combination 
+%   Section 5 will identify group level microstate maps for each combination 
 %   of group and condition.
 %
-%   Section 6 will identify grand mean template maps for each group across 
+%   Section 6 will identify grand mean microstate maps for each group across 
 %   conditions.
 %
-%   Section 7 will identify grand grand mean microstate map template maps 
-%   across all groups and conditions.
+%   Section 7 will identify grand grand mean microstate maps across all 
+%   groups and conditions.
 %
 %   Section 8 will sort the identified microstate maps. First, the grand
 %   grand mean maps will be sorted according to the published template maps
@@ -78,8 +78,8 @@
 %   each subject will be sorted by the grand grand mean.
 %
 %   Section 9 will save the individual, group level, grand mean, and grand 
-%   grand mean set files containing the template maps data, along with 
-%   figures containing the plotted template maps.
+%   grand mean set files containing the microstate maps data, along with 
+%   figures containing the plotted microstate maps.
 %
 %   Section 10 will perform backfitting and quantification of temporal
 %   dynamics according to different template maps. It will save 3 different
@@ -92,7 +92,7 @@
 %   "MSStats" structure array for further analysis. The published template 
 %   to use for backfitting can be modified in the parameters section.
 %
-%   Section 11 will use Ragu to perform TANOVA to compare template map
+%   Section 11 will use Ragu to perform TANOVA to compare microstate map
 %   topographies between groups and conditions (optional, comment out if
 %   not using)
 
@@ -226,29 +226,29 @@ end
 
 AllSubjects = 1:numel(ALLEEG);
 
-%% 4. Identify individual template maps for each subject
+%% 4. Identify individual microstate maps for each subject
 disp('Identifying microstates for all sets...');
-[EEG, CURRENTSET] = pop_FindMSTemplates(ALLEEG, AllSubjects, 'ClustPar', ClustPar);
+[EEG, CURRENTSET] = pop_FindMSMaps(ALLEEG, AllSubjects, 'ClustPar', ClustPar);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
-%% 5. Identify group level template maps for each group/condition
+%% 5. Identify group level microstate maps for each group/condition
 GroupMeanIdx = cell(1, nGroups);
 for i=1:nGroups
     for j=1:numel(condNames{i})
         fprintf('Identifying group level mean maps for group %s, condition %s...\n', groupNames{i}, condNames{i}{j});
-        EEG = pop_CombMSTemplates(ALLEEG, GroupIdx{i}{j}, 'MeanName', ['GroupMean_' groupNames{i} '_' condNames{i}{j}], ...
+        EEG = pop_CombMSMaps(ALLEEG, GroupIdx{i}{j}, 'MeanName', ['GroupMean_' groupNames{i} '_' condNames{i}{j}], ...
             'IgnorePolarity', ClustPar.IgnorePolarity);
         [ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET,'gui','off');
         GroupMeanIdx{i} = [GroupMeanIdx{i} CURRENTSET];
     end    
 end
 
-%% 6. Identify grand mean template maps for each group
+%% 6. Identify grand mean microstate maps for each group
 GrandMeanIdx = zeros(1, nGroups);
 for i=1:nGroups
     if numel(condNames{i}) > 1
         fprintf('Identifying grand mean maps for group %s across conditions...\n', groupNames{i});
-        EEG = pop_CombMSTemplates(ALLEEG, GroupMeanIdx{i}, 'MeanName', ['GrandMean_' groupNames{i}], ...
+        EEG = pop_CombMSMaps(ALLEEG, GroupMeanIdx{i}, 'MeanName', ['GrandMean_' groupNames{i}], ...
             'IgnorePolarity', ClustPar.IgnorePolarity);
         [ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET,'gui','off');
         GrandMeanIdx(i) = CURRENTSET;
@@ -257,10 +257,10 @@ for i=1:nGroups
     end
 end
 
-%% 7. Identify grand grand mean template maps across all groups and conditions
+%% 7. Identify grand grand mean microstate maps across all groups and conditions
 if nGroups > 1
     disp('Identifying grand grand mean maps across all groups and conditions...');
-    EEG = pop_CombMSTemplates(ALLEEG, GrandMeanIdx, 'MeanName','GrandGrandMean', 'IgnorePolarity', ClustPar.IgnorePolarity);
+    EEG = pop_CombMSMaps(ALLEEG, GrandMeanIdx, 'MeanName','GrandGrandMean', 'IgnorePolarity', ClustPar.IgnorePolarity);
     [ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET,'gui','off');
     GrandGrandMeanIdx = CURRENTSET;
 else
@@ -271,13 +271,13 @@ end
 % Sort the grand grand mean maps by the specified published template(s)
 disp('Sorting grand grand mean maps by published templates...');
 for i=1:numel(TemplateNames)
-    [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, GrandGrandMeanIdx, 'TemplateSet', TemplateNames{i}, 'Classes', SortClasses{i}, 'IgnorePolarity', ClustPar.IgnorePolarity);
+    [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, GrandGrandMeanIdx, 'TemplateSet', TemplateNames{i}, 'Classes', SortClasses{i}, 'IgnorePolarity', ClustPar.IgnorePolarity);
     [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 end
 
 % Sort the individual, group level, and grand mean maps by the grand grand mean maps
 disp('Sorting subject, group level, and grand mean maps by grand grand mean maps...');
-[ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:numel(ALLEEG)-1, 'TemplateSet', GrandGrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'IgnorePolarity', ClustPar.IgnorePolarity);
+[ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:numel(ALLEEG)-1, 'TemplateSet', GrandGrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'IgnorePolarity', ClustPar.IgnorePolarity);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
 %% 8. Save set files with microstates data and figures with microstate plots
@@ -326,8 +326,8 @@ pop_saveset(ALLEEG(GrandGrandMeanIdx), 'filename', [ALLEEG(GrandGrandMeanIdx).se
 %% 9. Backfit and quantify temporal dynamics
 disp('Backfitting and extracting temporal dynamics...');
 
-% Backfit using individual microstate template maps
-[EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', 'own', 'FitPar', FitPar);
+% Backfit using individual microstate maps
+[EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, AllSubjects, 'TemplateSet', 'own', 'FitPar', FitPar);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 IndStats = cell(1, length(FitPar.Classes));
 for c=1:length(FitPar.Classes)
@@ -340,8 +340,8 @@ for c=1:length(FitPar.Classes)
     close(fig);
 end
 
-% Backfit using grand grand mean microstate template maps
-[EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', GrandGrandMeanIdx, 'FitPar', FitPar);
+% Backfit using grand grand mean microstate maps
+[EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, AllSubjects, 'TemplateSet', GrandGrandMeanIdx, 'FitPar', FitPar);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 GrandGrandMeanStats = cell(1, length(FitPar.Classes));
 for c=1:length(FitPar.Classes)
@@ -354,12 +354,12 @@ for c=1:length(FitPar.Classes)
     close(fig);
 end
 
-% Backfit using published microstate template maps
+% Backfit using published microstate maps
 tmpFitPar = FitPar;
 TemplateStats = cell(1, numel(TemplateNames));
 for i=1:numel(TemplateNames)
     tmpFitPar.Classes = SortClasses{i};
-    [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, AllSubjects, 'TemplateSet', TemplateNames{i}, 'FitPar', tmpFitPar);
+    [EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, AllSubjects, 'TemplateSet', TemplateNames{i}, 'FitPar', tmpFitPar);
     [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
     tempStats = cell(1, length(tmpFitPar.Classes));
     for c=1:length(tmpFitPar.Classes)
@@ -376,5 +376,5 @@ end
 
 %% 10. Export microstate maps to Ragu
 for c=FitPar.Classes
-    pop_RaguMSTemplates(ALLEEG, AllSubjects, 'Classes', c);
+    pop_RaguMSMaps(ALLEEG, AllSubjects, 'Classes', c);
 end
