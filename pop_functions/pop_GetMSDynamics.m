@@ -105,7 +105,9 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     Normalize = p.Results.Normalize;
 
     %% SelectedSets validation    
-    AvailableSets = find(arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG)));
+    HasStats = arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(HasStats & ~HasDyn);
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
@@ -279,6 +281,8 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         newEEG(s).msinfo.FitPar.Rectify = Rectify;
         newEEG(s).msinfo.FitPar.Normalize = Normalize;
 
+        Centering = eye(size(SelectedEEG(s).data, 1)) - 1/size(SelectedEEG(s).data, 1); 
+
         newData = zeros(nClasses, SelectedEEG(s).pnts, SelectedEEG(s).trials);
         
         for class=1:nClasses
@@ -294,13 +298,16 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
                 assigned = MSClass(:,e) == class;
                 if Normalize
                     newData(class, :, e) = assigned;
-                else                    
+                else        
+                    % average reference data
+%                     data = Centering*SelectedEEG(s).data(:, assigned, e);
+                    data = SelectedEEG(s).data(:, assigned, e);                    
                     if SelectedEEG(s).nbchan > length(templateChanlocs)
-                        newData(class, assigned, e) = MSMaps.Maps(class, :)*(LocalToGlobal*SelectedEEG(s).data(:, assigned, e));
+                        newData(class, assigned, e) = MSMaps.Maps(class, :)*(LocalToGlobal*data);
                     elseif SelectedEEG(s).nbchan < length(templateChanlocs)
-                        newData(class, assigned, e) = (MSMaps.Maps(class, :)*GlobalToLocal')*SelectedEEG(s).data(:, assigned, e);
+                        newData(class, assigned, e) = (MSMaps.Maps(class, :)*GlobalToLocal')*data;
                     else
-                        newData(class, assigned, e) = MSMaps.Maps(class, :)*SelectedEEG(s).data(:, assigned, e);
+                        newData(class, assigned, e) = MSMaps.Maps(class, :)*data;
                     end
 
                     if Rectify
@@ -318,6 +325,24 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     CurrentSet = numel(AllEEG);     % update CurrentSet so new datasets will be appended to the end of ALLEEG
 
     com = sprintf('[EEG, CURRENTSET, com] = pop_GetMSDynamics(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), nClasses);
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end    
+    % check if set has FitPar
+    if ~isfield(in.msinfo, 'FitPar')
+        return;
+    end
+    % check if FitPar contains Rectify/Normalize parameters
+    if ~isfield(in.msinfo.FitPar, 'Rectify')
+        return;
+    else
+        hasDyn = true;
+    end
 end
 
 function hasStats = hasStats(in)

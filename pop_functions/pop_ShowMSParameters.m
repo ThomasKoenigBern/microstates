@@ -107,7 +107,9 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     Visible = p.Results.Visible;
 
     %% SelectedSets validation        
-    AvailableSets = find(arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG)));
+    HasStats = arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(HasStats & ~HasDyn);
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
@@ -394,6 +396,24 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     com = sprintf('[fig_h, com] = pop_ShowMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
 
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end    
+    % check if set has FitPar
+    if ~isfield(in.msinfo, 'FitPar')
+        return;
+    end
+    % check if FitPar contains Rectify/Normalize parameters
+    if ~isfield(in.msinfo.FitPar, 'Rectify')
+        return;
+    else
+        hasDyn = true;
+    end
 end
 
 function hasStats = hasStats(in)
