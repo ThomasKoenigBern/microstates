@@ -1,4 +1,4 @@
-% pop_CompareMSTemplates() - Interactively compare microstate topographies
+% pop_CompareMSMaps() - Interactively compare microstate topographies
 % within or across datasets. Allows for comparison of microstate
 % topographies across cluster solutions within one dataset, or comparison
 % of one cluster solution across multiple datasets. Generates an
@@ -6,27 +6,27 @@
 % topographies are and viewing shared variances between topographies.
 %
 % Usage:
-%   >> [EEG, CURRENTSET, com] = pop_CompareMSTemplates(ALLEEG,
+%   >> [EEG, CURRENTSET, com] = pop_CompareMSMaps(ALLEEG,
 %       IndividualSets, MeanSets, PublishedSets,  'key1', value1, 'key2', 
 %       value2, ...)
 %
 % To compare microstate topographies across cluster solutions within one
 % dataset, pass in the index or name of one dataset within ALLEEG.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMSTemplates(ALLEEG, 1, [], [])
+%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1, [], [])
 %
 % To compare microstate topographies of one cluster solution across
 % multiple datasets, pass in the indices or names of datasets to compare,
 % along with the number of classes to compare across sets.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMSTemplates(ALLEEG, 1:5, 6,
+%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1:5, 6,
 %       'Koenig2002', 'Classes', 4)
 %
 % To generate the shared variance matrix for all microstate topographies of
 % the chosen sets to compare without displaying the GUI, use the "Filename"
 % and "gui" parameters.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMSTemplates(ALLEEG, 1, [], [],
+%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1, [], [],
 %       'Filename', 'microstates/results/sharedvars.csv', 'gui', 0)
 %
 % Graphical interface:
@@ -125,7 +125,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
+function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
     
     com = '';
     global EEG;
@@ -141,7 +141,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_CompareMSTemplates';
+    funcName = 'pop_CompareMSMaps';
     p.FunctionName = funcName;
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
@@ -654,30 +654,30 @@ function [EEGout, CurrentSet, com] = pop_CompareMSTemplates(AllEEG, varargin)
             PublishedSetsTxt = ['{' PublishedSetsTxt(1:end-2) '}'];
         end
         if isempty(Filenames)
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, showGUI);
         else
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{1}, showGUI);
         end
         if numel(Filenames) > 1
             for i=2:numel(Filenames)
                 compCom = [compCom newline ...
-                    sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+                    sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
                     mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{i}, showGUI)];
             end
         end
     else
         if isempty(Filenames)
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), showGUI);
         else
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI);
         end
         for i=2:numel(Filenames)
             compCom = [compCom newline ...
-                sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSTemplates(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+                sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI)];
         end
     end

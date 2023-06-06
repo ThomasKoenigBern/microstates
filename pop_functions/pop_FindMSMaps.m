@@ -1,7 +1,7 @@
-% pop_FindMSTemplates() Interactively identify microstate topographies
+% pop_FindMSMaps() Interactively identify microstate topographies
 %
 % Usage:
-%   >> [EEG, CURRENTSET, com] = pop_FindMSTemplates(ALLEEG, SelectedSets, 
+%   >> [EEG, CURRENTSET, com] = pop_FindMSMaps(ALLEEG, SelectedSets, 
 %       'key1', value1, 'key2', value2, ...)
 %
 % Graphical interface:
@@ -135,7 +135,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
+function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
@@ -151,7 +151,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_FindMSTemplates';
+    funcName = 'pop_FindMSMaps';
     p.FunctionName = funcName;
     p.StructExpand = false;         % do not expand ClustPar struct input into key, value args
     
@@ -455,7 +455,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     CurrentSet = SelectedSets;    
     
     %% Command string generation
-    com = sprintf('[EEG, CURRENTSET] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar));
+    com = sprintf('[EEG, CURRENTSET] = pop_FindMSMaps(%s, %s, ''ClustPar'', %s);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar));
 
     %% Show maps
     if ShowMaps
@@ -501,7 +501,7 @@ function [ClustPar, UsingDefaults] = checkClustPar(varargin)
 
     % Parse and validate inputs
     p = inputParser;
-    funcName = 'pop_FindMSTemplates';
+    funcName = 'pop_FindMSMaps';
     p.FunctionName = funcName;
     p.KeepUnmatched = true;
 

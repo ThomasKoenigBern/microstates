@@ -1,22 +1,22 @@
-% pop_FitMSTemplates() Backfits template maps to EEG and extracts temporal
+% pop_FitMSMaps() Backfits template maps to EEG and extracts temporal
 % parameters. Temporal dynamics parameters for each subject are saved to 
 % the "MSStats" field of "msinfo" in the corresponding EEG set.
 %
 % Usage:
-%   >> [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, SelectedSets, 'key1',
+%   >> [EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, SelectedSets, 'key1',
 %       value1, 'key2', value2)
 %
 % To use each subject's own microstate maps for backfitting, specify
 % "TemplateSet" as "own."
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, 1:5, 'TemplateSet', 
+%   >> [EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, 1:5, 'TemplateSet', 
 %       'own')
 %
 % To use a mean set or published set for backfitting, specify either the
 % index of the mean set in ALLEEG, the name of the mean set, or the name of
 % the published set.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_FitMSTemplates(ALLEEG, 1:5, 'TemplateSet', 
+%   >> [EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, 1:5, 'TemplateSet', 
 %       'Koenig2002')
 %
 % Graphical interface:
@@ -126,7 +126,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, CurrentSet, com] = pop_FitMSTemplates(AllEEG, varargin)
+function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
@@ -142,7 +142,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSTemplates(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_FitMSTemplates';
+    funcName = 'pop_FitMSMaps';
     p.FunctionName = funcName;
     p.StructExpand = false;         % do not expand FitPar struct input into key, value args
 
@@ -520,9 +520,9 @@ function [EEGout, CurrentSet, com] = pop_FitMSTemplates(AllEEG, varargin)
     CurrentSet = SelectedSets;   
 
     if ischar(TemplateSet) || isstring(TemplateSet)
-        fitCom = sprintf('[EEG, CURRENTSET, com] = pop_FitMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
+        fitCom = sprintf('[EEG, CURRENTSET, com] = pop_FitMSMaps(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
     elseif isnumeric(TemplateSet)
-        fitCom = sprintf('[EEG, CURRENTSET, com] = pop_FitMSTemplates(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
+        fitCom = sprintf('[EEG, CURRENTSET, com] = pop_FitMSMaps(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
     end
 
     if isempty(com)

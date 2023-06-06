@@ -1,11 +1,11 @@
-% pop_CombMSTemplates() Interactively average microstate maps across sets
+% pop_CombMSMaps() Interactively average microstate maps across sets
 %
 % This is not a simple averaging, but a permute and average loop that
 % optimizes the order of microstate classes in the individual datasets for
 % maximal communality before averaging.
 %
 % Usage:
-%   >> [EEG, com] = pop_CombMSTemplates(ALLEEG, SelectedSets, 
+%   >> [EEG, com] = pop_CombMSMaps(ALLEEG, SelectedSets, 
 %       'key1', value1, 'key2', value2, ...)
 %
 % Graphical interface:
@@ -70,7 +70,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
+function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
 
     %% Set defaults for outputs
     com = '';
@@ -87,7 +87,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_CombMSTemplates';
+    funcName = 'pop_CombMSMaps';
     p.FunctionName = funcName;
     
     logClass = {'logical', 'numeric'};
@@ -115,8 +115,8 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~isEmpty, ~HasDyn), HasMS), ~isPublishedSet));
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(and(and(and(~isEmpty, ~HasDyn), HasMS), ~isPublished));
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
     indSets = AvailableSets(~HasChildren);
     meanSets = AvailableSets(HasChildren);
@@ -361,7 +361,7 @@ function [EEGout, com] = pop_CombMSTemplates(AllEEG, varargin)
     EEGout.xmax        = EEGout.times(end);    
 
     %% Command string generation
-    com = sprintf('[ALLEEG, EEG] = pop_CombMSTemplates(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
+    com = sprintf('[ALLEEG, EEG] = pop_CombMSMaps(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
 
     %% Show maps
     if ShowMaps        
@@ -420,5 +420,16 @@ function Answer = DoesItHaveChildren(in)
         return
     else
         Answer = true;
+    end
+end
+
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
     end
 end

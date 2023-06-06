@@ -1,8 +1,8 @@
-% pop_SortMSTemplates() Reorder microstate maps based on existing template
+% pop_SortMSMaps() Reorder microstate maps based on existing template
 % maps or manual indexing.
 %
 % Usage: 
-%   >> [ALLEEG, EEG, CURRENTSET, com] = pop_SortMSTemplates(ALLEEG, 
+%   >> [ALLEEG, EEG, CURRENTSET, com] = pop_SortMSMaps(ALLEEG, 
 %       SelectedSets, 'key1', value1, 'key2', value2, ...)
 %
 % SORTING BY TEMPLATE MAPS:
@@ -38,31 +38,31 @@
 %
 % Ex: Sort subject level maps (1-20) by mean maps (21) using one-to-one  
 % sorting for each cluster solution. 
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:20, 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:20, 
 %       'TemplateSet', 21, 'IgnorePolarity', 1);
 % (Equivalent to):
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:20, 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:20, 
 %       'TemplateSet', 21, 'Classes', 'all', 'TemplateClasses', 'all', 
 %       'IgnorePolarity', 1);
 %
 % Ex: Use the mean dataset name
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:20, 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:20, 
 %   'TemplateSet', 'GrandMean', 'IgnorePolarity', 1);
 %
 % Ex: Use published set names
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:20, 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:20, 
 %       'TemplateSet', 'Koenig2002', 'Classes', 4:6, 'IgnorePolarity', 1);
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:20, 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:20, 
 %       'TemplateSet', 'Custo2017', 'Classes', 7, 'IgnorePolarity', 1);
 %
 % Ex: Sort all subject level cluster solutions by the 7 class solution
 % of a grand mean dataset.
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:20,
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:20,
 %   'TemplateSet', 'GrandMean', 'TemplateClasses', 7, 'IgnorePolarity', 1);
 %
 % Ex: Sort a subset of subject level cluster solutions by the 6 class
 % solution of the published Koenig 2002 maps.
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1:20,
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:20,
 %   'TemplateSet', 'Koenig2002', 'Classes', 4:6, 'TemplateClasses', 6,
 %   'IgnorePolarity', 1);
 %
@@ -91,12 +91,12 @@
 % If "Stepwise" is not provided, it is set to false by default.
 %
 % Ex: Sort the 6 class solution of a dataset by the 7 class solution.
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1,
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1,
 %   'TemplateSet', 'own', 'Classes', 6, 'TemplateClasses', 7);
 %
 % Ex: Use stepwise sorting to sort all solutions of a dataset by the 7
 % class solution.
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1,
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1,
 %   'TemplateSet', 'own', 'TemplateClasses', 7, 'Stepwise', 1);
 %
 % MANUAL SORTING:
@@ -112,7 +112,7 @@
 % template maps will be relabeled but not resorted. 
 %
 % Ex: Manual sort and relabel
-%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, 1, 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1, 
 %       'TemplateSet', 'manual', 'Classes', 4, 'SortOrder', [-4 2 3 -1],
 %       'NewLabels', {'A', 'B', 'C', 'D'});
 %
@@ -278,7 +278,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargin)
+function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     
     %% Set defaults for outputs
     com = '';
@@ -295,7 +295,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_SortMSTemplates';
+    funcName = 'pop_SortMSMaps';
     p.FunctionName = funcName;
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
@@ -576,10 +576,10 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
             NewLabelsTxt = sprintf('''%s'', ', string(NewLabels));
             NewLabelsTxt = ['{' NewLabelsTxt(1:end-2) '}'];
             if isempty(SortOrder)
-                com = sprintf(['[ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, %i, ''TemplateSet'', ''manual'', ''Classes'', %i,' ...
+                com = sprintf(['[ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, %i, ''TemplateSet'', ''manual'', ''Classes'', %i,' ...
                     ' ''NewLabels'', %s);'], SelectedSets, Classes, NewLabelsTxt);
             else
-                com = sprintf(['[ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, %i, ''TemplateSet'', ''manual'', ''Classes'', %i,' ...
+                com = sprintf(['[ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, %i, ''TemplateSet'', ''manual'', ''Classes'', %i,' ...
                     ' ''SortOrder'', %s, ''NewLabels'', %s);'], SelectedSets, Classes, mat2str(SortOrder), NewLabelsTxt);
             end
 
@@ -988,7 +988,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSTemplates(AllEEG, varargi
     else
         TemplateSet = sprintf("'%s'", TemplateSet);
     end
-    com = sprintf('[ALLEEG, EEG, CURRENTSET] = pop_SortMSTemplates(ALLEEG, %s, ''TemplateSet'', %s', mat2str(SelectedSets), TemplateSet);    
+    com = sprintf('[ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, %s, ''TemplateSet'', %s', mat2str(SelectedSets), TemplateSet);    
     if ~strcmpi(Classes, 'all')
         com = [com sprintf(', ''Classes'', %s', mat2str(Classes))];
     end

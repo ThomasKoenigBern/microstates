@@ -1,7 +1,7 @@
-% pop_RaguMSTemplates() Transfer microstate maps to Ragu for topographic testing
+% pop_RaguMSMaps() Transfer microstate maps to Ragu for topographic testing
 %
 % Usage:
-%   >> com = pop_RaguMSTemplates(ALLEEG, SelectedSets, 'Classes', Classes)
+%   >> com = pop_RaguMSMaps(ALLEEG, SelectedSets, 'Classes', Classes)
 %
 % Graphical interface:
 %
@@ -48,13 +48,13 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function com = pop_RaguMSTemplates(AllEEG, varargin)
+function com = pop_RaguMSMaps(AllEEG, varargin)
 
     com = '';
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_RaguMSTemplates';
+    funcName = 'pop_RaguMSMaps';
     p.FunctionName = funcName;
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
@@ -169,7 +169,7 @@ function com = pop_RaguMSTemplates(AllEEG, varargin)
  
     Randomizer_ShowTanovaResults(rd);
 
-    com = sprintf('com = pop_RaguMSTemplates(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
+    com = sprintf('com = pop_RaguMSMaps(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
 end
 
 function defineWithinDesign(src, ~)
