@@ -177,13 +177,11 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     colWidth = 65;
     tblWidth = maxSubjWidth + colWidth*numel(MapLabels);
 
-    fig_h = uifigure('Name', 'Outlier detection', 'Units', 'pixels', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
+    fig_h = uifigure('Name', 'Outlier detection', 'Units', 'pixels', 'Position', figSize, ...
+        'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
     
     if tblWidth > .4*figSize(3)
         tblWidth = floor(.4*figSize(3));        
-        fig_h.Position = figSize;
-    else
-        fig_h.Position = figSize.*[.1 .1 .8 .8];
     end
 
     horzLayout = uigridlayout(fig_h, [2 1]);
