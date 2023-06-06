@@ -207,7 +207,9 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     %% Add other gui elements
     if matches('MeanName', p.UsingDefaults)
         if pickIndSets
-            MeanName = 'GroupMean_<group name>';
+            MeanName = 'Mean_<name>';
+        else
+            MeanName = 'GrandMean_<name>';
         end
 
         guiElements = [guiElements, ...
