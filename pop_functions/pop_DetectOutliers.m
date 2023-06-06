@@ -16,30 +16,11 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'scalar'}));
-    addParameter(p, 'Type', 'channel', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
 
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
     nClasses = p.Results.Classes;
-    type = p.Results.Type;
-
-    %% Determine type of outlier detection
-    if ~matches('Type', p.UsingDefaults)
-        if ~(strcmpi(type, 'channel') || strcmpi(type, 'topography'))
-            error('Invalid type provided for outlier detection. Possible types are "channel" or "topography.');
-        else
-            badChan = strcmp(type, 'channel');
-        end
-    else
-        selection = questionDialog('Select outlier detection procedure.', 'Outlier detection', ...
-            {'Bad channel detection', 'Bad topography detection'});
-        if strcmp(selection, 'Cancel') || isempty(selection)
-            return;
-        else
-            badChan = strcmp(selection, 'Bad channel detection');
-        end
-    end
 
     %% Selected sets validation
     % Make sure there are individual sets available for outlier detection
@@ -51,7 +32,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isEmpty & ~isPublishedSet);
     
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for outlier detection found.'], 'Outlier detection error');
+        errordlg2('No valid sets for outlier detection found.', 'Outlier detection error');
         return;
     end
 
@@ -103,7 +84,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
             { {'Style', 'text', 'string', 'Select number of classes for outlier detection'} ...
               {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 1, 'Tag', 'Classes'}}, ...
-              'title', 'Sort microstate maps');
+              'title', 'Outlier detection');
         
         if isempty(res); return; end
 
@@ -170,7 +151,6 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     CurrentSet = SelectedSets;
 
     %% Create outlier detection GUI
-    ud.badChan = badChan;
     MapLabels = unique(AllLabels);
 
     % Get usable screen size
@@ -197,15 +177,13 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     colWidth = 65;
     tblWidth = maxSubjWidth + colWidth*numel(MapLabels);
 
-    fig_h = uifigure('Name', 'Outlier detection', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
+    fig_h = uifigure('Name', 'Outlier detection', 'Units', 'pixels', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
     
     if tblWidth > .4*figSize(3)
-        tblWidth = floor(.4*figSize(3));
-        fig_h.Units = 'pixels';
+        tblWidth = floor(.4*figSize(3));        
         fig_h.Position = figSize;
     else
-        fig_h.Units = 'normalized';
-        fig_h.Position = [.1 .1 .8 .8];
+        fig_h.Position = figSize.*[.1 .1 .8 .8];
     end
 
     horzLayout = uigridlayout(fig_h, [2 1]);
@@ -235,19 +213,11 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     autoBtn.Layout.Column = [5 6];
     
     ud.editLabel = uilabel(selectLayout);
-    if ud.badChan
-        ud.editLabel.Text = 'Threshold';
-    else
-        ud.editLabel.Text = 'p-value';
-    end
+    ud.editLabel.Text = 'p-value';
     ud.editLabel.Layout.Row = 2;
     ud.editLabel.Layout.Column = 5;
     ud.editBox = uieditfield(selectLayout);
-    if ud.badChan
-        ud.editBox.Value = '0.03';
-    else
-        ud.editBox.Value = '0.05';
-    end
+    ud.editBox.Value = '0.05';
     ud.editBox.Layout.Row = 2;
     ud.editBox.Layout.Column = 6;
     
@@ -285,24 +255,17 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         ud.MSMaps = [ud.MSMaps SelectedEEG(i).msinfo.MSMaps(ud.nClasses)];
     end
     
-    % Store RMSE values and MDS coordinates for each map
-    ResidualEstimator = VA_MakeSplineResidualMatrix(SelectedEEG(1).chanlocs);
+    % Store MDS coordinates for each map
     Centering = eye(numel(SelectedSets)) - 1/numel(SelectedSets);
-    ud.RMSE = nan(nClasses, numel(SelectedSets));
     ud.points = nan(nClasses, numel(SelectedSets), 2);
     for c=1:nClasses
-        Maps = double(cell2mat(arrayfun(@(x) ud.MSMaps(x).Maps(c,:), 1:numel(SelectedSets), 'UniformOutput', false)'));
-        Residual = ResidualEstimator*Maps';
-        RMSE = sqrt(mean(Residual.^2, 1));
-        ud.RMSE(c,:) = RMSE;
-    
+        Maps = double(cell2mat(arrayfun(@(x) ud.MSMaps(x).Maps(c,:), 1:numel(SelectedSets), 'UniformOutput', false)'));    
         data = Centering*Maps;
         cov = data*data';
         [v,d] = eigs(cov,2);
         ud.points(c,:,:) = v;
     end
     
-    ud.outliers = zeros(nClasses, numel(SelectedSets));
     ud.currentIdx = [];
     ud.highlightPoints = [];
     ud.dataTip = [];    
@@ -323,12 +286,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         end
     end
 
-    if badChan
-        type = 'channel';
-    else
-        type = 'topography';
-    end
-    com = sprintf('[EEG CURRENTSET] = pop_DetectOutliers(ALLEEG, %s, ''Type'', %s ''Classes'', %i);', mat2str(SelectedSets), type, nClasses);
+    com = sprintf('[EEG CURRENTSET] = pop_DetectOutliers(ALLEEG, %s, ''Classes'', %i);', mat2str(SelectedSets), nClasses);
 
 end
 
@@ -360,37 +318,19 @@ function updatePlot(fig_h)
     cla(ud.outlierPlot);
     hold(ud.outlierPlot, 'on');
 
-    if ud.badChan
-        % Plot RMSE of all sets as a line plot
-        plot(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), '-k'); 
+    % Plot MDS coordinates of all sets as points
+    ud.scatter = scatter(ud.outlierPlot, ud.points(mapCol-1,:,1), ud.points(mapCol-1,:,2), 10, 'black', 'filled');  
 
-        % Plot RMSE of all sets as points
-        ud.scatter = scatter(ud.outlierPlot, 1:size(ud.RMSE,2), ud.RMSE(mapCol-1,:), 10, 'black', 'filled');
-
-        % Axis formatting        
-        axis(ud.outlierPlot, 'normal');     
-        axis(ud.outlierPlot, 'padded');
-%         maxY = max(ud.RMSE, [], 'all');
-%         ylim(ud.outlierPlot, [0 maxY]);
-        ud.outlierPlot.XAxisLocation = 'bottom';
-        ud.outlierPlot.YAxisLocation = 'left';
-        ud.outlierPlot.XAxis.Color = [0 0 0];
-        ud.outlierPlot.YAxis.Color = [0 0 0];
-    else                               
-        % Plot MDS coordinates of all sets as points
-        ud.scatter = scatter(ud.outlierPlot, ud.points(mapCol-1,:,1), ud.points(mapCol-1,:,2), 10, 'black', 'filled');  
-    
-        % Axis formatting
-        axis(ud.outlierPlot, 'tight');
-        axis(ud.outlierPlot, 'equal');        
-        axis(ud.outlierPlot, 'square');
-        ud.max = max(abs(ud.points(mapCol-1,:))*1.1, [], 'all');
-        axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
-        ud.outlierPlot.XAxisLocation = 'origin';
-        ud.outlierPlot.YAxisLocation = 'origin';
-        ud.outlierPlot.XAxis.Color = [.6 .6 .6];
-        ud.outlierPlot.YAxis.Color = [.6 .6 .6];
-    end
+    % Axis formatting
+    axis(ud.outlierPlot, 'tight');
+    axis(ud.outlierPlot, 'equal');        
+    axis(ud.outlierPlot, 'square');
+    ud.max = max(abs(ud.points(mapCol-1,:))*1.1, [], 'all');
+    axis(ud.outlierPlot, [-ud.max ud.max -ud.max ud.max]);
+    ud.outlierPlot.XAxisLocation = 'origin';
+    ud.outlierPlot.YAxisLocation = 'origin';
+    ud.outlierPlot.XAxis.Color = [.6 .6 .6];
+    ud.outlierPlot.YAxis.Color = [.6 .6 .6];
 
     hold(ud.outlierPlot, 'off');    
 
@@ -441,31 +381,23 @@ function autoSelect(~, ~, fig_h)
     keepIdx = strcmp(ud.setsTable.Data(:,mapCol), "Keep");
     setIdx = find(~excludeIdx & ~keepIdx);
 
-    if ud.badChan
-        threshold = str2double(ud.editBox.Value);
+    pval = str2double(ud.editBox.Value);    
 
-        % Find all points higher than threshold
-        outliers = ud.RMSE(mapCol-1,:) > threshold;
-        outliers = find(outliers(:) & ~excludeIdx & ~keepIdx);
+    % Only consider Mahalanobis distances for unexamined sets (not marked
+    % to keep or exclude)        
+    points = squeeze(ud.points(mapCol-1,~excludeIdx & ~keepIdx,:));
+    dist = mahal(points, points);
+
+    % But include sets marked to keep in ACR computation
+    n = sum(~excludeIdx);
+    critDist = ACR(2, n, pval);
+    [maxDist, idx] = max(dist);
+
+    if maxDist > critDist
+        outliers = setIdx(idx);
     else
-        pval = str2double(ud.editBox.Value);    
-
-        % Only consider Mahalanobis distances for unexamined sets (not marked
-        % to keep or exclude)        
-        points = squeeze(ud.points(mapCol-1,~excludeIdx & ~keepIdx,:));
-        dist = mahal(points, points);
-
-        % But include sets marked to keep in ACR computation
-        n = sum(~excludeIdx);
-        critDist = ACR(2, n, pval);
-        [maxDist, idx] = max(dist);
-
-        if maxDist > critDist
-            outliers = setIdx(idx);
-        else
-            outliers = [];
-        end
-    end    
+        outliers = [];
+    end
 
     if any(outliers)        
         % Change color of points corresponding to outlier sets to yellow
@@ -575,13 +507,8 @@ function highlightSets(fig_h)
 
     mapCol = ud.selMap.Value;
 
-    if ud.badChan
-        x = ud.currentIdx;
-        y = ud.RMSE(mapCol-1,ud.currentIdx);
-    else
-        x = ud.points(mapCol-1,ud.currentIdx,1);
-        y = ud.points(mapCol-1,ud.currentIdx,2);
-    end                  
+    x = ud.points(mapCol-1,ud.currentIdx,1);
+    y = ud.points(mapCol-1,ud.currentIdx,2);
 
     hold(ud.outlierPlot, 'on');
     if ~isempty(ud.dataTip);            delete(ud.dataTip);         end
