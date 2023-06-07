@@ -386,7 +386,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 noSort = noPressed;
                 if boxChecked;  guiOpts.showQuantWarning2 = false;  end
                 if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', c);
+                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
                     if isempty(sortCom);    return; end
                     if isempty(com)
                         com = sortCom;
@@ -414,7 +414,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 noSameSort = noPressed;
                 if boxChecked;  guiOpts.showQuantWarning3 = false;  end
                 if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', c);
+                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
                     if isempty(sortCom);    return; end
                     if isempty(com)
                         com = sortCom;
@@ -435,7 +435,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Backfit template maps warning');
                 if boxChecked;  guiOpts.showQuantWarning4 = false;   end
                 if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', c);
+                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
                     if isempty(sortCom);    return; end
                     if isempty(com)
                         com = sortCom;
@@ -457,7 +457,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Backfit template maps warning');
                 if boxChecked;  guiOpts.showQuantWarning5 = false;   end
                 if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', c);
+                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
                     if isempty(sortCom);    return; end
                     if isempty(com)
                         com = sortCom;

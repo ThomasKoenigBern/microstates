@@ -9,7 +9,7 @@
 % 1. Identification of predominant microstate spatial maps on the level of
 % the individual datasets. This yields, for a chosen number N of microstate
 % classes, a set of N spatial maps. The sequence of these maps is initially
-% random. The function to do that is <a href="matlab:helpwin pop_FindMSTemplates">pop_FindMSTemplates</a>, or by calling
+% random. The function to do that is <a href="matlab:helpwin pop_FindMSMaps">pop_FindMSMaps</a>, or by calling
 % that function thru the EEGLAB Tools->Microstates->Identify Microstate
 % Maps menu.
 %
@@ -22,7 +22,7 @@
 % be used as a reference for the ordering of the individual microstate map
 % sets. 
 % To obtain such sets of grand mean microstate maps, use the function 
-% <a href="matlab:helpwin pop_CombMSTemplates">pop_CombMSTemplates</a>. This function creates a new dataset with the mean
+% <a href="matlab:helpwin pop_CombMSMaps">pop_CombMSMaps</a>. This function creates a new dataset with the mean
 % microstate maps across subjects that maximizes the amount of variance it
 % explains in the individual microstate maps. You can access this function
 % also thru the EEGLAB menu under Tools->Microstates->Average microstate 
@@ -30,7 +30,7 @@
 %
 % 3. You may eventually have further levels in your analysis, like you
 % want to compute a grand-grand average across group mean microstate maps.
-% You can do this by again using the function <a href="matlab:helpwin pop_CombMSTemplates">pop_CombMSTemplates</a>, or thru
+% You can do this by again using the function <a href="matlab:helpwin pop_CombMSMaps">pop_CombMSMaps</a>, or thru
 % the menu Tools->Microstates->Compute grand mean microstate maps across
 % means.
 %
@@ -54,7 +54,7 @@
 % obviously fit the individual data better, but there may be significant
 % and eventually systematic variance among the microstate templates among
 % subjects. So given you want to sort the individual templates, use the
-% function <a href="matlab:helpwin pop_SortMSTemplates">pop_SortMSTemplates</a> to sort individual or mean  microstate maps 
+% function <a href="matlab:helpwin pop_SortMSMaps">pop_SortMSMaps</a> to sort individual or mean  microstate maps 
 % based on a template of your choice. Thru the menu, these tools are
 % accessible under Tools->Microstates-> Sort... The plugin keeps track if,
 % and if yes, based on which information individual and mean microstate maps

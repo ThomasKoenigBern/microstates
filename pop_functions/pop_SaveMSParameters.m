@@ -1,7 +1,7 @@
 % pop_SaveMSParameters() Generates a structure array of temporal dynamics
 % parameters for all selected subjects. The structure array is stored in
 % the "MSStats" output and can also be saved to a csv, txt, xlsx, 4R, or
-% mat file. pop_FitMSTemplates() must be used before calling this function
+% mat file. pop_FitMSMaps() must be used before calling this function
 % to extract temporal parameters.
 % The structure array contains the following parameters:
 %   - TotalTime: total time in s for which valid microstate assignments
@@ -85,7 +85,7 @@
 %   "SelectedSets" (optional)
 %   -> Array of set indices of ALLEEG whose temporal parameters will be
 %   saved. Selected sets must contain temporal parameters in the "MSStats"
-%   field of "msinfo" (obtained from calling pop_FitMSTemplates). If sets
+%   field of "msinfo" (obtained from calling pop_FitMSMaps). If sets
 %   are not provided, a GUI will appear to choose sets.
 %
 % Key, Value inputs (optional):
@@ -173,7 +173,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
             error(['The following sets do not contain temporal parameters: %s. ' ...
-                'Use pop_FitMSTemplates() to extract temporal dynamics first.'], invalidSetsTxt);
+                'Use pop_FitMSMaps() to extract temporal dynamics first.'], invalidSetsTxt);
         end
     % Otherwise, prompt user to choose sets
     else

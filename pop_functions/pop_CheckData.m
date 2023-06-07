@@ -74,7 +74,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     ClustPar.GFPPeaks = 1;
     ClustPar.IgnorePolarity = 1;
     ClustPar.Normalize = 1;
-    SelectedEEG = pop_FindMSTemplates(AllEEG, SelectedSets, 'ClustPar', ClustPar);
+    SelectedEEG = pop_FindMSMaps(AllEEG, SelectedSets, 'ClustPar', ClustPar);
 
     %% Compute residuals
     nChan = [SelectedEEG.nbchan];

@@ -45,7 +45,7 @@ function com = pop_BootstrapMSNumber(AllEEG,SetToSort, IgnorePolarity, Learnings
     com = '';
     
 %    if numel(EEG) > 1
-%        errordlg2('pop_findMSTemplates() currently supports only a single EEG as input');
+%        errordlg2('pop_FindMSMaps() currently supports only a single EEG as input');
 %        return;
 %    end
     if nargin < 2 
@@ -116,10 +116,10 @@ function com = pop_BootstrapMSNumber(AllEEG,SetToSort, IgnorePolarity, Learnings
         idx = randperm(numel(SelectedSet));
         LearningSet = SelectedSet(idx(1:cutoff));
         TestSet     = SelectedSet(idx((cutoff+1):end));
-        eegout = pop_CombMSTemplates(AllEEG, LearningSet, 0, 0, [], IgnorePolarity);
+        eegout = pop_CombMSMaps(AllEEG, LearningSet, 0, 0, [], IgnorePolarity);
         eegout.msinfo = rmfield(eegout.msinfo,'children');
         
-        [~,SortedTestSet] = pop_SortMSTemplates(AllEEG,TestSet, false,eegout, IgnorePolarity);
+        [~,SortedTestSet] = pop_SortMSMaps(AllEEG,TestSet, false,eegout, IgnorePolarity);
         pidx = 1;
         for c = eegout.msinfo.ClustPar.MinClasses:eegout.msinfo.ClustPar.MaxClasses
             

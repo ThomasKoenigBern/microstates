@@ -414,7 +414,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             noSort = noPressed;
             if boxChecked;  guiOpts.showCompWarning1 = false;   end
             if yesPressed
-                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -440,7 +440,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning2 = false;   end
             if yesPressed
-                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -461,7 +461,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning3 = false;   end
             if yesPressed
-                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
+                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
                 if isempty(sortCom);    return; end
                 if isempty(com)
                     com = sortCom;
@@ -520,7 +520,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             noSort = noPressed;
             if boxChecked;  guiOpts.showCompWarning1 = false;  end
             if yesPressed
-                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
+                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
                 if isempty(sortCom);    return; end
                 if isempty(com)
@@ -548,7 +548,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning2 = false;  end
             if yesPressed
-                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
+                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
                 if isempty(sortCom);    return; end
                 if isempty(com)
@@ -570,7 +570,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
             if boxChecked;  guiOpts.showCompWarning3 = false;   end
             if yesPressed
-                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSTemplates(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
+                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
                 SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
                 if isempty(sortCom);    return; end
                 if isempty(com)

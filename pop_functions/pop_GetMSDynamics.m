@@ -2,7 +2,7 @@
 % dynamics of microstates over time. For each set chosen, a new dataset
 % will be generated with one data channel for each microstate map, whose
 % values over time are the activations of that microstate map over time.
-% pop_FitMSTemplates() must be used before calling this function to extract
+% pop_FitMSMaps() must be used before calling this function to extract
 % temporal parameters.
 %
 % Usage:
@@ -123,7 +123,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
             error(['The following sets do not contain temporal parameters: %s. ' ...
-                'Use pop_FitMSTemplates() to extract temporal dynamics first.'], invalidSetsTxt);
+                'Use pop_FitMSMaps() to extract temporal dynamics first.'], invalidSetsTxt);
         end
     % Otherwise, prompt user to choose sets
     else

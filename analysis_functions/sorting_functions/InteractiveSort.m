@@ -139,7 +139,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
                     if ~isempty(childIdx)
                         IgnorePolarity = AllEEG(SelectedSet).msinfo.ClustPar.IgnorePolarity;
                         Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
-                        [~, childEEG, childIdx, sortCom] = pop_SortMSTemplates(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
+                        [~, childEEG, childIdx, sortCom] = pop_SortMSMaps(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
                             'IgnorePolarity', IgnorePolarity, 'Classes', Classes);
                     else
                         disp('Could not find dependent sets for resorting');
@@ -545,7 +545,7 @@ function Sort(~,~,fh,AllEEG)
         end
         NewLabels = NewLabels(~cellfun(@isempty, NewLabels));
 
-        [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'TemplateSet', 'manual', 'SortOrder', SortOrder, 'NewLabels', NewLabels, 'Classes', nClasses);
+        [~, EEGout, ~, com] = pop_SortMSMaps(AllEEG, ud.SelectedSet, 'TemplateSet', 'manual', 'SortOrder', SortOrder, 'NewLabels', NewLabels, 'Classes', nClasses);
     elseif templateSort
         IgnorePolarity = ud.IgnorePolarity.Value;
 
@@ -578,9 +578,9 @@ function Sort(~,~,fh,AllEEG)
         end
         
         if ~stepwise
-            [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'TemplateSet', TemplateSet, 'Classes', nClasses, 'TemplateClasses', TemplateClasses, 'IgnorePolarity', IgnorePolarity);
+            [~, EEGout, ~, com] = pop_SortMSMaps(AllEEG, ud.SelectedSet, 'TemplateSet', TemplateSet, 'Classes', nClasses, 'TemplateClasses', TemplateClasses, 'IgnorePolarity', IgnorePolarity);
         else
-            [~, EEGout, ~, com] = pop_SortMSTemplates(AllEEG, ud.SelectedSet, 'TemplateSet', 'own', 'TemplateClasses', TemplateClasses, 'IgnorePolarity', IgnorePolarity, 'Stepwise', 1);
+            [~, EEGout, ~, com] = pop_SortMSMaps(AllEEG, ud.SelectedSet, 'TemplateSet', 'own', 'TemplateClasses', TemplateClasses, 'IgnorePolarity', IgnorePolarity, 'Stepwise', 1);
         end               
     end      
 
@@ -674,9 +674,9 @@ function CompareCallback(~, ~, fh, AllEEG)
     AllEEG(fh.UserData.SelectedSet).msinfo.MSMaps = fh.UserData.MSMaps;
     
     if isempty(fh.UserData.Children)
-        [EEGout, ~, com] = pop_CompareMSTemplates(AllEEG, 'IndividualSets', fh.UserData.SelectedSet);
+        [EEGout, ~, com] = pop_CompareMSMaps(AllEEG, 'IndividualSets', fh.UserData.SelectedSet);
     else
-        [EEGout, ~, com] = pop_CompareMSTemplates(AllEEG, 'MeanSets', fh.UserData.SelectedSet);
+        [EEGout, ~, com] = pop_CompareMSMaps(AllEEG, 'MeanSets', fh.UserData.SelectedSet);
     end
 
     % If the command contains sorting function calls, we should replot the maps

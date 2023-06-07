@@ -11,9 +11,9 @@
 %   Integrates the following subfunctions:
 %   --------------------------------------
 %   Computational tools:
-%   <a href="matlab:helpwin pop_FindMSTemplates">pop_FindMSTemplates</a>  (identify microstate cluster maps)
-%   <a href="matlab:helpwin pop_CombMSTemplates">pop_CombMSTemplates</a>  (average microstate cluster maps)
-%   <a href="matlab:helpwin pop_SortMSTemplates">pop_SortMSTemplates</a>  (sorts microstate cluster maps based on a mean)
+%   <a href="matlab:helpwin pop_FindMSMaps">pop_FindMSMaps</a>  (identify microstate cluster maps)
+%   <a href="matlab:helpwin pop_CombMSMaps">pop_CombMSMaps</a>  (average microstate cluster maps)
+%   <a href="matlab:helpwin pop_SortMSMaps">pop_SortMSMaps</a>  (sorts microstate cluster maps based on a mean)
 %   <a href="matlab:helpwin pop_QuantMSTemplates">pop_QuantMSTemplates</a> (quantifies the presence of microstates in EEG data)
 %
 %   Visualisations:

@@ -2,7 +2,7 @@
 % parameters for all included datasets. If one dataset is selected,
 % individual parameters will be displayed as bar graphs, otherwise the
 % distribution of parameters across datasets will be displayed as swarm
-% charts. pop_FitMSTemplates() must be used before calling this function
+% charts. pop_FitMSMaps() must be used before calling this function
 % to extract temporal parameters.
 %
 % Usage:
@@ -41,7 +41,7 @@
 %   "SelectedSets" (optional)
 %   -> Array of set indices of ALLEEG for which temporal parameters will be
 %   plotted. Selected sets must contain temporal parameters in the "MSStats"
-%   field of "msinfo" (obtained from calling pop_FitMSTemplates). If sets
+%   field of "msinfo" (obtained from calling pop_FitMSMaps). If sets
 %   are not provided, a GUI will appear to choose sets.
 %
 % Key, Value inputs (optional):
@@ -125,7 +125,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
             error(['The following sets do not contain temporal parameters: %s. ' ...
-                'Use pop_FitMSTemplates() to extract temporal dynamics first.'], invalidSetsTxt);
+                'Use pop_FitMSMaps() to extract temporal dynamics first.'], invalidSetsTxt);
         end
     % Otherwise, prompt user to choose sets
     else
