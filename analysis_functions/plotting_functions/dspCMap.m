@@ -473,7 +473,11 @@ end
 
 
 hold(PlotAxis,'off');
-set(PlotAxis,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[],'Visible','off','XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'DataAspectRatio',[1 1 1]); %,'Color',get(get(PlotAxis,'Parent'),'Color'));
+if vararginmatch(varargin,'Background')
+    set(PlotAxis,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[],'Visible','on','XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'DataAspectRatio',[1 1 1]); %,'Color',get(get(PlotAxis,'Parent'),'Color'));
+else
+    set(PlotAxis,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[],'Visible','off','XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'DataAspectRatio',[1 1 1]); %,'Color',get(get(PlotAxis,'Parent'),'Color'));
+end
 freezeColors(PlotAxis);
 
 tit = get(PlotAxis,'Title');
