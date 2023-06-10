@@ -300,7 +300,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Identify individual template maps');
+             'title','Identify microstate maps per dataset');
 
         if isempty(res); return; end
 

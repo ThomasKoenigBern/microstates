@@ -41,7 +41,7 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
     AvailableMeanSets = find(HasMS & HasChildren & ~HasDyn & ~isEmpty & ~isPublished);
     
     if isempty(AvailableSets)
-        errorMessage = ['No valid sets found. Use Tools->Identify individual template maps ' ...
+        errorMessage = ['No valid sets found. Use Tools->Identify microstate maps per dataset ' ...
             'before using other functions.'];
         if isempty(SelectedSets)
             errordlg2(errorMessage, 'Compare topographical similarities error');

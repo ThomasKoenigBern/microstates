@@ -89,7 +89,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit template maps to EEG to extract temporal dynamics.'], 'Plot temporal dynamics error');
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'], 'Plot temporal dynamics error');
         return;
     end
 

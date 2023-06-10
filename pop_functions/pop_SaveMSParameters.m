@@ -161,7 +161,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit template maps to EEG to extract temporal dynamics first.'], 'Export temporal parameters error');
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics first.'], 'Export temporal parameters error');
         return;
     end
 
@@ -290,7 +290,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
         labels = horzcat(labels{:});
         if numel(unique(labels)) > nClasses
-            errorMessage = 'Template map labels differ across datasets.';
+            errorMessage = 'Microstate map labels differ across datasets.';
             if ~isempty(p.UsingDefaults)
                 errordlg2(errorMessage, 'Export temporal parameters error');
             else

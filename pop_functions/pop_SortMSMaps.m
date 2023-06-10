@@ -497,7 +497,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Edit & sort template maps');
+             'title','Edit & sort microstate maps');
 
         if isempty(res); return; end
         
@@ -678,7 +678,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         if TemplateMaxClasses < TemplateMinClasses
             errorMessage = 'No overlap in microstate classes found between all selected sets for selecting a template solution.';
             if any(matches({'SelectedSets', 'TemplateSet'}, p.UsingDefaults))
-                errordlg2(errorMessage, 'Edit & sort template maps error');
+                errordlg2(errorMessage, 'Edit & sort microstate maps error');
                 return;
             else
                 error(errorMessage);
@@ -754,7 +754,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         end
         
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Edit & sort template maps');
+             'title','Edit & sort microstate maps');
 
         if isempty(res); return; end
 
@@ -799,7 +799,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                     TemplateClasses);
             end
             if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                errordlg2(errorMessage, 'Edit & sort template maps error');
+                errordlg2(errorMessage, 'Edit & sort microstate maps error');
                 return;
             else
                 error(errorMessage);
@@ -826,7 +826,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                 classTxt = classTxt(1:end-2);
                 errorMessage = sprintf('The following cluster solutions of the template set %s are unsorted: %s. Please sort before using as template solutions.', TemplateName, classTxt);                    
                 if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                    errordlg2(errorMessage, 'Edit & sort template maps error');
+                    errordlg2(errorMessage, 'Edit & sort microstate maps error');
                     return;
                 else
                     error(errorMessage);
@@ -837,7 +837,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
             if matches('none', SortMode)
                 errorMessage = sprintf('Selected template solution %i of template set %s is unsorted. Please sort before using as a template solution.', TemplateClasses, TemplateName);
                 if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                    errordlg2(errorMessage, 'Edit & sort template maps error');
+                    errordlg2(errorMessage, 'Edit & sort microstate maps error');
                     return;
                 else
                     error(errorMessage);

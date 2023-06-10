@@ -111,7 +111,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit template maps to EEG to extract temporal dynamics.'], 'Obtain microstate activation time series error');
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'], 'Obtain microstate activation time series error');
         return;
     end
 

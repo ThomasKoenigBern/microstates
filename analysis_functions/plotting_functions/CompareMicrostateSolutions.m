@@ -1,7 +1,7 @@
 function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename)
 
     CompFigHandle = figure('Units', 'normalized', 'Position', [0.2 0.1 0.6 0.8], ...
-        'Name', 'Compare template maps', 'NumberTitle', 'off', 'MenuBar', 'none', 'ToolBar', 'none');
+        'Name', 'Compare microstate maps', 'NumberTitle', 'off', 'MenuBar', 'none', 'ToolBar', 'none');
 
     CompFigHandle.UserData.SelectedEEG = SelectedEEG;
     CompFigHandle.UserData.nClasses = nClasses;

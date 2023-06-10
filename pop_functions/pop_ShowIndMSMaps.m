@@ -138,7 +138,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Plot template maps error');
+            errordlg2('You must select at least one set of microstate maps','Plot microstate maps error');
             return;
         end
     end
