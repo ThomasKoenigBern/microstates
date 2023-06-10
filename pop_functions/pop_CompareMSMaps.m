@@ -214,7 +214,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
     AvailableSets = [AvailableIndSets, AvailableMeanSets, AvailablePublishedSets];
 
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for comparing found.'], 'Compare microstate maps error');
+        errordlg2('No valid sets for comparing found.', 'Compare microstate maps error');
         return;
     end
 
@@ -344,7 +344,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
         end
 
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Compare template maps');
+             'title','Compare microstate maps');
 
         if isempty(res); return; end
 
@@ -378,8 +378,6 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
                 PublishedSetIndices = sortOrder(outstruct.PublishedSets(outstruct.PublishedSets ~= 1) - 1);
             end
         end
-
-        SelectedSets = [IndividualSets(:); MeanSets(:); PublishedSetIndices(:)];
     elseif numel(SelectedSets) == 1
         compWithin = 1;
     else
@@ -399,93 +397,77 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
         SelectedEEG = pop_newset(SelectedEEG, publishedSets, numel(SelectedEEG), 'gui', 'off');
     end
 
-    %% If comparing within a dataset, check for consistent sorting across solutions
+    %% If comparing within a dataset, check for consistent labels across solutions
     if compWithin
+        showDlg = all(matches({'IndividualSets', 'MeanSets'}, p.UsingDefaults));
         MinClasses = SelectedEEG.msinfo.ClustPar.MinClasses;
         MaxClasses = SelectedEEG.msinfo.ClustPar.MaxClasses;
+        classes = MinClasses:MaxClasses;
 
         % First check if any solutions remain unsorted
-        noSort = false;
-        SortModes = {SelectedEEG.msinfo.MSMaps(MinClasses:MaxClasses).SortMode};
-        if any(strcmp(SortModes, 'none')) && guiOpts.showCompWarning1
-            warningMessage = ['Some cluster solutions remain unsorted. Would you like to sort' ...
-                ' all solutions according to the same template before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
-            noSort = noPressed;
-            if boxChecked;  guiOpts.showCompWarning1 = false;   end
-            if yesPressed
-                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
-                if isempty(sortCom);    return; end
-                if isempty(com)
-                    com = sortCom;
-                else
-                    com = [com newline sortCom];
-                end
-            elseif ~noPressed
+        SortModes = {SelectedEEG.msinfo.MSMaps(classes).SortMode};
+        if any(strcmp(SortModes, 'none'))           
+            classesTxt = sprintf('%i, ', classes(strcmp(SortModes, 'none')));
+            classesTxt = classesTxt(1:end-2);
+            errorMessage = ['The following cluster solutions remain unsorted: ' classesTxt '. Please sort all ' ...
+                'cluster solutions before proceeding.'];
+            if showDlg
+                errordlg2(errorMessage, 'Compare microstate maps error');
                 return;
-            end
-        end
-
-        % Check if there is inconsistency in sorting across solutions
-        SortedBy = {SelectedEEG.msinfo.MSMaps(MinClasses:MaxClasses).SortedBy};
-        emptyIdx = cellfun(@isempty, SortedBy);
-        SortedBy(emptyIdx) = [];
-        if any(contains(SortedBy, '->'))
-            multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
-            SortedBy(contains(SortedBy, '->')) = multiSortedBys;
-        end
-        if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showCompWarning2
-            warningMessage = ['Sorting information differs across cluster solutions. Would you like ' ...
-                'to sort all solutions according to the same template before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
-            if boxChecked;  guiOpts.showCompWarning2 = false;   end
-            if yesPressed
-                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
-                if isempty(sortCom);    return; end
-                if isempty(com)
-                    com = sortCom;
-                else
-                    com = [com newline sortCom];
-                end
-            elseif ~noPressed
-                return;
+            else
+                error(errorMessage);
             end
         end
 
         % Check for unassigned labels
-        Colors = cell2mat({SelectedEEG.msinfo.MSMaps(MinClasses:MaxClasses).ColorMap}');
-        if ~noSort && any(arrayfun(@(x) all(Colors(x,:) == [.75 .75 .75]), 1:size(Colors,1))) && guiOpts.showCompWarning3
-            warningMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, sets must either be ' ...
-                'manually sorted and assigned new labels, or sorted by a template set with equal or greater number of maps. Would you like ' ...
-                'to sort before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
-            if boxChecked;  guiOpts.showCompWarning3 = false;   end
-            if yesPressed
-                [AllEEG, SelectedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', MinClasses:MaxClasses);
-                if isempty(sortCom);    return; end
-                if isempty(com)
-                    com = sortCom;
-                else
-                    com = [com newline sortCom];
-                end
-            elseif ~noPressed
+        Colors = {SelectedEEG.msinfo.MSMaps(classes).ColorMap};
+        unlabeled = cellfun(@(x) any(arrayfun(@(y) all(x(y,:) == [.75 .75 .75]), 1:size(x,1))), Colors);
+        if any(unlabeled)
+            classesTxt = sprintf('%i, ', classes(unlabeled));
+            classesTxt = classesTxt(1:end-2);
+            errorMessage = ['The following cluster solutions contains maps without assigned labels: ' classesTxt ...
+                '. For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'];
+            if showDlg
+                errordlg2(errorMessage, 'Compare microstate maps error');
                 return;
+            else
+                error(errorMessage);
             end
         end
 
-    end
+        % Check for consistent labels
+%         labels = {SelectedEEG.msinfo.MSMaps(classes).Labels};
+%         labels = horzcat(labels{:});
+%         if numel(unique(labels)) > MaxClasses && guiOpts.showCompWarning1
+%             if showDlg
+%                 [yesPressed, ~, boxChecked] = warningDialog(['Map labels are inconsistent across cluster solutions.' ...
+%                     ' Are you sure you would like to proceed?'], 'Compare microstate maps warning');
+%                 if boxChecked;  guiOpts.showCompWarning1 = false;   end
+%                 if ~yesPressed; return;                             end
+%             else
+%                 warning('Map labels are inconsistent across cluster solutions.');
+%             end
+%         end
 
-    %% If comparing across datasets, ask user for number of classes and check for consistent sorting
-    if ~compWithin
+    %% If comparing across datasets, ask user for number of classes and check for consistent labels
+    else
+        showDlg = all(matches({'IndividualSets', 'MeanSets', 'PublishedSets'}, p.UsingDefaults));
+        setnames = {SelectedEEG(nonpublishedSets).setname};
+
         % Check for overlap in cluster solutions
         AllMinClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MinClasses, 1:numel(SelectedEEG));
         AllMaxClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MaxClasses, 1:numel(SelectedEEG));
         MinClasses = max(AllMinClasses);
         MaxClasses = min(AllMaxClasses);
         if MaxClasses < MinClasses
-            errorMessage = ['No overlap in microstate classes found between all selected sets.'];
-            errordlg2(errorMessage, 'Compare microstate maps error');
-            return;
+            errorMessage = 'No overlap in cluster solutions found between all selected sets.';
+            if showDlg
+                errordlg2(errorMessage, 'Compare microstate maps error');
+                return;
+            else
+                error(errorMessage);
+            end
         end
 
         if matches('Classes', p.UsingDefaults)
@@ -496,92 +478,65 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
                 { {'Style', 'text', 'string', 'Select cluster solution to compare'} ...
                   {'Style', 'listbox', 'string', classChoices, 'Tag', 'nClasses'}}, ...
-                  'title', 'Compare template maps');
+                  'title', 'Compare microstate maps');
             
             if isempty(res); return; end
     
             nClasses = classes(outstruct.nClasses);
         else
             if nClasses > MaxClasses || nClasses < MinClasses
-                errorMessage = sprintf(['Not all selected sets to compare contain a %i cluster solution. ' ...
+                error(['Not all selected sets to compare contain a %i cluster solution. ' ...
                     'Valid class numbers are in the range %i-%i.'], nClasses, MinClasses, MaxClasses);
-                errordlg2(errorMessage, 'Compare microstate maps error');
-                return;
             end
         end
 
         % Check if any datasets remain unsorted
-        noSort = false;
         SortModes = arrayfun(@(x) {SelectedEEG(x).msinfo.MSMaps(nClasses).SortMode}', nonpublishedSets);
-        if any(strcmp(SortModes, 'none')) && guiOpts.showCompWarning1
-            warningMessage = ['Some datasets remain unsorted. Would you like to ' ...
-                'sort all sets according to the same template before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
-            noSort = noPressed;
-            if boxChecked;  guiOpts.showCompWarning1 = false;  end
-            if yesPressed
-                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
-                SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
-                if isempty(sortCom);    return; end
-                if isempty(com)
-                    com = sortCom;
-                else
-                    com = [com newline sortCom];
-                end
-            elseif ~noPressed
+        if any(strcmp(SortModes, 'none'))            
+            unsortedSets = setnames(strcmp(SortModes, 'none'));
+            if showDlg                
+                errorDialog(sprintf('The %i cluster solutions of the following sets remain unsorted. Please sort all sets before proceeding.', nClasses), ...
+                    'Compare microstate maps error', unsortedSets);
                 return;
-            end
-        end
-
-        % Check if there is inconsistency in sorting across datasets
-        SortedBy = arrayfun(@(x) {SelectedEEG(x).msinfo.MSMaps(nClasses).SortedBy}', nonpublishedSets);
-        emptyIdx = cellfun(@isempty, SortedBy);
-        SortedBy(emptyIdx) = [];
-        if any(contains(SortedBy, '->'))
-            multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
-            SortedBy(contains(SortedBy, '->')) = multiSortedBys;
-        end
-
-        if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showCompWarning2
-            warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
-                'sort all sets according to the same template before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
-            if boxChecked;  guiOpts.showCompWarning2 = false;  end
-            if yesPressed
-                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
-                SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
-                if isempty(sortCom);    return; end
-                if isempty(com)
-                    com = sortCom;
-                else
-                    com = [com newline sortCom];
-                end
-            elseif ~noPressed
-                return;
+            else
+                unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+                error(['The %i cluster solutions of the following sets remain unsorted: ' newline unsortedSetsTxt ...
+                    'Please sort all sets before proceeding.'], nClasses);
             end
         end
 
         % Check for unassigned labels
-        Colors = cell2mat(arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false)');
-        if ~noSort && any(arrayfun(@(x) all(Colors(x,:) == [.75 .75 .75]), 1:size(Colors,1))) && guiOpts.showCompWarning3
-            warningMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, sets must either be individually ' ...
-                'manually sorted and assigned new labels, or sorted by a template set with equal or greater number of maps. Would you like ' ...
-                'to sort before proceeding?'];
-            [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Compare microstate maps warning');
-            if boxChecked;  guiOpts.showCompWarning3 = false;   end
-            if yesPressed
-                [AllEEG, nonpublishedEEG, ~, sortCom] = pop_SortMSMaps(AllEEG, [IndividualSets MeanSets], 'Classes', nClasses);
-                SelectedEEG = eeg_store(SelectedEEG, nonpublishedEEG, nonpublishedSets);
-                if isempty(sortCom);    return; end
-                if isempty(com)
-                    com = sortCom;
-                else
-                    com = [com newline sortCom];
-                end
-            elseif ~noPressed
+        Colors = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).ColorMap, nonpublishedSets, 'UniformOutput', false);
+        unlabeled = cellfun(@(x) any(arrayfun(@(y) all(x(y,:) == [.75 .75 .75]), 1:size(x,1))), Colors);
+        if any(unlabeled)
+            unsortedSets = setnames(unlabeled);
+            if showDlg
+                errorDialog(sprintf(['The %i cluster solutions of the following sets contain maps without assigned labels. ' ...
+                    'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                    'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], nClasses), ...
+                    'Compare microstate maps error', unsortedSets);
                 return;
+            else
+                unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+                error(['The %i cluster solutions of the following sets contain maps without assigned labels: ' newline unsortedSetsTxt ...
+                    'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                    'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], nClasses);
             end
         end
+        
+        % Check for consistent labels
+%         labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).Labels, nonpublishedSets, 'UniformOutput', false);
+%         labels = horzcat(labels{:});
+%         if numel(unique(labels)) > MaxClasses && guiOpts.showCompWarning2
+%             if showDlg
+%                 [yesPressed, ~, boxChecked] = warningDialog(['Map labels are inconsistent across datasets.' ...
+%                     ' Are you sure you would like to proceed?'], 'Compare microstate maps warning');
+%                 if boxChecked;  guiOpts.showCompWarning2 = false;   end
+%                 if ~yesPressed; return;                             end
+%             else
+%                 warning('Map labels are inconsistent across datasets.');
+%             end
+%         end
 
     end
 
