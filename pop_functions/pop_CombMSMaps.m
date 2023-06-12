@@ -229,7 +229,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     % Add option to show maps when done if other elements are being shown
     if any(matches({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
         guiElements = [guiElements ...
-            {{ 'Style', 'checkbox', 'string', 'Show maps when done', 'tag', 'ShowMaps', 'Value', 1}}];
+            {{ 'Style', 'checkbox', 'string', 'Show maps when done', 'tag', 'ShowMaps'}}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
     end
@@ -319,22 +319,11 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
             MapsToSort(index,:,:) = L2NormDim(AllEEG(SelectedSets(index)).msinfo.MSMaps(n).Maps * LocalToGlobal',2);
         end
         % We sort out the stuff
-        [BestMeanMap,~,ExpVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
+        [BestMeanMap,~,ExpVar,SharedVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
 
-        % Compute mean shared variances
-        sharedVars = zeros(numel(SelectedSets), n);
-        for index = 1:length(SelectedSets)
-            for class = 1:n
-                var = MyCorr(squeeze(MapsToSort(index,class,:)), BestMeanMap(class, :)').^2;
-                if var < .5
-                    var = 1 - var;
-                end
-                sharedVars(index,class) = var;
-            end
-        end
         msinfo.MSMaps(n).Maps = BestMeanMap;
         msinfo.MSMaps(n).ExpVar = ExpVar;
-        msinfo.MSMaps(n).SharedVar = mean(sharedVars);        
+        msinfo.MSMaps(n).SharedVar = SharedVar;        
         msinfo.MSMaps(n).ColorMap = repmat([.75 .75 .75], n, 1);
         for j = 1:n
             msinfo.MSMaps(n).Labels{j} = sprintf('MS_%i.%i', n,j);
@@ -363,7 +352,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     EEGout.xmax        = EEGout.times(end);    
 
     %% Command string generation
-    com = sprintf('[ALLEEG, EEG] = pop_CombMSMaps(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
+    com = sprintf('[EEG, com] = pop_CombMSMaps(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
 
     %% Show maps
     if ShowMaps        
