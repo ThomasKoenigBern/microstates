@@ -177,13 +177,13 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
         % which kind of sets they would like to use
         else
             question = 'Which type of mean maps would you like to create?';
-            title = 'Identify group level or grand mean maps';
-            options = {'Mean maps across individuals', 'Grand mean maps across means'};
+            title = 'Identify mean microstate maps';
+            options = {'Mean maps across datasets', 'Grand mean maps across means'};
             selection = questionDialog(question, title, options);
             if isempty(selection) || strcmp(selection, 'Cancel')
                 return;
             else
-                pickIndSets = strcmp(selection, 'Mean maps across individuals');
+                pickIndSets = strcmp(selection, 'Mean maps across datasets');
             end
         end
 
