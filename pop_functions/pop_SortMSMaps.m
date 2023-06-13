@@ -295,8 +295,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_SortMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_SortMSMaps';
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -365,9 +364,8 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     % First make sure there are valid sets for sorting
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~isEmpty, ~HasDyn), HasMS), ~isPublishedSet));
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(HasMS & ~HasDyn & ~isPublished);
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
     AvailableIndSets = AvailableSets(~HasChildren);
     AvailableMeanSets = AvailableSets(HasChildren);
@@ -1064,10 +1062,6 @@ function stepwiseChanged(obj, ~)
     end
 end
 
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
-end
-
 function hasDyn = isDynamicsSet(in)
     hasDyn = false;
     % check if set includes msinfo
@@ -1113,6 +1107,17 @@ function Answer = DoesItHaveChildren(in)
         return
     else
         Answer = true;
+    end
+end
+
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
     end
 end
 

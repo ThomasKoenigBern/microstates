@@ -92,8 +92,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_ShowMSParameters';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_ShowMSParameters';
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));

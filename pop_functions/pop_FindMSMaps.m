@@ -151,8 +151,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_FindMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_FindMSMaps';
     p.StructExpand = false;         % do not expand ClustPar struct input into key, value args
     
     logClass = {'logical', 'numeric'};
@@ -175,11 +174,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
     HasTTFrDF   = arrayfun(@(x) DoesItHaveWavelets(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
     if DoTTFrD == true
-        AvailableSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet),HasTTFrDF));
+        AvailableSets = find(~isEmpty & ~HasChildren & ~HasDyn & ~isPublished & HasTTFrDF);
     else
-        AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet));
+        AvailableSets = find(~isEmpty & ~HasChildren & ~HasDyn & ~isPublished);
     end
     if isempty(AvailableSets)
         errordlg2(['No valid sets for clustering found.'], 'Identify microstates error');
@@ -562,6 +561,17 @@ function Answer = DoesItHaveChildren(in)
     end
 end
 
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
+    end
+end
+
 function Answer = DoesItHaveWavelets(in)
     Answer = false;
     if ~isfield(in,'TTFrD')
@@ -576,6 +586,4 @@ function Answer = DoesItHaveWavelets(in)
     else
         Answer = true;
     end
-    
-
 end

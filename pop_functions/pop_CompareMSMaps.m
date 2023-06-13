@@ -141,8 +141,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_CompareMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_CompareMSMaps';
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addParameter(p, 'IndividualSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', '<=', numel(AllEEG)}));
@@ -206,10 +205,9 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableIndSets = find(and(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), HasMS), ~isPublishedSet));
-    AvailableMeanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableIndSets = find(HasMS & ~HasChildren & ~HasDyn & ~isPublished);
+    AvailableMeanSets = find(HasMS & HasChildren & ~HasDyn & ~isPublished);    
     AvailablePublishedSets = 1:numel(MSTEMPLATE);
     AvailableSets = [AvailableIndSets, AvailableMeanSets, AvailablePublishedSets];
 
@@ -645,10 +643,6 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
 
 end
 
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
-end
-
 function hasDyn = isDynamicsSet(in)
     hasDyn = false;
     % check if set includes msinfo
@@ -694,5 +688,16 @@ function Answer = DoesItHaveChildren(in)
         return
     else
         Answer = true;
+    end
+end
+
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
     end
 end

@@ -140,8 +140,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_SaveMSParameters';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_SaveMSParameters';
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));

@@ -88,8 +88,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_GetMSDynamics';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_GetMSDynamics';
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -222,8 +221,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     
     %% Obtain dynamics    
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    meanSets = find(HasChildren & ~isEmpty);
+    meanSets = find(HasChildren);
     meanSetnames = {AllEEG(meanSets).setname};
     publishedSetnames = {MSTEMPLATE.setname};
     for s=1:length(SelectedSets)
@@ -359,10 +357,6 @@ function hasStats = hasStats(in)
     else
         hasStats = true;
     end
-end
-
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
 end
 
 function Answer = DoesItHaveChildren(in)

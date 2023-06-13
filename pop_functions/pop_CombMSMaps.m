@@ -87,8 +87,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_CombMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_CombMSMaps';
     
     logClass = {'logical', 'numeric'};
     logAttributes = {'binary', 'scalar'};
@@ -114,9 +113,8 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     % First make sure there are enough sets to combine (at least 2)
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
     isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~isEmpty, ~HasDyn), HasMS), ~isPublished));
+    AvailableSets = find(HasMS & ~HasDyn & ~isPublished);
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
     indSets = AvailableSets(~HasChildren);
     meanSets = AvailableSets(HasChildren);
@@ -360,10 +358,6 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
         com = [com newline ...
             sprintf('fig_h = pop_ShowIndMSMaps(EEG, 1, ''Classes'', %i:%i, ''Visible'', 1);', MinClasses, MaxClasses)];
     end
-end
-
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
 end
 
 function hasDyn = isDynamicsSet(in)

@@ -54,8 +54,7 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_RaguMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_RaguMSMaps';
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -68,14 +67,14 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
 
     %% SelectedSets validation
     % First make sure there are valid sets to export
-    % First make sure there are valid sets for sorting
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
+    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableSets = find(and(and(~isEmpty, ~HasDyn), HasMS));
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isPublished);
     
     if isempty(AvailableSets)
-        errordlg2('No valid sets for exporting found.', 'Export microstates to Ragu error');
+        errordlg2('No valid sets for topographic testing found.', 'Export microstates to Ragu error');
         return;
     end
 
@@ -206,10 +205,6 @@ function defineBetweenDesign(src, ~)
 
 end
 
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
-end
-
 function hasDyn = isDynamicsSet(in)
     hasDyn = false;
     % check if set includes msinfo
@@ -241,5 +236,29 @@ function hasMS = hasMicrostates(in)
         return;
     else
         hasMS = true;
+    end
+end
+
+function Answer = DoesItHaveChildren(in)
+    Answer = false;
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    if ~isfield(in.msinfo,'children')
+        return
+    else
+        Answer = true;
+    end
+end
+
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
     end
 end

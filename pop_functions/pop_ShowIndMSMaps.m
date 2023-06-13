@@ -78,8 +78,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_ShowIndMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_ShowIndMSMaps';
     p.StructExpand = false;
 
     addRequired(p, 'AllEEG',  @(x) validateattributes(x, {'struct'}, {}));
@@ -97,9 +96,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     % Make sure there are valid sets for editing/plotting
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    AvailableSets = find(and(and(~isEmpty, ~HasDyn), HasMS));
-    
+    AvailableSets = find(HasMS & ~HasDyn);    
     if isempty(AvailableSets)
         errordlg2('No valid sets for plotting found.', 'Plot microstate maps error');
         return;
@@ -274,10 +271,6 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     end    
     
     com = sprintf('fig_h = pop_ShowIndMSMaps(%s, %s, ''Classes'', %s, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), mat2str(Classes), Visible);
-end
-
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
 end
 
 function hasDyn = isDynamicsSet(in)
