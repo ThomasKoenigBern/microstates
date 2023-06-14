@@ -202,7 +202,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     %% TemplateSet validation
     % If the user has provided a template set number or name, check its
     % validity
-    meanSets = find(and(and(and(HasChildren, ~HasDyn), ~isEmpty), HasMS));
+    meanSets = find(HasChildren & ~HasDyn);
     meanSetnames = {AllEEG(meanSets).setname};
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
     TemplateIndex = 1;
