@@ -73,7 +73,7 @@ function res = QuantifyMSDynamics(MSClass, gfp, SamplingRate, TemplateInfo, IndG
 
             Hits = find(Class == c1);
             sumDuration(c1) = sumDuration(c1) + sum(Duration(Hits));
-            durations{c1} = [durations{c1} Duration(Hits)];
+            durations{c1}   = [durations{c1} Duration(Hits)];
             numPoints(c1)   = numPoints(c1) + sum(MSClass(:,e) == c1);
             sumGFP(c1)      = sumGFP(c1) + sum(gfp(1, MSClass(:,e) == c1, e));
             gfps{c1}        = [gfps{c1} gfp(1, MSClass(:,e) == c1, e)];
@@ -117,11 +117,14 @@ function res = QuantifyMSDynamics(MSClass, gfp, SamplingRate, TemplateInfo, IndG
     res.DeltaTM = ((orgTM - expTM)*100)./expTM;
     res.DeltaTM(isnan(res.DeltaTM)) = 0;    
 
+    % Duration standard deviation
+    res.DurationStdDev = cellfun(@std, durations);
+
     % Add distribution data and individual labels
-    res.DurationDist = durations;
-    res.GFPDist = gfps;
-    res.MSClass = MSClass;
-    res.GFP = squeeze(gfp);
+    res.DurationDist    = durations;
+    res.GFPDist         = gfps;
+    res.MSClass         = MSClass;
+    res.GFP             = squeeze(gfp);
 
     % Set template and sorting information
     res.FittingTemplate = TemplateInfo.name;
