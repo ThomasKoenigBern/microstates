@@ -319,7 +319,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     Stepwise = p.Results.Stepwise;
 
     if isnumeric(TemplateSet)
-        validateattributes(TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, funcName, 'TemplateSet');
+        validateattributes(TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, 'pop_SortMSMaps', 'TemplateSet');
     else
         validateattributes(TemplateSet, {'char', 'string'}, {'scalartext'});
     end
@@ -407,7 +407,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         ud.defaultSets = defaultSets;
         if isempty(defaultSets);    defaultSets = 1;    end
 
-        setOptions = {'Individual and mean sets', 'Only individual sets', 'Only mean sets'};
+        setOptions = {'Individual datasets and mean sets', 'Only individual datasets', 'Only mean sets'};
 
         guiElements = [guiElements, ....
                     {{ 'Style', 'text', 'string', 'Choose sets for sorting', 'FontWeight', 'bold'}} ...
@@ -417,7 +417,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                     {{ 'Style', 'popupmenu', 'string', setOptions, 'Callback', @displayedSetsChanged, 'Tag', 'DisplayedSets'}} ...
                     {{ 'Style', 'text', 'string', ''}} ...
                     {{ 'Style', 'listbox' , 'string', ud.AvailableSetnames, 'Min', 0, 'Max', 1,'Value', defaultSets(1), 'tag','SelectedSets', 'UserData', ud}}];
-        guiGeom  = [guiGeom  1 1 1 [1 1] 1 1];
+        guiGeom  = [guiGeom  1 1 1 [4 6] 1 1];
         guiGeomV = [guiGeomV  1 1 1 1 1 4];
     end
 
