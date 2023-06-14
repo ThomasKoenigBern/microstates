@@ -31,17 +31,20 @@
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
 function TheEEG = eeg_RejectBABadIntervals(TheEEG)
+    
     regions = [];
     Epochs  = [];
     for i = 1:numel(TheEEG.event)
         if strcmp(TheEEG.event(i).code,'Bad Interval')
-            Epochs  = [Epochs TheEEG.event(i).epoch];
+            if isfield(TheEEG.event(i),'epoch');
+                Epochs  = [Epochs TheEEG.event(i).epoch];
+            end
             regions = [regions; TheEEG.event(i).latency TheEEG.event(i).latency + TheEEG.urevent(i).duration - 1];
         end
     end
     
     [~,nf,ne] = size(TheEEG.data);
-    Epochs
+
     if isempty(regions)
         return
     end
@@ -53,7 +56,6 @@ function TheEEG = eeg_RejectBABadIntervals(TheEEG)
         EpochsToReject(unique(Epochs)) = true;
         TheEEG = pop_rejepoch(TheEEG,EpochsToReject,0);
     end
-
 end
     
 
