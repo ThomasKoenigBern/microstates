@@ -117,8 +117,9 @@ function res = QuantifyMSDynamics(MSClass, gfp, SamplingRate, TemplateInfo, IndG
     res.DeltaTM = ((orgTM - expTM)*100)./expTM;
     res.DeltaTM(isnan(res.DeltaTM)) = 0;    
 
-    % Duration standard deviation
+    % Duration and GFP standard deviation
     res.DurationStdDev = cellfun(@std, durations);
+    res.GFPStdDev      = cellfun(@std, gfps);
 
     % Add distribution data and individual labels
     res.DurationDist    = durations;
