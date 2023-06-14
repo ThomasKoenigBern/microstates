@@ -19,8 +19,8 @@
 % multiple datasets, pass in the indices or names of datasets to compare,
 % along with the number of classes to compare across sets.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1:5, 6,
-%       'Koenig2002', 'Classes', 4)
+%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1:5, 6, 'Koenig2002', 
+%       'Classes', 4)
 %
 % To generate the shared variance matrix for all microstate topographies of
 % the chosen sets to compare without displaying the GUI, use the "Filename"
@@ -131,22 +131,19 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
     global EEG;
     global CURRENTSET;
     global MSTEMPLATE;
-    global guiOpts;
     EEGout = EEG;
     CurrentSet = CURRENTSET;
 
     guiElements = {};
-    guiGeom = {};
-    guiGeomV = [];
 
     %% Parse inputs and perform initial validation
     p = inputParser;
     p.FunctionName = 'pop_CompareMSMaps';
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
-    addParameter(p, 'IndividualSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', '<=', numel(AllEEG)}));
-    addParameter(p, 'MeanSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
-    addParameter(p, 'PublishedSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
+    addOptional(p, 'IndividualSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', '<=', numel(AllEEG)}));
+    addOptional(p, 'MeanSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
+    addOptional(p, 'PublishedSets', [], @(x) validateattributes(x, {'char', 'string', 'cell', 'numeric'}, {}));
     addParameter(p, 'Classes', []);
     addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
     addParameter(p, 'gui', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
@@ -166,7 +163,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
 
     if ~isempty(MeanSets)
         if isnumeric(MeanSets)
-            validateattributes(MeanSets, {'numeric'}, {'integer', 'vector', 'positive', '<=', numel(AllEEG)}, funcName, 'MeanSets');
+            validateattributes(MeanSets, {'numeric'}, {'integer', 'vector', 'positive', '<=', numel(AllEEG)}, 'pop_CompareMSMaps', 'MeanSets');
         else
             MeanSets = convertStringsToChars(MeanSets);
             if isa(MeanSets, 'char')
@@ -174,11 +171,10 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             end
             invalidSets = ~cellfun(@(x) ischar(x) || isstring(x), MeanSets);
             if any(invalidSets)
-                invalidSetsTxt = sprintf('%i, ', find(inValidSets));
-                invalidSetsTxt(end) = [];
-                errorMessage = ['The following elements of MeanSets are invalid: ' invalidSetsTxt ...
-                    '. Expected all elements to be strings or chars.'];
-                errordlg2(errorMessage, 'Compare microstate maps error');
+                invalidSetsTxt = sprintf('%i, ', find(invalidSets));
+                invalidSetsTxt = invalidSetsTxt(1:end-2);
+                error(['The following elements of MeanSets are invalid: ' invalidSetsTxt ...
+                    '. Expected all elements to be strings or chars.']);
             end
         end
     end
@@ -193,9 +189,8 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
         if any(invalidSets)
             invalidSetsTxt = sprintf('%i, ', find(inValidSets));
             invalidSetsTxt(end) = [];
-            errorMessage = ['The following elements of PublishedSets are invalid: ' invalidSetsTxt ...
-                '. Expected all elements to be strings or chars.'];
-            errordlg2(errorMessage, 'Compare microstate maps error');
+            error(['The following elements of PublishedSets are invalid: ' invalidSetsTxt ...
+                '. Expected all elements to be strings or chars.']);
         end
     end
 
@@ -212,8 +207,14 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
     AvailableSets = [AvailableIndSets, AvailableMeanSets, AvailablePublishedSets];
 
     if isempty(AvailableSets)
-        errordlg2('No valid sets for comparing found.', 'Compare microstate maps error');
-        return;
+        errorMessage = ['No valid sets found for comparing maps. Use ' ...
+            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        if all(matches({'IndividualSets','MeanSets','PublishedSets'}, p.UsingDefaults))
+            errorDialog(errorMessage, 'Compare microstate maps error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % Validate individual sets
@@ -223,11 +224,9 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', IndividualSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following individual sets are invalid: ' invalidSetsTxt ...
+            error(['The following individual sets are invalid: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
-                'or sets without microstate maps.'];
-            errordlg2(errorMessage, 'Compare microstate maps error');
-            return;
+                'or sets without microstate maps.']);
         end
     end
 
@@ -240,24 +239,19 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             if any(~isValid)
                 invalidSetsTxt = sprintf('%i, ', MeanSets(~isValid));
                 invalidSetsTxt = invalidSetsTxt(1:end-2);
-                errorMessage = ['The following mean sets are invalid: ' invalidSetsTxt ...
-                    '. Make sure you have not selected an individual set or a dynamics set.'];
-                errordlg2(errorMessage, 'Compare microstate maps error');
-                return;
+                error(['The following mean sets are invalid: ' invalidSetsTxt ...
+                    '. Make sure you have not selected an individual set or a dynamics set.']);
             end
         else
             isValid = ismember(MeanSets, MeanSetnames);
             if any(~isValid)
-                invalidSetsTxt = sprintf('%s, ', MeanSets(~isValid));
+                invalidSetsTxt = sprintf('%s, ', string(MeanSets(~isValid)));
                 invalidSetsTxt = invalidSetsTxt(1:end-2);
-                errorMessage = ['The following mean sets are invalid: ' invalidSetsTxt ...
-                    '. Make sure you have not selected an individual set or a dynamics set.'];
-                errordlg2(errorMessage, 'Compare microstate maps error');
-                return;
+                error(['The following mean sets could not be found: ' invalidSetsTxt]);
             else
                 % if MeanSets is a string array/cell array of char vectors,
                 % convert to integers
-                MeanSets = AvailableMeanSets(ismember(AvailableMeanSets, MeanSets));
+                MeanSets = AvailableMeanSets(ismember(MeanSetnames, MeanSets));
             end
         end
     end
@@ -268,12 +262,9 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
         PublishedSets = unique(PublishedSets, 'stable');
         isValid = ismember(PublishedSets, publishedSetnames);
         if any(~isValid)
-            invalidSetsTxt = sprintf('%s, ', PublishedSets(~isValid));
+            invalidSetsTxt = sprintf('%s, ', string(PublishedSets(~isValid)));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following published template sets could not be found: ' ...
-                invalidSetsTxt '.'];
-            errordlg2(errorMessage, 'Compare microstate maps error');
-            return;
+            error(['The following published template sets could not be found in the Templates folder: ' invalidSetsTxt '.']);
         else
             % get template set integers
             PublishedSetIndices = sortOrder(ismember(publishedSetnames, PublishedSets));
@@ -293,89 +284,80 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             return;
         else
             compWithin = strcmp(selection, 'Compare solutions within dataset');
-        end
-
-        if compWithin
-            guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Pick an individual or mean set for comparing solutions.'}} ...
-                {{ 'Style', 'text', 'string', 'Only one set can be chosen.'}}];
-            guiGeom = [guiGeom 1 1];
-            guiGeomV = [guiGeomV 1 1];
-            defaultIndSets = 1;
-            defaultMeanSets = 1;
-            maxSelect = 1;
-        else
-            guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Pick any number of sets for comparing maps.'}} ...
-                {{ 'Style', 'text', 'string', 'Sets can be chosen from any category.'}}];
-            guiGeom = [guiGeom 1 1];
-            guiGeomV = [guiGeomV 1 1];
-            maxSelect = 2;
-            defaultIndSets = 1 + find(ismember(AvailableIndSets, CurrentSet));
-            defaultMeanSets = 1 + find(ismember(AvailableMeanSets, CurrentSet));
-        end
+        end        
         
-        % Individual set selection
-        AvailableIndSetnames = ['None' {AllEEG(AvailableIndSets).setname}];
-        guiElements = [guiElements, ...
-            {{ 'Style', 'text', 'string', 'Individual sets'}} ...
-            {{ 'Style', 'listbox', 'string', AvailableIndSetnames, 'Value', defaultIndSets, 'Min', 0, 'Max', maxSelect, 'tag', 'IndividualSets'}}];
-        guiGeom = [guiGeom 1 1];
-        guiGeomV = [guiGeomV 1 4];
-
-        % Mean set selection
-        AvailableMeanSetnames = ['None' MeanSetnames];
-        guiElements = [guiElements, ...
-            {{ 'Style', 'text', 'string', 'Mean sets'}} ...
-            {{ 'Style', 'listbox', 'string', AvailableMeanSetnames, 'Value', defaultMeanSets, 'Min', 0, 'Max', maxSelect, 'tag', 'MeanSets'}}];
-        guiGeom = [guiGeom 1 1];
-        guiGeomV = [guiGeomV 1 4];
-
-        % Published set selection
-        if ~compWithin
-            AvailablePublishedSetnames = ['None', publishedDisplayNames];
-            guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Published sets'}} ...
-                {{ 'Style', 'listbox', 'string', AvailablePublishedSetnames, 'Min', 0, 'Max', maxSelect, 'tag', 'PublishedSets'}}];
-            guiGeom = [guiGeom 1 1];
-            guiGeomV = [guiGeomV 1 4];
-        end
-
-        [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Compare microstate maps');
-
-        if isempty(res); return; end
-
         if compWithin
-            if outstruct.IndividualSets == 1 && outstruct.MeanSets == 1
+            setOptions = {'Individual datasets and mean sets', 'Individual datasets', 'Mean sets'};
+
+            ud.IndSets = AvailableIndSets;
+            ud.MeanSets = AvailableMeanSets;
+            ud.AllSets = [AvailableIndSets AvailableMeanSets];
+            ud.IndSetnames = {AllEEG(AvailableIndSets).setname};
+            ud.MeanSetnames = {AllEEG(AvailableMeanSets).setname};
+            ud.AllSetnames = [ud.IndSetnames ud.MeanSetnames];
+            ud.CurrentSet = CurrentSet;
+            ud.prevValue = 1;
+
+            defaultSet = find(ismember(ud.AllSets, CurrentSet), 1);
+
+            [res,~,~,outstruct] = inputgui('geometry', {1 [4 6] 1 1} , 'geomvert', [1 1 1 4], 'uilist', {...
+                { 'Style', 'text', 'string', 'Pick an individual dataset or mean set for comparing cluster solutions.', 'Fontweight', 'bold'} ...
+                { 'Style', 'text', 'string', 'Display options'} ...
+                { 'Style', 'popupmenu', 'String', setOptions, 'Callback', @displayedSetsChanged, 'Tag', 'DisplayedSets'} ...
+                { 'Style', 'text', 'String', ''} ...
+                { 'Style', 'listbox', 'String', ud.AllSetnames, 'Value', defaultSet, 'Tag', 'SelectedSets', 'UserData', ud}}, ...
+                'title', 'Compare microstate maps');
+
+            if isempty(res); return; end            
+
+            if outstruct.DisplayedSets == 1
+                SelectedSets = AvailableSets(outstruct.SelectedSets);
+            elseif outstruct.DisplayedSets == 2
+                SelectedSets = AvailableIndSets(outstruct.SelectedSets);
+            else
+                SelectedSets = AvailableMeanSets(outstruct.SelectedSets);
+            end
+            
+            if numel(SelectedSets) < 1
                 errordlg2('You must select one set of microstate maps.', 'Compare microstate maps error');
                 return;
-            elseif outstruct.IndividualSets > 1 && outstruct.MeanSets > 1
-                errordlg2('You may only select one set of microstate maps.', 'Compare microstate maps error');
-                return;
-            elseif outstruct.IndividualSets > 1
-                IndividualSets = AvailableIndSets(outstruct.IndividualSets-1);
-            else
-                MeanSets = AvailableMeanSets(outstruct.MeanSets-1);
             end
+
         else
-            indSelected = ~(numel(outstruct.IndividualSets) == 1 && ismember(1, outstruct.IndividualSets));
-            meanSelected = ~(numel(outstruct.MeanSets) == 1 && ismember(1, outstruct.MeanSets));
-            publishedSelected = ~(numel(outstruct.PublishedSets) == 1 && ismember(1, outstruct.PublishedSets));
-            if ~indSelected && ~meanSelected && ~publishedSelected
+            defaultIndSets = find(ismember(AvailableIndSets, CurrentSet)) + 1;
+            defaultMeanSets = find(ismember(AvailableMeanSets, CurrentSet)) + 1;
+            [res,~,~,outstruct] = inputgui('geometry', [1 1 1 1 1 1 1 1], 'geomvert', [1 1 1 4 1 4 1 4], 'uilist', { ...
+                { 'Style', 'text', 'String', 'Pick any number of sets for comparing maps.', 'Fontweight', 'bold'} ...
+                { 'Style', 'text', 'String', 'Sets can be chosen from any category.'} ...
+                { 'Style', 'text', 'string', 'Individual datasets'} ...
+                { 'Style', 'listbox', 'String', ['None' {AllEEG(AvailableIndSets).setname}], 'Value', defaultIndSets, ...
+                    'Min', 0, 'Max' 2, 'Tag', 'IndividualSets' } ...
+                { 'Style', 'text', 'String', 'Mean sets'} ...
+                { 'Style', 'listbox', 'String', ['None' {AllEEG(AvailableMeanSets).setname}], 'Value', defaultMeanSets, ...
+                    'Min', 0, 'Max', 2, 'Tag', 'MeanSets'} ...
+                { 'Style', 'text', 'String', 'Published sets'} ...
+                { 'Style', 'listbox', 'String', ['None' publishedDisplayNames], 'Min', 0, 'Max', 2, 'Tag', 'PublishedSets'}}, ...
+                'title', 'Compare microstate maps');
+            
+            if isempty(res); return; end      
+            
+            indSelected = ~all(outstruct.IndividualSets == 1);
+            meanSelected = ~all(outstruct.MeanSets == 1);
+            pubSelected = ~all(outstruct.PublishedSets == 1);
+            if ~indSelected && ~meanSelected && ~pubSelected
                 errordlg2('You must select at least one set of microstate maps.', 'Compare microstate maps error');
                 return;
             end
             if indSelected
-                IndividualSets = AvailableIndSets(outstruct.IndividualSets(outstruct.IndividualSets ~= 1) - 1);
+                SelectedSets = AvailableIndSets(outstruct.IndividualSets(outstruct.IndividualSets ~= 1) - 1);
             end
             if meanSelected
-                MeanSets = AvailableMeanSets(outstruct.MeanSets(outstruct.MeanSets ~= 1) - 1);
+                SelectedSets = [SelectedSets AvailableMeanSets(outstruct.MeanSets(outstruct.MeanSets ~= 1) - 1)];                
             end
-            if publishedSelected
+            if pubSelected
                 PublishedSetIndices = sortOrder(outstruct.PublishedSets(outstruct.PublishedSets ~= 1) - 1);
             end
-        end
+        end        
     elseif numel(SelectedSets) == 1
         compWithin = 1;
     else
@@ -383,11 +365,8 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
     end
 
     SelectedEEG = [];
-    if ~isempty(IndividualSets)
-        SelectedEEG = pop_newset(SelectedEEG, AllEEG(IndividualSets), numel(SelectedEEG), 'gui', 'off');
-    end
-    if ~isempty(MeanSets)
-        SelectedEEG = pop_newset(SelectedEEG, AllEEG(MeanSets), numel(SelectedEEG), 'gui', 'off');
+    if ~isempty(SelectedSets)
+        SelectedEEG = pop_newset(SelectedEEG, AllEEG(SelectedSets), 0, 'gui', 'off');
     end
     nonpublishedSets = 1:numel(SelectedEEG);
     if ~isempty(PublishedSetIndices)
@@ -641,6 +620,44 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
         com = [com newline compCom];
     end
 
+end
+
+function displayedSetsChanged(obj, ~)
+    setBox = findobj(obj.Parent, 'Tag', 'SelectedSets');
+    if isempty(setBox); return; end
+    ud = setBox.UserData;  
+
+    if ud.prevValue == 1
+        prevSelection = ud.AllSets(setBox.Value);
+    elseif ud.prevValue == 2
+        prevSelection = ud.IndSets(setBox.Value);
+    elseif ud.prevValue == 3
+        prevSelection = ud.MeanSets(setBox.Value);
+    end
+    ud.prevValue = obj.Value;
+
+    if obj.Value == 1
+        setBox.String = [ud.IndSetnames ud.MeanSetnames];
+        prevSet = find(ismember(ud.AllSets, prevSelection));
+        defaultSet = find(ismember(ud.AllSets, ud.CurrentSet), 1);
+    elseif obj.Value == 2
+        setBox.String = ud.IndSetnames;
+        prevSet = find(ismember(ud.IndSets, prevSelection));
+        defaultSet = find(ismember(ud.IndSets, ud.CurrentSet), 1);
+    elseif obj.Value == 3
+        setBox.String = ud.MeanSetnames;
+        prevSet = find(ismember(ud.MeanSets, prevSelection));
+        defaultSet = find(ismember(ud.MeanSets, ud.CurrentSet), 1);
+    end
+
+    if isempty(prevSet)
+        if isempty(defaultSet);    defaultSet = 1;    end
+        setBox.Value = defaultSet;
+    else
+        setBox.Value = prevSet;
+    end
+
+    setBox.UserData = ud;
 end
 
 function hasDyn = isDynamicsSet(in)
