@@ -235,7 +235,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Identify group level or grand mean maps');
+             'title','Identify mean microstate maps');
 
         if isempty(res); return; end
 
