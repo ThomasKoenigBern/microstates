@@ -6,8 +6,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_CheckData';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_CheckData';
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -24,10 +23,10 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     AvailableSets = find(~isEmpty & ~HasChildren & ~HasDyn & ~isPublished);
     if isempty(AvailableSets)
         if matches('SelectedSets', p.UsingDefaults)
-            errordlg2('No valid sets found.', 'Data quality check error');
+            errordlg2('No valid sets found for data quality check.', 'Data quality check error');
             return;
         else
-            error('No valid sets found.');
+            error('No valid sets found for data quality check.');
         end
     end
 
@@ -40,7 +39,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
             invalidSetsTxt = invalidSetsTxt(1:end-2);
             errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, mean sets, or dynamics sets.'];
-            error(errorMessage, 'Data quality check error');
+            error(errorMessage);
         end
     % Otherwise, prompt user to select sets
     else

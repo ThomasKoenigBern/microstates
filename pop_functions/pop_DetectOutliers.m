@@ -10,8 +10,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_DetectOutliers';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_DetectOutliers';
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -27,9 +26,8 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isEmpty & ~isPublishedSet);
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isPublished);
     
     if isempty(AvailableSets)
         errordlg2('No valid sets for outlier detection found.', 'Outlier detection error');
@@ -588,10 +586,6 @@ function mapChanged(src, ~, fig_h)
     updatePlot(fig_h);
 end
 
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
-end
-
 function hasDyn = isDynamicsSet(in)
     hasDyn = false;
     % check if set includes msinfo
@@ -637,5 +631,16 @@ function Answer = DoesItHaveChildren(in)
         return
     else
         Answer = true;
+    end
+end
+
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
     end
 end

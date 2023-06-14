@@ -72,8 +72,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_ShowIndMSDyn';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_ShowIndMSDyn';
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -85,11 +84,13 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
     nClasses = p.Results.Classes;
 
     %% SelectedSets validation        
-    AvailableSets = find(arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG)));
+    HasStats = arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(HasStats & ~HasDyn);
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit template maps to EEG to extract temporal dynamics.'], 'Plot temporal dynamics error');
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'], 'Plot temporal dynamics error');
         return;
     end
 
@@ -192,8 +193,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
     %% Plot dynamics
     SelectedEEG = AllEEG(SelectedSets);
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    meanSets = find(HasChildren & ~isEmpty);
+    meanSets = find(HasChildren);
     meanSetnames = {AllEEG(meanSets).setname};
     publishedSetnames = {MSTEMPLATE.setname};
     for s=1:numel(SelectedSets)
@@ -420,10 +420,6 @@ function hasStats = hasStats(in)
     end
 end
 
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
-end
-
 function Answer = DoesItHaveChildren(in)
     Answer = false;
     if ~isfield(in,'msinfo')
@@ -434,6 +430,24 @@ function Answer = DoesItHaveChildren(in)
         return
     else
         Answer = true;
+    end
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end    
+    % check if set has FitPar
+    if ~isfield(in.msinfo, 'FitPar')
+        return;
+    end
+    % check if FitPar contains Rectify/Normalize parameters
+    if ~isfield(in.msinfo.FitPar, 'Rectify')
+        return;
+    else
+        hasDyn = true;
     end
 end
 

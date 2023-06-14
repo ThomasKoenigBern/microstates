@@ -294,7 +294,7 @@ function [yesPressed, selection] = questDlg(showOptions)
     yesPressed = false;
     selection = [];
 
-    questDlg = figure('Name', 'Edit & sort template maps', 'NumberTitle', 'off', ...
+    questDlg = figure('Name', 'Edit & sort microstate maps', 'NumberTitle', 'off', ...
         'Color', [.66 .76 1], 'WindowStyle', 'modal', 'MenuBar', 'none', 'ToolBar', 'none');
     questDlg.Position(3:4) = [500 190];
     questDlg.UserData.yesPressed = yesPressed;

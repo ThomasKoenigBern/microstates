@@ -295,8 +295,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_SortMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_SortMSMaps';
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -320,7 +319,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     Stepwise = p.Results.Stepwise;
 
     if isnumeric(TemplateSet)
-        validateattributes(TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, funcName, 'TemplateSet');
+        validateattributes(TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, 'pop_SortMSMaps', 'TemplateSet');
     else
         validateattributes(TemplateSet, {'char', 'string'}, {'scalartext'});
     end
@@ -365,9 +364,8 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     % First make sure there are valid sets for sorting
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~isEmpty, ~HasDyn), HasMS), ~isPublishedSet));
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    AvailableSets = find(HasMS & ~HasDyn & ~isPublished);
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
     AvailableIndSets = AvailableSets(~HasChildren);
     AvailableMeanSets = AvailableSets(HasChildren);
@@ -409,7 +407,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         ud.defaultSets = defaultSets;
         if isempty(defaultSets);    defaultSets = 1;    end
 
-        setOptions = {'Individual and mean sets', 'Only individual sets', 'Only mean sets'};
+        setOptions = {'Individual datasets and mean sets', 'Only individual datasets', 'Only mean sets'};
 
         guiElements = [guiElements, ....
                     {{ 'Style', 'text', 'string', 'Choose sets for sorting', 'FontWeight', 'bold'}} ...
@@ -419,7 +417,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                     {{ 'Style', 'popupmenu', 'string', setOptions, 'Callback', @displayedSetsChanged, 'Tag', 'DisplayedSets'}} ...
                     {{ 'Style', 'text', 'string', ''}} ...
                     {{ 'Style', 'listbox' , 'string', ud.AvailableSetnames, 'Min', 0, 'Max', 1,'Value', defaultSets(1), 'tag','SelectedSets', 'UserData', ud}}];
-        guiGeom  = [guiGeom  1 1 1 [1 1] 1 1];
+        guiGeom  = [guiGeom  1 1 1 [4 6] 1 1];
         guiGeomV = [guiGeomV  1 1 1 1 1 4];
     end
 
@@ -497,7 +495,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Edit & sort template maps');
+             'title','Edit & sort microstate maps');
 
         if isempty(res); return; end
         
@@ -678,7 +676,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         if TemplateMaxClasses < TemplateMinClasses
             errorMessage = 'No overlap in microstate classes found between all selected sets for selecting a template solution.';
             if any(matches({'SelectedSets', 'TemplateSet'}, p.UsingDefaults))
-                errordlg2(errorMessage, 'Edit & sort template maps error');
+                errordlg2(errorMessage, 'Edit & sort microstate maps error');
                 return;
             else
                 error(errorMessage);
@@ -754,7 +752,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         end
         
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Edit & sort template maps');
+             'title','Edit & sort microstate maps');
 
         if isempty(res); return; end
 
@@ -799,7 +797,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                     TemplateClasses);
             end
             if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                errordlg2(errorMessage, 'Edit & sort template maps error');
+                errordlg2(errorMessage, 'Edit & sort microstate maps error');
                 return;
             else
                 error(errorMessage);
@@ -826,7 +824,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                 classTxt = classTxt(1:end-2);
                 errorMessage = sprintf('The following cluster solutions of the template set %s are unsorted: %s. Please sort before using as template solutions.', TemplateName, classTxt);                    
                 if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                    errordlg2(errorMessage, 'Edit & sort template maps error');
+                    errordlg2(errorMessage, 'Edit & sort microstate maps error');
                     return;
                 else
                     error(errorMessage);
@@ -837,7 +835,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
             if matches('none', SortMode)
                 errorMessage = sprintf('Selected template solution %i of template set %s is unsorted. Please sort before using as a template solution.', TemplateClasses, TemplateName);
                 if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                    errordlg2(errorMessage, 'Edit & sort template maps error');
+                    errordlg2(errorMessage, 'Edit & sort microstate maps error');
                     return;
                 else
                     error(errorMessage);
@@ -1064,10 +1062,6 @@ function stepwiseChanged(obj, ~)
     end
 end
 
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
-end
-
 function hasDyn = isDynamicsSet(in)
     hasDyn = false;
     % check if set includes msinfo
@@ -1113,6 +1107,17 @@ function Answer = DoesItHaveChildren(in)
         return
     else
         Answer = true;
+    end
+end
+
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
     end
 end
 

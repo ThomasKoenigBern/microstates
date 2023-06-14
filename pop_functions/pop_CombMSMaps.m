@@ -87,8 +87,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_CombMSMaps';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_CombMSMaps';
     
     logClass = {'logical', 'numeric'};
     logAttributes = {'binary', 'scalar'};
@@ -114,9 +113,8 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     % First make sure there are enough sets to combine (at least 2)
     HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
-    isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
     isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~isEmpty, ~HasDyn), HasMS), ~isPublished));
+    AvailableSets = find(HasMS & ~HasDyn & ~isPublished);
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), AvailableSets);
     indSets = AvailableSets(~HasChildren);
     meanSets = AvailableSets(HasChildren);
@@ -177,13 +175,13 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
         % which kind of sets they would like to use
         else
             question = 'Which type of mean maps would you like to create?';
-            title = 'Identify group level or grand mean maps';
-            options = {'Mean maps across individuals', 'Grand mean maps across means'};
+            title = 'Identify mean microstate maps';
+            options = {'Mean maps across datasets', 'Grand mean maps across means'};
             selection = questionDialog(question, title, options);
             if isempty(selection) || strcmp(selection, 'Cancel')
                 return;
             else
-                pickIndSets = strcmp(selection, 'Mean maps across individuals');
+                pickIndSets = strcmp(selection, 'Mean maps across datasets');
             end
         end
 
@@ -229,7 +227,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     % Add option to show maps when done if other elements are being shown
     if any(matches({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
         guiElements = [guiElements ...
-            {{ 'Style', 'checkbox', 'string', 'Show maps when done', 'tag', 'ShowMaps', 'Value', 1}}];
+            {{ 'Style', 'checkbox', 'string', 'Show maps when done', 'tag', 'ShowMaps'}}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
     end
@@ -237,7 +235,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Identify group level or grand mean maps');
+             'title','Identify mean microstate maps');
 
         if isempty(res); return; end
 
@@ -319,22 +317,11 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
             MapsToSort(index,:,:) = L2NormDim(AllEEG(SelectedSets(index)).msinfo.MSMaps(n).Maps * LocalToGlobal',2);
         end
         % We sort out the stuff
-        [BestMeanMap,~,ExpVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
+        [BestMeanMap,~,ExpVar,SharedVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
 
-        % Compute mean shared variances
-        sharedVars = zeros(numel(SelectedSets), n);
-        for index = 1:length(SelectedSets)
-            for class = 1:n
-                var = MyCorr(squeeze(MapsToSort(index,class,:)), BestMeanMap(class, :)').^2;
-                if var < .5
-                    var = 1 - var;
-                end
-                sharedVars(index,class) = var;
-            end
-        end
         msinfo.MSMaps(n).Maps = BestMeanMap;
         msinfo.MSMaps(n).ExpVar = ExpVar;
-        msinfo.MSMaps(n).SharedVar = mean(sharedVars);        
+        msinfo.MSMaps(n).SharedVar = SharedVar;        
         msinfo.MSMaps(n).ColorMap = repmat([.75 .75 .75], n, 1);
         for j = 1:n
             msinfo.MSMaps(n).Labels{j} = sprintf('MS_%i.%i', n,j);
@@ -363,7 +350,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     EEGout.xmax        = EEGout.times(end);    
 
     %% Command string generation
-    com = sprintf('[ALLEEG, EEG] = pop_CombMSMaps(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
+    com = sprintf('[EEG, com] = pop_CombMSMaps(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
 
     %% Show maps
     if ShowMaps        
@@ -371,10 +358,6 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
         com = [com newline ...
             sprintf('fig_h = pop_ShowIndMSMaps(EEG, 1, ''Classes'', %i:%i, ''Visible'', 1);', MinClasses, MaxClasses)];
     end
-end
-
-function isEmpty = isEmptySet(in)
-    isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
 end
 
 function hasDyn = isDynamicsSet(in)

@@ -92,8 +92,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_ShowMSParameters';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_ShowMSParameters';
 
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
@@ -113,7 +112,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     
     if isempty(AvailableSets)
         errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit template maps to EEG to extract temporal dynamics.'], 'Plot temporal parameters error');
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'], 'Plot temporal parameters error');
         return;
     end
 
