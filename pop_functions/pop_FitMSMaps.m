@@ -153,7 +153,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     parse(p, AllEEG, varargin{:});
 
     if isnumeric(p.Results.TemplateSet)
-        validateattributes(p.Results.TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, funcName, 'TemplateSet');
+        validateattributes(p.Results.TemplateSet, {'numeric'}, {'integer', 'scalar', 'positive', '<=', numel(AllEEG)}, 'pop_FitMSMaps', 'TemplateSet');
     else
         validateattributes(p.Results.TemplateSet, {'char', 'string'}, {'scalartext'});
     end
@@ -366,7 +366,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
         PeakFit = ChosenTemplate.msinfo.ClustPar.GFPPeaks;
     end
 
-    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, funcName, PeakFit);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, 'pop_FitMSMaps', PeakFit);
     if isempty(FitPar);  return; end
 
     %% Check for consistent sorting across selected sets if own templates are being used
