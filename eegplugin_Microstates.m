@@ -76,7 +76,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     guiOpts.showTopoWarning1 = true;
 
     addpath(genpath(fileparts(which('eegplugin_Microstates'))));
-
+    
     VersionNumber = '1.2';
     vers = ['Microstates ' VersionNumber];
     
@@ -149,42 +149,43 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     end
     
     MSTEMPLATE = MSTemplate;
-    
+    if nargin > 0
     % Tools menu
-    comCheckData           = [try_strings.no_check '[~, LASTCOM]                          = pop_CheckData(ALLEEG);'             catch_strings.add_to_hist];
-    comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FindMSMaps(ALLEEG);'            catch_strings.store_and_hist];
-    comCombineMSTemplates  = [try_strings.no_check '[EEG, LASTCOM]                        = pop_CombMSMaps(ALLEEG);'            catch_strings.new_and_hist];
-    comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]    = pop_SortMSMaps(ALLEEG);'            catch_strings.store_and_hist];
-    comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_DetectOutliers(ALLEEG);'        catch_strings.store_and_hist];
+        comCheckData           = [try_strings.no_check '[~, LASTCOM]                          = pop_CheckData(ALLEEG);'             catch_strings.add_to_hist];
+        comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FindMSMaps(ALLEEG);'            catch_strings.store_and_hist];
+        comCombineMSTemplates  = [try_strings.no_check '[EEG, LASTCOM]                        = pop_CombMSMaps(ALLEEG);'            catch_strings.new_and_hist];
+        comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]    = pop_SortMSMaps(ALLEEG);'            catch_strings.store_and_hist];
+        comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_DetectOutliers(ALLEEG);'        catch_strings.store_and_hist];
 %     comCompareTopos        = [try_strings.no_check '[EEG, CURRENTSET, ~, LASTCOM]         = pop_CompareTopos(ALLEEG);'          catch_strings.store_and_hist];
-    comCompareMaps         = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_CompareMSMaps(ALLEEG);'         catch_strings.store_and_hist];
-    comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_GetMSDynamics(ALLEEG);'         catch_strings.new_and_hist];
-    comFitMSTemplates      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FitMSMaps(ALLEEG);'             catch_strings.store_and_hist];
-    comSaveMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_SaveMSParameters(ALLEEG);'      catch_strings.add_to_hist];
-    comRaguMSTemplates     = [try_strings.no_check 'LASTCOM                               = pop_RaguMSMaps(ALLEEG);'            catch_strings.add_to_hist];
+        comCompareMaps         = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_CompareMSMaps(ALLEEG);'         catch_strings.store_and_hist];
+        comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_GetMSDynamics(ALLEEG);'         catch_strings.new_and_hist];
+        comFitMSTemplates      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FitMSMaps(ALLEEG);'             catch_strings.store_and_hist];
+        comSaveMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_SaveMSParameters(ALLEEG);'      catch_strings.add_to_hist];
+        comRaguMSTemplates     = [try_strings.no_check 'LASTCOM                               = pop_RaguMSMaps(ALLEEG);'            catch_strings.add_to_hist];
 
     % Plot menu
-    comShowIndMSMaps       = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowIndMSMaps(ALLEEG);'         catch_strings.add_to_hist];
-    comShowIndMSDyn        = [try_strings.no_check 'LASTCOM                               = pop_ShowIndMSDyn(ALLEEG);'          catch_strings.store_and_hist];
-    comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowMSParameters(ALLEEG);'      catch_strings.add_to_hist];    
+        comShowIndMSMaps       = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowIndMSMaps(ALLEEG);'         catch_strings.add_to_hist];
+        comShowIndMSDyn        = [try_strings.no_check 'LASTCOM                               = pop_ShowIndMSDyn(ALLEEG);'          catch_strings.store_and_hist];
+        comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowMSParameters(ALLEEG);'      catch_strings.add_to_hist];    
+        
+        toolsmenu = findobj(fig, 'tag', 'tools');
+        toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
+        uimenu( toolssubmenu, 'Label', 'Data quality check',                                              'CallBack', comCheckData,          'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Identify microstate maps per dataset',                            'CallBack', comFindMSTemplates,    'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Identify mean microstate maps',                                   'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Edit & sort microstate maps',                                     'CallBack', comSortMSTemplates,    'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Outlier detection',                                               'Callback', comDetectOutliers,     'userdata', 'study:on');
+    %     uimenu( toolssubmenu, 'Label', 'Compare topographic similarities',                                'CallBack', comCompareTopos,       'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Backfit microstate maps to EEG',                                  'Callback', comFitMSTemplates,     'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Export temporal parameters',                                      'Callback', comSaveMSParam,        'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',             'CallBack', comGetMSDynamics,      'userdata', 'study:on', 'Separator', 'on');    
+        uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,    'userdata', 'study:on', 'Separator', 'on');
     
-    toolsmenu = findobj(fig, 'tag', 'tools');
-    toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
-    uimenu( toolssubmenu, 'Label', 'Data quality check',                                              'CallBack', comCheckData,          'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Identify microstate maps per dataset',                            'CallBack', comFindMSTemplates,    'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Identify mean microstate maps',                                   'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Edit & sort microstate maps',                                     'CallBack', comSortMSTemplates,    'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Outlier detection',                                               'Callback', comDetectOutliers,     'userdata', 'study:on');
-%     uimenu( toolssubmenu, 'Label', 'Compare topographic similarities',                                'CallBack', comCompareTopos,       'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Backfit microstate maps to EEG',                                  'Callback', comFitMSTemplates,     'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Export temporal parameters',                                      'Callback', comSaveMSParam,        'userdata', 'study:on');
-    uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',             'CallBack', comGetMSDynamics,      'userdata', 'study:on', 'Separator', 'on');    
-    uimenu( toolssubmenu, 'Label', 'Test for topographic effects in microstate topographies (Ragu)' , 'CallBack', comRaguMSTemplates,    'userdata', 'study:on', 'Separator', 'on');
-    
-    plotmenu = findobj(fig, 'tag', 'plot');
-    uimenu( plotmenu,     'Label', 'Plot microstate maps',                                            'CallBack', comShowIndMSMaps,      'userdata', 'study:on', 'Separator','on');
-    uimenu( plotmenu,     'Label', 'Plot temporal dynamics',                                          'CallBack', comShowIndMSDyn,       'userdata', 'study:on');    
-    uimenu( plotmenu,     'Label', 'Plot temporal parameters',                                        'CallBack', comShowMSParam,        'userdata', 'study:on');
-    uimenu( plotmenu,     'Label', 'Compare microstate maps',                                         'CallBack', comCompareMaps,        'userdata', 'study:on');  
-end
+        plotmenu = findobj(fig, 'tag', 'plot');
+        uimenu( plotmenu,     'Label', 'Plot microstate maps',                                            'CallBack', comShowIndMSMaps,      'userdata', 'study:on', 'Separator','on');
+        uimenu( plotmenu,     'Label', 'Plot temporal dynamics',                                          'CallBack', comShowIndMSDyn,       'userdata', 'study:on');    
+        uimenu( plotmenu,     'Label', 'Plot temporal parameters',                                        'CallBack', comShowMSParam,        'userdata', 'study:on');
+        uimenu( plotmenu,     'Label', 'Compare microstate maps',                                         'CallBack', comCompareMaps,        'userdata', 'study:on');  
 
+    end
+end
