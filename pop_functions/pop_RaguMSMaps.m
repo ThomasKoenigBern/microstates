@@ -50,6 +50,7 @@
 
 function com = pop_RaguMSMaps(AllEEG, varargin)
 
+    global MSTEMPLATE;
     com = '';
 
     %% Parse inputs and perform initial validation
