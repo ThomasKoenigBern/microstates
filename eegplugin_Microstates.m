@@ -77,67 +77,67 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 
     addpath(genpath(fileparts(which('eegplugin_Microstates'))));
     
-    VersionNumber = '1.2';
-    vers = ['Microstates ' VersionNumber];
+    VersionNumber = '2.0';
+    vers = ['MICROSTATES ' VersionNumber];
     
-    if isempty(MSTEMPLATE)
-        try
-            WebVersionInfo = xml2struct('http://www.thomaskoenig.ch/Download/EEGLAB_Microstates/MSPluginVersionInfo.xml');
-            WebVersion = WebVersionInfo.MSPluginVersionInfo.Attributes.Version;
-        
-            if str2double(WebVersion) > str2double(VersionNumber)
-                InfoString{1} = ['Version: ' WebVersion];
-            
-                for i = 1:numel(WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo)
-                    name = fieldnames(WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes);
-                    InfoString{i + 1} = [name{1} ': ' WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes.(name{1})];
-                    if strcmp(name{1},'MSPluginZIP')
-                        urlZIPName = WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes.(name{1});
-                    end
-                end
-            
-                InfoString{i + 2} = '';
-                InfoString{i + 3} = 'Update now?';
-                InfoString{i + 4} = '(Requires an EEGLAB restart)';
-            
-                ButtonName = questdlg(InfoString,'New microstates plugin version available', 'Yes', 'No', 'Yes');
-            
-                switch ButtonName
-                case 'Yes'
-                    disp('Downloading');
-                    pluginpath = fileparts(which('eegplugin_Microstates'));
-                    tempZipName = tempname;
-                    urlwrite(['http://www.thomaskoenig.ch/Download/EEGLAB_Microstates/' urlZIPName],[tempZipName '.zip']);
-                    mkdir(tempZipName);
-                    unzip([tempZipName '.zip'], tempZipName);
-                    [~,NewDirName] = fileparts(urlZIPName);
-                    NewPluginPath = fullfile(fileparts(which('eeglab')),'plugins',NewDirName);
-                    mkdir(NewPluginPath);
-                    AllFiles = dir(tempZipName);
-                    for i = 3:numel(AllFiles)
-                        movefile(fullfile(tempZipName,AllFiles(i).name), NewPluginPath, 'f');
-                        disp(['Copied: ' AllFiles(i).name]);
-                    end
-                
-                    OpenDir = fullfile(fileparts(which('eeglab')),'plugins');
-                
-                    if ispc
-                        winopen(OpenDir);
-                    elseif ismac
-                        system(['open ' OpenDir ' &']);
-                    else
-                        error('Unrecognized operating system.');
-                    end
-    
-                    uiwait(msgbox({'When EEGLAB has finished loading:' '- Close EEGLAB' '- type clear global' '- remove/relocate the old Microstates plugin folder from the EEGLAB plugin folder' '- and restart EEGLAB'},'Success'));
-                case 'No'
-                    disp('Working with outdated Microstates plugin.');
-                end % switch
-            end
-        catch
-            disp('EEG Microstates plugin update information unavailable');
-        end
-    end
+%     if isempty(MSTEMPLATE)
+%         try
+%             WebVersionInfo = xml2struct('http://www.thomaskoenig.ch/Download/EEGLAB_Microstates/MSPluginVersionInfo.xml');
+%             WebVersion = WebVersionInfo.MSPluginVersionInfo.Attributes.Version;
+%         
+%             if str2double(WebVersion) > str2double(VersionNumber)
+%                 InfoString{1} = ['Version: ' WebVersion];
+%             
+%                 for i = 1:numel(WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo)
+%                     name = fieldnames(WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes);
+%                     InfoString{i + 1} = [name{1} ': ' WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes.(name{1})];
+%                     if strcmp(name{1},'MSPluginZIP')
+%                         urlZIPName = WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes.(name{1});
+%                     end
+%                 end
+%             
+%                 InfoString{i + 2} = '';
+%                 InfoString{i + 3} = 'Update now?';
+%                 InfoString{i + 4} = '(Requires an EEGLAB restart)';
+%             
+%                 ButtonName = questdlg(InfoString,'New microstates plugin version available', 'Yes', 'No', 'Yes');
+%             
+%                 switch ButtonName
+%                 case 'Yes'
+%                     disp('Downloading');
+%                     pluginpath = fileparts(which('eegplugin_Microstates'));
+%                     tempZipName = tempname;
+%                     urlwrite(['http://www.thomaskoenig.ch/Download/EEGLAB_Microstates/' urlZIPName],[tempZipName '.zip']);
+%                     mkdir(tempZipName);
+%                     unzip([tempZipName '.zip'], tempZipName);
+%                     [~,NewDirName] = fileparts(urlZIPName);
+%                     NewPluginPath = fullfile(fileparts(which('eeglab')),'plugins',NewDirName);
+%                     mkdir(NewPluginPath);
+%                     AllFiles = dir(tempZipName);
+%                     for i = 3:numel(AllFiles)
+%                         movefile(fullfile(tempZipName,AllFiles(i).name), NewPluginPath, 'f');
+%                         disp(['Copied: ' AllFiles(i).name]);
+%                     end
+%                 
+%                     OpenDir = fullfile(fileparts(which('eeglab')),'plugins');
+%                 
+%                     if ispc
+%                         winopen(OpenDir);
+%                     elseif ismac
+%                         system(['open ' OpenDir ' &']);
+%                     else
+%                         error('Unrecognized operating system.');
+%                     end
+%     
+%                     uiwait(msgbox({'When EEGLAB has finished loading:' '- Close EEGLAB' '- type clear global' '- remove/relocate the old Microstates plugin folder from the EEGLAB plugin folder' '- and restart EEGLAB'},'Success'));
+%                 case 'No'
+%                     disp('Working with outdated Microstates plugin.');
+%                 end % switch
+%             end
+%         catch
+%             disp('EEG Microstates plugin update information unavailable');
+%         end
+%     end
     
     pluginpath = fileparts(which('eegplugin_Microstates.m'));                  % Get eeglab path
     templatepath = fullfile(pluginpath,'Templates');
@@ -157,7 +157,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
         comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]    = pop_SortMSMaps(ALLEEG);'            catch_strings.store_and_hist];
         comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_DetectOutliers(ALLEEG);'        catch_strings.store_and_hist];
 %     comCompareTopos        = [try_strings.no_check '[EEG, CURRENTSET, ~, LASTCOM]         = pop_CompareTopos(ALLEEG);'          catch_strings.store_and_hist];
-        comCompareMaps         = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_CompareMSMaps(ALLEEG);'         catch_strings.store_and_hist];
+        comCompareMaps         = [try_strings.no_check '[~, LASTCOM]                          = pop_CompareMSMaps(ALLEEG);'         catch_strings.store_and_hist];
         comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_GetMSDynamics(ALLEEG);'         catch_strings.new_and_hist];
         comFitMSTemplates      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FitMSMaps(ALLEEG);'             catch_strings.store_and_hist];
         comSaveMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_SaveMSParameters(ALLEEG);'      catch_strings.add_to_hist];
@@ -169,7 +169,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
         comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowMSParameters(ALLEEG);'      catch_strings.add_to_hist];    
         
         toolsmenu = findobj(fig, 'tag', 'tools');
-        toolssubmenu = uimenu( toolsmenu, 'label', 'Microstates','userdata','study:on','Separator','on');
+        toolssubmenu = uimenu( toolsmenu, 'label', 'MICROSTATESLAB','userdata','study:on','Separator','on');
         uimenu( toolssubmenu, 'Label', 'Data quality check',                                              'CallBack', comCheckData,          'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Identify microstate maps per dataset',                            'CallBack', comFindMSTemplates,    'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Identify mean microstate maps',                                   'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
