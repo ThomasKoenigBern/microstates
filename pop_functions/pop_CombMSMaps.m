@@ -1,12 +1,12 @@
-% pop_CombMSMaps() Interactively average microstate maps across sets
+% pop_CombMSMaps() Interactively average microstate maps across datasets
 %
 % This is not a simple averaging, but a permute and average loop that
 % optimizes the order of microstate classes in the individual datasets for
 % maximal communality before averaging.
 %
 % Usage:
-%   >> [EEG, com] = pop_CombMSMaps(ALLEEG, SelectedSets, 
-%       'key1', value1, 'key2', value2, ...)
+%   >> EEG = pop_CombMSMaps(ALLEEG, SelectedSets, 'MeanName', Name,
+%       'IgnorePolarity', true/false)
 %
 % Graphical interface:
 %
@@ -29,7 +29,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG to average. If not provided, a GUI
+%   -> Vector of set indices of ALLEEG to average. If not provided, a GUI
 %   will appear to choose sets.
 %
 % Key, Value inputs (optional):
@@ -51,10 +51,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -75,11 +87,8 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
-    global guiOpts;
-    global EEG;
     global CURRENTSET;
-    EEGout = EEG;
-    CurrentSet = CURRENTSET;
+    EEGout = [];
 
     guiElements = {};
     guiGeom = {};
@@ -99,14 +108,12 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'MeanName', 'GrandMean', @(x) validateattributes(x, strClass, strAttributes));
-    addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'vector'}));
 
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
     IgnorePolarity = p.Results.IgnorePolarity;
     MeanName = p.Results.MeanName;
-    Classes = p.Results.Classes;
     ShowMaps = false;
 
     %% SelectedSets validation
@@ -120,10 +127,15 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     meanSets = AvailableSets(HasChildren);
 
     if numel(indSets) < 2 && numel(meanSets) < 2
-        errordlg2(['Not enough valid sets for computing mean maps found.' ...
-            'There must be at least 2 sets with microstate maps to combine.'], ...
-            'Compute mean maps error');
-        return;
+        errorMessage = ['Not enough valid sets for computing mean maps found. ' ...
+            'There must be at least 2 sets with microstate maps to combine. ' ...
+            'Use "Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Identify mean microstate maps error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -135,29 +147,22 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
+            error(['The following sets are invalid: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, dynamics sets, or sets ' ...
-                'without microstate maps.'];
-            errordlg2(errorMessage, 'Compute mean maps error');
-            return;
+                'without microstate maps.']);
         end
 
         % Then make sure there are at least 2 sets
         if numel(SelectedSets) < 2
-            errordlg2('You must select at least two sets of microstate maps','Combine microstate maps');
-            return;
+            error('You must select at least two sets of microstate maps to combine.');
         end
 
         % Then make sure the selected sets are either all individual sets
         % or all mean sets
         indSelected = any(ismember(SelectedSets, indSets));
         meanSelected = any(ismember(SelectedSets, meanSets));
-        if indSelected && meanSelected && guiOpts.showCombWarning
-            warningMessage = ['Both individual sets and mean sets have been selected. ' ...
-                'Are you sure you would like to proceed?'];
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compute mean maps warning');
-            if boxChecked;  guiOpts.showCombWarning = false;    end
-            if ~yesPressed; return;                             end
+        if indSelected && meanSelected
+            warning('Both individual datasets and mean datasets have been selected to combine, which is not recommended.');
             pickIndSets = false;
         else
             pickIndSets = indSelected;
@@ -192,7 +197,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
             AvailableSets = meanSets;
         end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
-        defaultSets = find(ismember(AvailableSets, CurrentSet));
+        defaultSets = find(ismember(AvailableSets, CURRENTSET));
         if isempty(defaultSets);    defaultSets = 1;    end
         guiElements = [guiElements, ....
                     {{ 'Style', 'text'    , 'string', 'Choose sets to combine', 'fontweight', 'bold'}} ...
@@ -225,7 +230,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     end
 
     % Add option to show maps when done if other elements are being shown
-    if any(matches({'SelectedSets', 'IgnorePolarity', 'MeanName'}, p.UsingDefaults))
+    if ~isempty(p.UsingDefaults)
         guiElements = [guiElements ...
             {{ 'Style', 'checkbox', 'string', 'Show maps when done', 'tag', 'ShowMaps'}}];
         guiGeom = [guiGeom 1];
@@ -254,12 +259,12 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
         if isfield(outstruct, 'ShowMaps')
             ShowMaps = outstruct.ShowMaps;
         end
-    end
 
-    if numel(SelectedSets) < 2
-        errordlg2('You must select at least two sets of microstate maps','Combine microstate maps error');
-        return;
-    end
+        if numel(SelectedSets) < 2
+            errordlg2('You must select at least two sets of microstate maps to combine.', 'Identify mean microstate maps error');
+            return;
+        end
+    end    
 
     %% Get all channel locations and verify that parameters are identical across sets
     MinClasses     = AllEEG(SelectedSets(1)).msinfo.ClustPar.MinClasses;
@@ -282,7 +287,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
             MaxClasses     ~= AllEEG(SelectedSets(index)).msinfo.ClustPar.MaxClasses || ...
             tempIPolarity  ~= AllEEG(SelectedSets(index)).msinfo.ClustPar.IgnorePolarity || ...
             GFPPeaks       ~= AllEEG(SelectedSets(index)).msinfo.ClustPar.GFPPeaks
-            errordlg2('Microstate parameters differ between datasets','Combine microstate maps');
+            errordlg2('Microstate parameters differ between datasets','Identify mean microstate maps error');
             return;
         end
     
@@ -297,16 +302,10 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     end
     if keepindex
         tmpchanlocs = AllEEG(SelectedSets(keepindex)).chanlocs; 
-    %    allchans = { tmpchanlocs.labels }; 
     end
 
     msinfo.children = children;
     msinfo.ClustPar = AllEEG(SelectedSets(1)).msinfo.ClustPar;
-   
-    if ~isempty(Classes)
-        MinClasses = min(Classes);
-        MaxClasses = max(Classes);
-    end
 
     %% Create combined maps
     for n = MinClasses:MaxClasses
@@ -317,7 +316,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
             MapsToSort(index,:,:) = L2NormDim(AllEEG(SelectedSets(index)).msinfo.MSMaps(n).Maps * LocalToGlobal',2);
         end
         % We sort out the stuff
-        [BestMeanMap,~,ExpVar,SharedVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD); % debugging only
+        [BestMeanMap,~,ExpVar,SharedVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD);
 
         msinfo.MSMaps(n).Maps = BestMeanMap;
         msinfo.MSMaps(n).ExpVar = ExpVar;

@@ -3,62 +3,85 @@
 % the "MSStats" output and can also be saved to a csv, txt, xlsx, 4R, or
 % mat file. pop_FitMSMaps() must be used before calling this function
 % to extract temporal parameters.
+%
 % The structure array contains the following parameters:
 %   - TotalTime: total time in s for which valid microstate assignments
 %   exist. Typically less than the length of time in the dataset due to
 %   undefined periods at the beginning and end of epochs and around
 %   boundary events.
+%
 %   - TotalExpVar: total variance in the EEG data explained by the template
 %   maps selected for backfitting.
+%
 %   - IndExpVar: 1 x number of classes vector of variances explained by
 %   each template map used for backfitting
+%
 %   - MeanDuration: 1 x number of classes vector of the mean length of time
 %   each template map remains stable
+%
 %   - MeanDurationAll: mean length of time a template map remains stable
 %   (average duration across all template maps)
+%
 %   - MeanOccurrence: 1 x number of classes vector of mean number of times
 %   per second each template map appears
+%
 %   - MeanOccurrenceAll: mean number of times per second any template map
 %   appears (average occurrences/s across all template maps)
+%
 %   - Coverage: 1 x number of classes vector of percentages of total time
 %   that each template map is active
+%
 %   - MeanGFP: 1 x number of classes vector of the mean global field power
 %   of timepoints assigned to each template map
+%
 %   - OrgTM: observed matrix of transition probabilities between microstate
 %   classes, expressed as percentages of the total number of transitions
 %   between all classes. Rows of the matrix correspond to the microstate
 %   class being transitioned from, and columns correspond to the microstate
 %   class being transitioned to (e.g. the value in row 1, column 2
 %   represents the transition probability of microstate 1 to microstate 2.
+%
 %   - DeltaTM: differences between observed and expected transition
 %   probabilities, expressed as percentages. The matrix of expected
 %   transition probabilities is computed from the number of appearances of
 %   each microstate class.
+%
+%   - DurationStdDev: 1 x number of classes vector of standard deviations
+%   of microstate durations
+%
+%   - GFPStdDev: 1 x number of classes vector of standard deviations of
+%   global field power of timepoitns assigned to each template map
+%
 %   - DurationDist: 1 x number of classes cell array of vectors containing
 %   the entire distribution of durations for each template map (not
-%   included in exported file)
+%   included in exported files)
+%
 %   - GFPDist: 1 x number of classes cell array of vectors containing the
 %   entire distribution of global field power values of the timepoints
-%   assigned to each template map (not included in exported file)
+%   assigned to each template map (not included in exported files)
+%
 %   - MSClass: number of epochs x number of timeframes/epoch array of
 %   microstate class labels assigned to the entire recording period (not
-%   included in exported file)
+%   included in exported files)
+%
 %   - GFP: number of epochs x number of timeframes/epoch array of global
-%   field power values at each timepoint (not included in exported file)
+%   field power values at each timepoint (not included in exported files)
+%
 %   - FittingTemplate: name of the template set whose maps were used for
 %   backfitting
+%
 %   - SortedBy: sorting information for the fitting template
 %
 % Usage:
-%   >> MSStats = pop_SaveMSParameters(ALLEEG, SelectedSets, 'key1', value1,
-%       'key2', value2)
+%   >> MSStats = pop_SaveMSParameters(ALLEEG, SelectedSets, 'Classes',
+%   Classes, 'Filename', filename)
 %
 % Specify the number of classes in the fitting solution using the "Classes"
 % argument and the filename to save the array of parameters to using the
 % "Filename" argument.
 % Ex:
 %   >> MSStats = pop_SaveMSParameters(ALLEEG, 1:5, 'Classes', 4, 
-%       'Filename', 'microstate/results/temporal_parameters.csv')
+%       'Filename', 'MICROSTATELAB/results/temporal_parameters.csv')
 %
 % The "Filename" argument can also be specified as "none" if you would like
 % to use the MSStats output but do not need the information saved to a
@@ -83,7 +106,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG whose temporal parameters will be
+%   -> Vector of set indices of ALLEEG whose temporal parameters will be
 %   saved. Selected sets must contain temporal parameters in the "MSStats"
 %   field of "msinfo" (obtained from calling pop_FitMSMaps). If sets
 %   are not provided, a GUI will appear to choose sets.
@@ -91,8 +114,8 @@
 % Key, Value inputs (optional):
 %
 %   "Classes"
-%   -> Scalar integer value indicating the fitting solution whose
-%   associated temporal parameters will be saved.
+%   -> Integer indicating the fitting solution whose associated temporal 
+%   parameters will be saved.
 %
 %   "Filename"
 %   -> Full csv, txt, xlsx, 4R, or mat filename to save the generated array
@@ -113,10 +136,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %              
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -159,9 +194,14 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     AvailableSets = find(HasStats & ~HasDyn);
     
     if isempty(AvailableSets)
-        errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics first.'], 'Export temporal parameters error');
-        return;
+        errorMessage = ['No sets with temporal parameters found. ' ...
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Export temporal parameters error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -189,7 +229,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Export temporal parameters error');
+            errordlg2('You must select at least one dataset','Export temporal parameters error');
             return;
         end
     end        
@@ -205,7 +245,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
 
     if isempty(commonClasses)
         errorMessage = 'No overlap in cluster solutions used for fitting found between all selected sets.';
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Export temporal parameters error');
         else
             error(errorMessage);
@@ -227,14 +267,8 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         if ~ismember(nClasses, commonClasses)
             classesTxt = sprintf('%i, ', commonClasses);
             classesTxt = classesTxt(1:end-2);
-            errorMessage = sprintf(['Not all selected sets to export contain microstate statistics for the %i cluster solution. ' ...
+            error(['Not all selected sets to export contain microstate statistics for the %i cluster solution. ' ...
                 'Valid class numbers include: %s.'], nClasses, classesTxt);
-            if ~isempty(p.UsingDefaults)
-                errordlg2(errorMessage, 'Export temporal parameters error');
-            else
-                error(errorMessage);
-            end
-            return;
         end
     end
 
@@ -252,7 +286,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
 
     if unmatched
         errorMessage = 'Fitting parameters differ between selected sets.';  
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Export temporal parameters error');
         else
             error(errorMessage);
@@ -264,7 +298,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     FittingTemplates = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).FittingTemplate, 1:numel(SelectedEEG), 'UniformOutput', false);
     if numel(unique(FittingTemplates)) > 1
         errorMessage = 'Fitting templates differ across datasets.';
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Export temporal parameters error');
         else
             error(errorMessage);
@@ -272,32 +306,18 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         return;
     end
 
-    % Check for consistent fitting template sorting
-    SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
-    if numel(unique(SortedBy)) > 1
-        errorMessage = 'Sorting information for the fitting template differs across datasets.';
-        if ~isempty(p.UsingDefaults)
+    % Check for consistent labels
+    labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).TemplateLabels, 1:numel(SelectedEEG), 'UniformOutput', false);
+    labels = vertcat(labels{:});
+    if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
+        errorMessage = sprintf('Map labels of the %i cluster solution are inconsistent across datasets.', c);
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Export temporal parameters error');
-        else
-            error(errorMessage);
-        end
-        return;
-    end
-
-    % Check for consistent labels if fitting template is own maps
-    if strcmp(FittingTemplates{1}, '<<own>>')
-        labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
-        labels = horzcat(labels{:});
-        if numel(unique(labels)) > nClasses
-            errorMessage = 'Microstate map labels differ across datasets.';
-            if ~isempty(p.UsingDefaults)
-                errordlg2(errorMessage, 'Export temporal parameters error');
-            else
-                error(errorMessage);
-            end
             return;
+        else
+            error(errorMessage);
         end
-    end
+    end   
 
     %% Generate output file
 
@@ -324,7 +344,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         if isempty(FileName)
             % Set default filename
             if strcmp(FittingTemplates{1}, '<<own>>')
-                defaultFilename = sprintf('TemporalParameters_%i classes_IndividualTemplates.csv', nClasses);
+                defaultFilename = sprintf('TemporalParameters_%i classes_OwnTemplates.csv', nClasses);
             else
                 defaultFilename = sprintf('TemporalParameters_%i classes_%s_Template.csv', nClasses, FittingTemplates{1});
             end

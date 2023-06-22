@@ -4,10 +4,10 @@
 % own windows, right-click a map and select "Plot map in new window."
 %
 % Usage:
-%   >> [fig_h, com] = pop_ShowIndMSMaps(ALLEEG, 
-%       SelectedSets, 'key1', value1, 'key2', value2, ...)
+%   >> fig_h = pop_ShowIndMSMaps(ALLEEG, SelectedSets, 'Classes', Classes,
+%           'Visible', true/false)
 %
-% The figure with plotted maps can also be generated but not displayed.
+% The figure with plotted maps can be generated but not displayed.
 % This option is useful if you would like to save microstate maps in a
 % script but avoid each window appearing. To generate an invisible figure,
 % set the "Visible" argument to 0.
@@ -28,12 +28,12 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG to plot. If multiple are chosen, a
+%   -> Vector of set indices of ALLEEG to plot. If multiple are chosen, a
 %   tab will be opened for each.
 %
 % Key, Value inputs (optional):
 %   "Classes"
-%   -> Array of class numbers indicating which cluster solutions to plot.
+%   -> Vector of class numbers indicating which cluster solutions to plot.
 %   If class numbers are not provided, a GUI will appear to select the 
 %   cluster solution(s) to plot.
 %
@@ -51,10 +51,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -98,8 +110,14 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     AvailableSets = find(HasMS & ~HasDyn);    
     if isempty(AvailableSets)
-        errordlg2('No valid sets for plotting found.', 'Plot microstate maps error');
-        return;
+        errorMessage = ['No valid sets found for plotting. Use ' ...
+            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Plot microstate maps error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -111,11 +129,9 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
+            error(['The following sets are invalid: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, dynamics sets, or sets ' ...
-                'without microstate maps.'];
-            errordlg2(errorMessage, 'Plot microstate maps error');
-            return;
+                'without microstate maps.']);
         end
     % Otherwise, prompt user to provide sets    
     else
@@ -135,7 +151,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Plot microstate maps error');
+            errordlg2('You must select at least one dataset','Plot microstate maps error');
             return;
         end
     end
@@ -166,10 +182,8 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
             invalidClasses = Classes(or((Classes < MinClasses), (Classes > MaxClasses)));
             invalidClassesTxt = sprintf('%i, ', invalidClasses);
             invalidClassesTxt = invalidClassesTxt(1:end-2);
-            errorMessage = sprintf(['The following specified cluster solutions to plot are invalid: %s' ...
+            error(['The following specified cluster solutions to plot are invalid: %s' ...
                 '. Valid class numbers are in the range %i-%i.'], invalidClassesTxt, MinClasses, MaxClasses);
-            errordlg2(errorMessage, 'Plot microstate maps error');
-            return;
         end
     end        
 
@@ -243,6 +257,11 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
 
     for i=1:numel(SelectedEEG) 
         ClassRange = SelectedEEG(i).msinfo.ClustPar.MinClasses:SelectedEEG(i).msinfo.ClustPar.MaxClasses;
+        plotClasses = ClassRange(ismember(ClassRange, Classes));
+        if isempty(plotClasses)
+            warning('%s does not contain any of the selected cluster solutions to plot, skipping...', SelectedEEG(i).setname);
+            continue;
+        end
         for j = ClassRange
             if isfield(SelectedEEG(i).msinfo.MSMaps(j),'Labels')
                 if ~isempty(SelectedEEG(i).msinfo.MSMaps(j).Labels)
@@ -264,8 +283,7 @@ function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
             MapPanel = uipanel(OuterPanel, 'Units', 'pixels', 'Position', [0 0 minPanelWidth minPanelHeight], 'BorderType', 'none');
         else
             MapPanel = uipanel(setTab, 'Units', 'normalized', 'Position', [0 0 1 1], 'BorderType', 'none');
-        end
-        plotClasses = ClassRange(ismember(ClassRange, Classes));        
+        end        
         PlotMSMaps2(fig_h, MapPanel, SelectedEEG(i).msinfo.MSMaps(plotClasses), SelectedEEG(i).chanlocs, ...
             'ShowProgress', ~Visible | Scroll, 'Setname', SelectedEEG(i).setname);
     end    

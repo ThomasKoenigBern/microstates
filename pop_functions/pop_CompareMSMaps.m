@@ -6,28 +6,28 @@
 % topographies are and viewing shared variances between topographies.
 %
 % Usage:
-%   >> [EEG, CURRENTSET, com] = pop_CompareMSMaps(ALLEEG,
+%   >> sharedVarTable = pop_CompareMSMaps(ALLEEG,
 %       IndividualSets, MeanSets, PublishedSets,  'key1', value1, 'key2', 
 %       value2, ...)
 %
 % To compare microstate topographies across cluster solutions within one
 % dataset, pass in the index or name of one dataset within ALLEEG.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1, [], [])
+%   >> sharedVarTable = pop_CompareMSMaps(ALLEEG, 1, [], [])
 %
 % To compare microstate topographies of one cluster solution across
 % multiple datasets, pass in the indices or names of datasets to compare,
 % along with the number of classes to compare across sets.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1:5, 6, 'Koenig2002', 
+%   >> sharedVarTable = pop_CompareMSMaps(ALLEEG, 1:5, 6, 'Koenig2002', 
 %       'Classes', 4)
 %
 % To generate the shared variance matrix for all microstate topographies of
 % the chosen sets to compare without displaying the GUI, use the "Filename"
 % and "gui" parameters.
 % Ex:
-%   >> [EEG, CURRENTSET] = pop_CompareMSMaps(ALLEEG, 1, [], [],
-%       'Filename', 'microstates/results/sharedvars.csv', 'gui', 0)
+%   >> sharedVarTable = pop_CompareMSMaps(ALLEEG, 1, [], [],
+%       'Filename', 'MICROSTATELAB/results/sharedvars.csv', 'gui', 0)
 %
 % Graphical interface:
 %
@@ -54,14 +54,14 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "IndividualSets" (optional)
-%   -> Array of individual set indices of ALLEEG to compare. Use this
+%   -> Vector of individual set indices of ALLEEG to compare. Use this
 %   argument to specify any sets contained in ALLEEG that do not have child
 %   sets (e.g. not averaged across other sets). If comparing within a
 %   dataset, only one dataset can be chosen between both individual and
 %   mean sets.
 %
 %   "MeanSets" (optional)
-%   -> Array of mean set indices or mean set names in ALLEEG to compare. If
+%   -> Vector of mean set indices or mean set names in ALLEEG to compare. If
 %   specifying mean sets by name, use a string array or cell array of
 %   character vectors. Use this argument to specify any sets contained in 
 %   ALLEEG that have child sets (e.g. averaged across other sets). If 
@@ -97,19 +97,29 @@
 %
 % Outputs:
 %
-%   "EEG" 
-%   -> EEG structure array of selected sets chosen for comparison
-% 
-%   "CURRENTSET"
-%   -> The indices of the EEGs chosen for comparison
+%   "sharedVarTable"
+%   -> Table of shared variances between each pair of microstate maps
+%   selected for comparison.
 %
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -125,8 +135,9 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
+function [sharedVarTable, com] = pop_CompareMSMaps(AllEEG, varargin)
     
+    sharedVarTable = [];
     com = '';
     global EEG;
     global CURRENTSET;
@@ -240,7 +251,8 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
                 invalidSetsTxt = sprintf('%i, ', MeanSets(~isValid));
                 invalidSetsTxt = invalidSetsTxt(1:end-2);
                 error(['The following mean sets are invalid: ' invalidSetsTxt ...
-                    '. Make sure you have not selected an individual set or a dynamics set.']);
+                    '. Make sure you have not selected individual datasets, dynamics sets, ' ...
+                    'or sets without microstate maps.']);
             end
         else
             isValid = ismember(MeanSets, MeanSetnames);
@@ -274,8 +286,8 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
     end
 
     %% User input
-    SelectedSets = [IndividualSets(:); MeanSets(:); PublishedSetIndices(:)];
-    if isempty(SelectedSets)
+    SelectedSets = [IndividualSets(:); MeanSets(:)];
+    if isempty(SelectedSets) && isempty(PublishedSetIndices)
         question = 'Which kind of comparison would you like to make?';
         options = {'Compare solutions within dataset', 'Compare maps across datasets'};
         title = 'Compare microstate maps';
@@ -358,7 +370,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
                 PublishedSetIndices = sortOrder(outstruct.PublishedSets(outstruct.PublishedSets ~= 1) - 1);
             end
         end        
-    elseif numel(SelectedSets) == 1
+    elseif (numel(SelectedSets) + numel(PublishedSetIndices)) == 1
         compWithin = 1;
     else
         compWithin = 0;
@@ -366,12 +378,12 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
 
     SelectedEEG = [];
     if ~isempty(SelectedSets)
-        SelectedEEG = pop_newset(SelectedEEG, AllEEG(SelectedSets), 0, 'gui', 'off');
+        SelectedEEG = eeg_store(SelectedEEG, AllEEG(SelectedSets), 1:numel(SelectedSets));
     end
     nonpublishedSets = 1:numel(SelectedEEG);
     if ~isempty(PublishedSetIndices)
         publishedSets = MSTEMPLATE(PublishedSetIndices);
-        SelectedEEG = pop_newset(SelectedEEG, publishedSets, numel(SelectedEEG), 'gui', 'off');
+        SelectedEEG = eeg_store(SelectedEEG, publishedSets, (numel(SelectedEEG)+1):(numel(SelectedEEG)+numel(publishedSets)));
     end
 
     %% If comparing within a dataset, check for consistent labels across solutions
@@ -389,7 +401,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             errorMessage = ['The following cluster solutions remain unsorted: ' classesTxt '. Please sort all ' ...
                 'cluster solutions before proceeding.'];
             if showDlg
-                errordlg2(errorMessage, 'Compare microstate maps error');
+                errorDialog(errorMessage, 'Compare microstate maps error');
                 return;
             else
                 error(errorMessage);
@@ -406,31 +418,21 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
                 '. For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
                 'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'];
             if showDlg
-                errordlg2(errorMessage, 'Compare microstate maps error');
+                errorDialog(errorMessage, 'Compare microstate maps error');
                 return;
             else
                 error(errorMessage);
             end
         end
 
-        % Check for consistent labels
-%         labels = {SelectedEEG.msinfo.MSMaps(classes).Labels};
-%         labels = horzcat(labels{:});
-%         if numel(unique(labels)) > MaxClasses && guiOpts.showCompWarning1
-%             if showDlg
-%                 [yesPressed, ~, boxChecked] = warningDialog(['Map labels are inconsistent across cluster solutions.' ...
-%                     ' Are you sure you would like to proceed?'], 'Compare microstate maps warning');
-%                 if boxChecked;  guiOpts.showCompWarning1 = false;   end
-%                 if ~yesPressed; return;                             end
-%             else
-%                 warning('Map labels are inconsistent across cluster solutions.');
-%             end
-%         end
-
     %% If comparing across datasets, ask user for number of classes and check for consistent labels
     else
         showDlg = all(matches({'IndividualSets', 'MeanSets', 'PublishedSets'}, p.UsingDefaults));
         setnames = {SelectedEEG(nonpublishedSets).setname};
+        isEmpty = cellfun(@isempty,setnames);
+        if any(isEmpty)
+            setnames{isEmpty} = '';
+        end
 
         % Check for overlap in cluster solutions
         AllMinClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MinClasses, 1:numel(SelectedEEG));
@@ -469,7 +471,7 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
 
         % Check if any datasets remain unsorted
         SortModes = arrayfun(@(x) {SelectedEEG(x).msinfo.MSMaps(nClasses).SortMode}', nonpublishedSets);
-        if any(strcmp(SortModes, 'none'))            
+        if matches('none', SortModes)          
             unsortedSets = setnames(strcmp(SortModes, 'none'));
             if showDlg                
                 errorDialog(sprintf('The %i cluster solutions of the following sets remain unsorted. Please sort all sets before proceeding.', nClasses), ...
@@ -500,39 +502,23 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
                     'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], nClasses);
             end
         end
-        
-        % Check for consistent labels
-%         labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).Labels, nonpublishedSets, 'UniformOutput', false);
-%         labels = horzcat(labels{:});
-%         if numel(unique(labels)) > MaxClasses && guiOpts.showCompWarning2
-%             if showDlg
-%                 [yesPressed, ~, boxChecked] = warningDialog(['Map labels are inconsistent across datasets.' ...
-%                     ' Are you sure you would like to proceed?'], 'Compare microstate maps warning');
-%                 if boxChecked;  guiOpts.showCompWarning2 = false;   end
-%                 if ~yesPressed; return;                             end
-%             else
-%                 warning('Map labels are inconsistent across datasets.');
-%             end
-%         end
-
     end
 
     %% Check for different channel numbers and create common set of channels
-    inputEEG = SelectedEEG;
     if numel(SelectedEEG) > 1
         nChannels = arrayfun(@(x) numel(SelectedEEG(x).chanlocs), 1:numel(SelectedEEG));
         [~, minSetIdx] = min(nChannels);
 
-        for i=1:numel(inputEEG)
+        for i=1:numel(SelectedEEG)
             if i == minSetIdx
                 continue
             end
             
-            [LocalToGlobal, ~] = MakeResampleMatrices(inputEEG(i).chanlocs, inputEEG(minSetIdx).chanlocs);
+            [LocalToGlobal, ~] = MakeResampleMatrices(SelectedEEG(i).chanlocs, SelectedEEG(minSetIdx).chanlocs);
             
-            for class=inputEEG(i).msinfo.ClustPar.MinClasses:inputEEG(i).msinfo.ClustPar.MaxClasses
-                inputEEG(i).msinfo.MSMaps(class).Maps = inputEEG(i).msinfo.MSMaps(class).Maps*LocalToGlobal';
-                inputEEG(i).chanlocs = inputEEG(minSetIdx).chanlocs;
+            for class=SelectedEEG(i).msinfo.ClustPar.MinClasses:SelectedEEG(i).msinfo.ClustPar.MaxClasses
+                SelectedEEG(i).msinfo.MSMaps(class).Maps = SelectedEEG(i).msinfo.MSMaps(class).Maps*LocalToGlobal';
+                SelectedEEG(i).chanlocs = SelectedEEG(minSetIdx).chanlocs;
             end
         end
     end
@@ -542,41 +528,37 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
         nClasses = 0;
     end
 
-    if ~isempty(Filename)
-        MapCollection    = [];
-        CLabelCollection = [];
-        
-        if compWithin
-            for i = MinClasses:MaxClasses
-                MapCollection = [MapCollection; SelectedEEG.msinfo.MSMaps(i).Maps];
-                for j = 1:i  
-                    CLabelCollection  = [CLabelCollection,sprintf("%s (%i)",SelectedEEG.msinfo.MSMaps(i).Labels{j},i)];
-                end
+    MapCollection    = [];
+    CLabelCollection = [];    
+    if compWithin
+        for i = MinClasses:MaxClasses
+            MapCollection = [MapCollection; SelectedEEG.msinfo.MSMaps(i).Maps];
+            for j = 1:i  
+                CLabelCollection  = [CLabelCollection,sprintf("%s (%i)",SelectedEEG.msinfo.MSMaps(i).Labels{j},i)];
             end
-        else
-            for i=1:numel(SelectedEEG)
-                MapCollection = [MapCollection; SelectedEEG(i).msinfo.MSMaps(nClasses).Maps];
-                for j=1:nClasses
-                    CLabelCollection = [CLabelCollection, sprintf("%s (%s)", SelectedEEG(i).msinfo.MSMaps(nClasses).Labels{j}, SelectedEEG(i).setname)];
-                end
+        end
+    else
+        for i=1:numel(SelectedEEG)
+            MapCollection = [MapCollection; SelectedEEG(i).msinfo.MSMaps(nClasses).Maps];
+            for j=1:nClasses
+                CLabelCollection = [CLabelCollection, sprintf("%s (%s)", SelectedEEG(i).msinfo.MSMaps(nClasses).Labels{j}, SelectedEEG(i).setname)];
             end
-        end    
-        CorrMat = MyCorr(double(MapCollection)').^2;
-        CorrTable = array2table(CorrMat * 100,'VariableNames',CLabelCollection,'RowNames',CLabelCollection);
+        end
+    end    
+    CorrMat = MyCorr(double(MapCollection)').^2;
+    sharedVarTable = array2table(CorrMat * 100,'VariableNames',CLabelCollection,'RowNames',CLabelCollection);
 
+    if ~isempty(Filename)        
         if ~contains(Filename, '.mat')
-            writetable(CorrTable, Filename, 'WriteRowNames', true);
+            writetable(sharedVarTable, Filename, 'WriteRowNames', true);
         else
-            save(Filename, 'CorrTable');
+            save(Filename, 'sharedVarTable');
         end
     end
 
     if showGUI
-        Filenames = CompareMicrostateSolutions(inputEEG, nClasses, Filename);
+        Filenames = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename);
     end
-    
-    EEGout = SelectedEEG(nonpublishedSets);
-    CurrentSet = [IndividualSets, MeanSets];
 
     if ~compWithin
         if isempty(PublishedSets)
@@ -586,40 +568,31 @@ function [EEGout, CurrentSet, com] = pop_CompareMSMaps(AllEEG, varargin)
             PublishedSetsTxt = ['{' PublishedSetsTxt(1:end-2) '}'];
         end
         if isempty(Filenames)
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''gui'', %i);', ...
+            com = sprintf('[sharedVarTable, COM] = pop_CompareMSMaps(ALLEEG, %s, %s, %s, ''Classes'', %i, ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, showGUI);
         else
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+            com = sprintf('[sharedVarTable, COM] = pop_CompareMSMaps(ALLEEG, %s, %s, %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{1}, showGUI);
-        end
-        if numel(Filenames) > 1
             for i=2:numel(Filenames)
-                compCom = [compCom newline ...
-                    sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''PublishedSets'', %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
+                com = [com newline ...
+                    sprintf('[sharedVarTable, COM] = pop_CompareMSMaps(ALLEEG, %s, %s, %s, ''Classes'', %i, ''Filename'', ''%s'', ''gui'', %i);', ...
                     mat2str(IndividualSets), mat2str(MeanSets), PublishedSetsTxt, nClasses, Filenames{i}, showGUI)];
             end
-        end
+        end        
     else
         if isempty(Filenames)
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''gui'', %i);', ...
+            com = sprintf('[sharedVarTable, COM] = pop_CompareMSMaps(ALLEEG, %s, %s, ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), showGUI);
         else
-            compCom = sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+            com = sprintf('[sharedVarTable, COM] = pop_CompareMSMaps(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
                 mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI);
-        end
-        for i=2:numel(Filenames)
-            compCom = [compCom newline ...
-                sprintf('[EEG, CURRENTSET, COM] = pop_CompareMSMaps(ALLEEG, ''IndividualSets'', %s, ''MeanSets'', %s, ''Filename'', ''%s'', ''gui'', %i);', ...
-                mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI)];
-        end
+            for i=2:numel(Filenames)
+                com = [com newline ...
+                    sprintf('[sharedVarTable, COM] = pop_CompareMSMaps(ALLEEG, %s, %s, ''Filename'', ''%s'', ''gui'', %i);', ...
+                    mat2str(IndividualSets), mat2str(MeanSets), Filenames{1}, showGUI)];
+            end
+        end        
     end
-
-    if isempty(com)
-        com = compCom;
-    else
-        com = [com newline compCom];
-    end
-
 end
 
 function displayedSetsChanged(obj, ~)
@@ -630,9 +603,17 @@ function displayedSetsChanged(obj, ~)
     if ud.prevValue == 1
         prevSelection = ud.AllSets(setBox.Value);
     elseif ud.prevValue == 2
-        prevSelection = ud.IndSets(setBox.Value);
+        if ~isempty(ud.IndSets)
+            prevSelection = ud.IndSets(setBox.Value);
+        else
+            prevSelection = [];
+        end
     elseif ud.prevValue == 3
-        prevSelection = ud.MeanSets(setBox.Value);
+        if ~isempty(ud.MeanSets)
+            prevSelection = ud.MeanSets(setBox.Value);
+        else
+            prevSelection = [];
+        end
     end
     ud.prevValue = obj.Value;
 

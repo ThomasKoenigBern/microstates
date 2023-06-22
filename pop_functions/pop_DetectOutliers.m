@@ -1,12 +1,85 @@
+% pop_DetectOutliers() Perform outlier detection to find atypical
+% topographies within individual datasets.
+%
+% Usage:
+%   >> [EEG, CURRENTSET] = pop_DetectOutliers(ALLEEG, SelectedSets,
+%       'Classes', Classes)
+%
+% Graphical interface:
+%
+%   "Choose sets for outlier detection"
+%   -> Select sets to include in outlier detection procedure
+%   -> Command line equivalent: "SelectedSets"
+%
+%   "Select number of classes for outlier detection"
+%   -> Select which cluster solution to examine for outliers. Only one
+%   cluster solution can be selected for outlier detection at a time.
+%   -> Command line equivalent: "Classes"
+%
+% Inputs:
+%
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
+%
+%   "SelectedSets" (optional)
+%   -> Vector of set indices of ALLEEG to include in outlier detection. If  
+%   not provided, a GUI will appear to choose sets.
+%
+%   "Classes" (optional)
+%   -> Integer indicating which cluster solution to examine for outliers
+%   across selected datasets. If not provided, a GUI will appear to choose
+%   a cluster solution.
+%
+% Outputs:
+%
+%   "EEG" 
+%   -> EEG structure array, with microstate information removed from sets
+%   selected to exclude within the interactive window.
+%
+%   "CURRENTSET"
+%   -> The indices of the EEGs included in outlier detection
+%
+%   "com"
+%   -> Command necessary to replicate the computation
+%
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
+%
+% This program is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program; if not, write to the Free Software
+% Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     
     com = '';
-    global EEG;
     global CURRENTSET;
     global MSTEMPLATE;
-    EEGout = EEG;
-    CurrentSet = CURRENTSET;
+    EEGout = [];
+    CurrentSet = [];
 
     %% Parse inputs and perform initial validation
     p = inputParser;
@@ -30,25 +103,33 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isPublished);
     
     if isempty(AvailableSets)
-        errordlg2('No valid sets for outlier detection found.', 'Outlier detection error');
-        return;
+        errorMessage = ['No valid sets found for outlier detection. Use ' ...
+            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Outlier detection error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % Validate selected sets
     if ~isempty(SelectedSets)
         SelectedSets = unique(SelectedSets);
+        if numel(SelectedSets) < 2
+            error('You must select at least two datasets');
+        end
         isValid = ismember(SelectedSets, AvailableSets);
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets cannot be included in outlier detection: ' invalidSetsTxt ...
-                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.'];
-            errordlg2(errorMessage, 'Outlier detection error');
-            return;
+            error(['The following sets cannot be included in outlier detection: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
+                'or sets without microstate maps.']);
         end
     % Otherwise, prompt user to select sets
     else
-        defaultSets = find(ismember(AvailableSets, CurrentSet));
+        defaultSets = find(ismember(AvailableSets, CURRENTSET));
         if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         [res, ~, ~, outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', { ...
@@ -59,6 +140,11 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         
         if isempty(res);    return; end
         SelectedSets = AvailableSets(outstruct.SelectedSets);
+
+        if numel(SelectedSets) < 2
+            errordlg2('You must select at least two datasets.','Outlier detection error');
+            return;
+        end
     end
 
     SelectedEEG = AllEEG(SelectedSets);
@@ -70,9 +156,13 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     MinClasses = max(AllMinClasses);
     MaxClasses = min(AllMaxClasses);
     if MaxClasses < MinClasses
-        errorMessage = ['No overlap in microstate classes found between all selected sets.'];
-        errordlg2(errorMessage, 'Outlier detection error');
-        return;
+        errorMessage = 'No overlap in microstate classes found between all selected sets.';
+        if matches('SelectedSets', p.UsingDefaults)
+            errordlg2(errorMessage, 'Outlier detection error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
     if matches('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
@@ -89,67 +179,71 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         nClasses = classRange(outstruct.Classes);
     else
         if (nClasses < MinClasses) || (nClasses > MaxClasses)
-            errorMessage = sprintf(['The specified number of classes %i is invalid.' ...
-                ' Valid class numbers are in the range %i-%i.'], nClasses, MinClasses, MaxClasses);
-            errordlg2(errorMessage, 'Outlier detection error');
-            return;
+            error('The specified number of classes %i is invalid. Valid class numbers are in the range %i-%i.', ...
+                nClasses, MinClasses, MaxClasses);
         end
     end
 
     %% Check for consistent sorting across sets
-    % First check if any datasets remain unsorted
-    SortModes = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortMode, 1:numel(SelectedEEG), 'UniformOutput', false);
-    if any(strcmp(SortModes, 'none'))
-        errorMessage = ['Some datasets remain unsorted. Please sort all ' ...
-            'sets according to the same template before performing outlier detection.'];
-        errordlg2(errorMessage, 'Outlier detection error');
-        return;
+    setnames = {SelectedEEG.setname};
+    isEmpty = cellfun(@isempty,setnames);
+    if any(isEmpty)
+        setnames{isEmpty} = '';
     end
 
-    % Then check if there is inconsistency in sorting across datasets
-    SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
-    emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
-    SortedBy(emptyIdx) = [];
-    if any(contains(SortedBy, '->'))
-        multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
-        SortedBy(contains(SortedBy, '->')) = multiSortedBys;
-    end
-    if ~numel(unique(SortedBy)) > 1
-        errorMessage = ['Sorting information differs across datasets. Please sort all ' ...
-            'sets according to the same template before performing outlier detection.'];
-        errordlg2(errorMessage, 'Outlier detection error');
-        return;
+    % First check if any datasets remain unsorted
+    SortModes = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortMode, 1:numel(SelectedEEG), 'UniformOutput', false);
+    if matches('none', SortModes)
+        unsortedSets = setnames(strcmp(SortModes, 'none'));
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(sprintf('The %i cluster solutions of the following sets remain unsorted. Please sort all sets before proceeding.', nClasses), ...
+                'Outlier detection error', unsortedSets);
+            return;
+        else
+            unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+            error(['The %i cluster solutions of the following sets remain unsorted: ' newline unsortedSetsTxt ...
+                    'Please sort all sets before proceeding.'], nClasses);
+        end
     end
 
     % Check for unassigned labels
-    Colors = cell2mat(arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false)');
-    if any(arrayfun(@(x) all(Colors(x,:) == [.75 .75 .75]), 1:size(Colors,1)))
-        errorMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, each set must either be ' ...
-            'manually sorted and assigned new labels, or sorted by a template set with equal (ideally) or greater number of maps. Please ' ...
-            're-sort sets such that all maps have a label before performing outlier detection.'];
-        errordlg2(errorMessage, 'Outlier detection error');
-        return;
+    Colors = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false);
+    unlabeled = cellfun(@(x) any(arrayfun(@(y) all(x(y,:) == [.75 .75 .75]), 1:size(x,1))), Colors);
+    if any(unlabeled)
+        unsortedSets = setnames(unlabeled);
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(sprintf(['The %i cluster solutions of the following sets contain maps without assigned labels. ' ...
+                'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], nClasses), ...
+                'Outlier detection error', unsortedSets);
+            return;
+        else
+            unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+            error(['The %i cluster solutions of the following sets contain maps without assigned labels: ' newline unsortedSetsTxt ...
+                'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], nClasses);
+        end
     end
 
     % Check for consistent labels 
-    AllLabels = {};
-    for set=1:numel(SelectedEEG)                 
-        AllLabels = [AllLabels SelectedEEG(set).msinfo.MSMaps(nClasses).Labels];
-    end 
-    if numel(unique(AllLabels)) > nClasses
-        errorMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
-            'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
-            'and assigned the same set of labels, or sorted using a template set with an equal number of maps. Please re-sort sets to achieve consistency ' ...
-            'before performing outlier detection.'];
-        errordlg2(errorMessage, 'Outlier detection error');
-        return;
-    end        
+    labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
+    labels = vertcat(labels{:});
+    if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
+        errorMessage = ['Map labels are inconsistent across datasets. Please sort maps such that map labels are identical ' ...
+            'across all datasets before proceeding.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Outlier detection error');
+            return;
+        else
+            error(errorMessage);
+        end
+    end
 
     EEGout = SelectedEEG;
     CurrentSet = SelectedSets;
 
     %% Create outlier detection GUI
-    MapLabels = unique(AllLabels);
+    MapLabels = {labels{1,:}};
 
     % Get usable screen size
     toolkit = java.awt.Toolkit.getDefaultToolkit();

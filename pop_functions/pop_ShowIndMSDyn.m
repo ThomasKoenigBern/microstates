@@ -6,7 +6,7 @@
 % temporal parameters.
 %
 % Usage:
-%   >> pop_ShowIndMSDyn(ALLEEG, SelectedSets, 'key1', value1)
+%   >> pop_ShowIndMSDyn(ALLEEG, SelectedSets, 'Classes', Classes)
 %
 % Specify the number of classes in the fitting solution using the "Classes" 
 % argument.
@@ -29,7 +29,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG for which temporal parameters will be
+%   -> Vector of set indices of ALLEEG for which temporal parameters will be
 %   plotted. Selected sets must contain temporal parameters in the "MSStats"
 %   field of "msinfo" (obtained from calling pop_FitMSMaps). If sets
 %   are not provided, a GUI will appear to choose sets.
@@ -37,18 +37,30 @@
 % Key, Value inputs (optional):
 %
 %   "Classes"
-%   -> Scalar integer value indicating the fitting solution whose
-%   associated temporal parameters will be plotted.
+%   -> Integer indicating the fitting solution whose associated temporal 
+%   dynamics will be plotted.
 %
 % Outputs:
 %
 %   "com"
 %   -> Command necessary to replicate the computation
 %              
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -89,9 +101,14 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
     AvailableSets = find(HasStats & ~HasDyn);
     
     if isempty(AvailableSets)
-        errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'], 'Plot temporal dynamics error');
-        return;
+        errorMessage = ['No sets with temporal parameters found. ' ...
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Plot temporal dynamics error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -120,7 +137,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Plot temporal dynamics error');
+            errordlg2('You must select at least one datset','Plot temporal dynamics error');
             return;
         end
     end        
@@ -136,7 +153,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
 
     if isempty(commonClasses)
         errorMessage = 'No overlap in cluster solutions used for fitting found between all selected sets.';
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Plot temporal dynamics error');
         else
             error(errorMessage);
@@ -158,14 +175,8 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
         if ~ismember(nClasses, commonClasses)
             classesTxt = sprintf('%i, ', commonClasses);
             classesTxt = classesTxt(1:end-2);
-            errorMessage = sprintf(['Not all selected sets to plot contain microstate dynamics information for the %i cluster solution. ' ...
+            error(['Not all selected sets to plot contain microstate dynamics information for the %i cluster solution. ' ...
                 'Valid class numbers include: %s.'], nClasses, classesTxt);
-            if ~isempty(p.UsingDefaults)
-                errordlg2(errorMessage, 'Plot temporal dynamics error');
-            else
-                error(errorMessage);
-            end
-            return;
         end
     end
 
@@ -449,29 +460,4 @@ function hasDyn = isDynamicsSet(in)
     else
         hasDyn = true;
     end
-end
-
-function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
-    containsChild = false;
-    if isempty(SetsToSearch)
-        return;
-    end
-    
-    % find which sets have children
-    HasChildren = arrayfun(@(x) isfield(AllEEG(x).msinfo, 'children'), SetsToSearch);
-    % if none of the sets to search have children, the child set could not
-    % be found
-    if ~any(HasChildren)
-        return;
-    end
-
-    % search the children of all the mean sets for the child set name
-    containsChild = any(arrayfun(@(x) matches(childSetName, AllEEG(x).msinfo.children), SetsToSearch(HasChildren)));
-
-    % if the child cannot be found, search the children of the children
-    if ~containsChild
-        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
-        containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
-    end
-
 end

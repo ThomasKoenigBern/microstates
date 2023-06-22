@@ -3,10 +3,10 @@
 % the "MSStats" field of "msinfo" in the corresponding EEG set.
 %
 % Usage:
-%   >> [EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, SelectedSets, 'key1',
-%       value1, 'key2', value2)
+%   >> [EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, SelectedSets, 'FitPar',
+%       FitPar, 'TemplateSet', TemplateSet)
 %
-% To use each subject's own microstate maps for backfitting, specify
+% To use each dataset's own microstate maps for backfitting, specify
 % "TemplateSet" as "own."
 % Ex:
 %   >> [EEG, CURRENTSET] = pop_FitMSMaps(ALLEEG, 1:5, 'TemplateSet', 
@@ -57,7 +57,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG for which temporal dynamics will be
+%   -> Vector of set indices of ALLEEG for which temporal dynamics will be
 %   extracted. Selected sets must be individual datasets (not group level 
 %   or grand mean sets). If not provided, a GUI will appear to choose sets.
 %
@@ -68,7 +68,7 @@
 %   If some required fields are not included, a GUI will appear with the
 %   unincluded fields. FitPar fields include:
 %       "FitPar.Classes"
-%       -> Cluster solutions to use for backfitting
+%       -> Vectir of cluster solutions to use for backfitting
 %
 %       "FitPar.PeakFit"
 %       -> 1 = backfit maps only at global field power peaks and
@@ -107,10 +107,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %              
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -131,7 +143,6 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
-    global guiOpts;
     global EEG;
     global CURRENTSET;
     EEGout = EEG;
@@ -170,8 +181,14 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isPublished);
     
     if isempty(AvailableSets)
-        errordlg2('No valid sets for backfitting found.', 'Backfit microstate maps error');
-        return;
+        errorMessage = ['No valid sets found for backfitting. Use ' ...
+            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Backfit microstate maps to EEG error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -181,11 +198,9 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets cannot be backfit: ' invalidSetsTxt ...
+            error(['The following sets cannot be backfit: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
-                'or sets without microstate maps.'];
-            errordlg2(errorMessage, 'Backfit microstate maps error');
-            return;
+                'or sets without microstate maps.']);
         end
     % Otherwise, add set selection gui elements
     else
@@ -211,10 +226,8 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
         % mean sets in ALLEEG
         if isnumeric(TemplateSet)
             if ~ismember(TemplateSet, meanSets)
-                errorMessage = sprintf(['The specified template set number %i is not a valid mean set. ' ...
+                error(['The specified template set number %i is not a valid mean set. ' ...
                     'Make sure you have not selected an individual set or a dynamics set.'], TemplateSet);
-                errordlg2(errorMessage, 'Backfit microstate maps error');
-                return;
             else
                 TemplateMode = 'mean';
                 TemplateIndex = find(ismember(meanSets, TemplateSet));
@@ -233,10 +246,8 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 % If there are multiple mean sets with the same name
                 % provided, notify the suer
                 if numel(find(matches(meanSetnames, TemplateSet))) > 1
-                    errorMessage = sprintf(['There are multiple mean sets with the name "%s." ' ...
+                    error(['There are multiple mean sets with the name "%s." ' ...
                         'Please specify the set number instead ot the set name.'], TemplateSet);
-                    errordlg2(errorMessage, 'Backfit microstate maps error');
-                    return;
                 else
                     TemplateMode = 'mean';
                     TemplateIndex = find(matches(meanSetnames, TemplateSet));
@@ -244,10 +255,8 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                     TemplateSet = meanSets(TemplateIndex);
                 end
             else
-                errorMessage = sprintf(['The specified template set "%s" could not be found in the ALLEEG ' ...
+                error(['The specified template set "%s" could not be found in the ALLEEG ' ...
                     'mean sets or in the microstates/Templates folder.'], TemplateSet);
-                errordlg2(errorMessage, 'Backfit microstate maps error');
-                return;
             end
         end
 
@@ -289,11 +298,11 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 TemplateIndex = sortOrder(TemplateIndex);
             end
         end
-    end
 
-    if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Backfit microstate maps error');
-        return;
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one dataset','Backfit microstate maps to EEG error');
+            return;
+        end
     end
 
     if strcmp(TemplateMode, 'published')
@@ -315,12 +324,17 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
             end
         end
 
-        if ~isempty(warningSetnames) && guiOpts.showQuantWarning1
-            warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets. Are you sure you would like to proceed?'], TemplateName);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Backfit microstate maps warning', warningSetnames);
-            if boxChecked;  guiOpts.showQuantWarning1 = false;     end
-            if ~yesPressed; return;                             end
+        if ~isempty(warningSetnames)
+            if matches('SelectedSets', p.UsingDefaults) && getpref('MICROSTATELAB', 'showFitWarning')
+                warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
+                    'the following sets. Are you sure you would like to proceed?'], TemplateName);
+                [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Backfit microstate maps warning', warningSetnames);
+                if boxChecked;  setpref('MICROSTATELAB', 'showFitWarning', 0);  end
+                if ~yesPressed; return;                                         end
+            else
+                warningSetsTxt = sprintf(['%s' newline], string(warningSetnames));
+                warning(['Template set "%s" is not the parent set of the following sets: ' newline warningSetsTxt], TemplateName);
+            end
         end
     end
 
@@ -333,7 +347,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
         if MaxClasses < MinClasses
             errorMessage = 'No overlap in microstate classes found between all selected sets.';
             if matches('SelectedSets', p.UsingDefaults)
-                errordlg2(errorMessage, 'Backfit microstate maps error');
+                errordlg2(errorMessage, 'Backfit microstate maps to EEG error');
             else
                 error(errorMessage);
             end
@@ -346,7 +360,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
             errorMessage = ['Microstate clustering parameters differ between selected sets. Sets selected for backfitting should ' ...
                 'have consistent parameters for ignoring polarity and clustering on GFP peaks.'];
             if matches('SelectedSets', p.UsingDefaults)
-                errordlg2(errorMessage, 'Backfit microstate maps error');
+                errorDialog(errorMessage, 'Backfit microstate maps to EEG error');
                 return;
             else
                 warning(errorMessage);
@@ -373,99 +387,86 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     SelectedEEG = AllEEG(SelectedSets);
 
     if strcmp(TemplateMode, 'own')
+        setnames = {SelectedEEG.setname};
+        isEmpty = cellfun(@isempty,setnames);
+        if any(isEmpty)
+            setnames{isEmpty} = '';
+        end
         for c=FitPar.Classes
             % First check if any datasets remain unsorted
-            noSort = false;
             SortModes = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).SortMode, 1:numel(SelectedEEG), 'UniformOutput', false);
-            if any(strcmp(SortModes, 'none')) && guiOpts.showQuantWarning2
-                warningMessage = ['Some datasets remain unsorted. Would you like to ' ...
-                    'sort all sets according to the same template before proceeding?'];
-                [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Backfit microstate maps warning');
-                noSort = noPressed;
-                if boxChecked;  guiOpts.showQuantWarning2 = false;  end
-                if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
-                    if isempty(sortCom);    return; end
-                    if isempty(com)
-                        com = sortCom;
-                    else
-                        com = [com newline sortCom];
-                    end
-                elseif ~noPressed
+            if matches('none', SortModes)
+                unsortedSets = setnames(strcmp(SortModes, 'none'));
+                if matches('SelectedSets', p.UsingDefaults)
+                    errorDialog(sprintf('The %i cluster solutions of the following sets remain unsorted. Please sort all sets before proceeding.', c), ...
+                        'Backfit microstate maps to EEG error', unsortedSets);
                     return;
-                end
-            end
-    
-            % Then check if there is inconsistency in sorting across datasets
-            noSameSort = false;
-            SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
-            emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
-            SortedBy(emptyIdx) = [];
-%             if any(contains(SortedBy, '->'))
-%                 multiSortedBys = cellfun(@(x) x(1:strfind(x, '->')-1), SortedBy(contains(SortedBy, '->')), 'UniformOutput', false);
-%                 SortedBy(contains(SortedBy, '->')) = multiSortedBys;
-%             end
-            if ~noSort && numel(unique(SortedBy)) > 1 && guiOpts.showQuantWarning3
-                warningMessage = ['Sorting information differs across datasets. Would you like to ' ...
-                    'sort all sets according to the same template before proceeding?'];
-                [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Backfit microstate maps warning');
-                noSameSort = noPressed;
-                if boxChecked;  guiOpts.showQuantWarning3 = false;  end
-                if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
-                    if isempty(sortCom);    return; end
-                    if isempty(com)
-                        com = sortCom;
-                    else
-                        com = [com newline sortCom];
-                    end
-                elseif ~noPressed
-                    return;
+                else
+                    unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+                    error(['The %i cluster solutions of the following sets remain unsorted: ' newline unsortedSetsTxt ...
+                            'Please sort all sets before proceeding.'], c);
                 end
             end
     
             % Check for unassigned labels
-            Colors = cell2mat(arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false)');
-            if ~noSort && any(arrayfun(@(x) all(Colors(x,:) == [.75 .75 .75]), 1:size(Colors,1))) && guiOpts.showQuantWarning4
-                warningMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, each set must either be ' ...
-                    'manually sorted and assigned new labels, or sorted by a template set with equal (ideally) or greater number of maps. Would you like ' ...
-                    'to re-sort before proceeding?'];
-                [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Backfit microstate maps warning');
-                if boxChecked;  guiOpts.showQuantWarning4 = false;   end
-                if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
-                    if isempty(sortCom);    return; end
-                    if isempty(com)
-                        com = sortCom;
-                    else
-                        com = [com newline sortCom];
-                    end
-                elseif ~noPressed
+            Colors = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false);
+            unlabeled = cellfun(@(x) any(arrayfun(@(y) all(x(y,:) == [.75 .75 .75]), 1:size(x,1))), Colors);
+            if any(unlabeled)
+                unsortedSets = setnames(unlabeled);
+                if matches('SelectedSets', p.UsingDefaults)
+                    errorDialog(sprintf(['The %i cluster solutions of the following sets contain maps without assigned labels. ' ...
+                        'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                        'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], c), ...
+                        'Backfit microstate maps to EEG error', unsortedSets);
                     return;
+                else
+                    unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+                    error(['The %i cluster solutions of the following sets contain maps without assigned labels: ' newline unsortedSetsTxt ...
+                        'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                        'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], c);
                 end
             end
     
             % Check for consistent labels 
             labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(c).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
-            labels = horzcat(labels{:});
-            if ~noSort && ~noSameSort && numel(unique(labels)) > c && guiOpts.showQuantWarning5
-                warningMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
-                    'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
-                    'and assigned the same set of labels, or sorted by a template set solution with an equal number of maps. Would you like to re-sort before proceeding?'];
-                [yesPressed, noPressed, boxChecked] = warningDialog(warningMessage, 'Backfit microstate maps warning');
-                if boxChecked;  guiOpts.showQuantWarning5 = false;   end
-                if yesPressed
-                    [~, SelectedEEG, CurrentSet, sortCom] = pop_SortMSMaps(AllEEG, SelectedSets, 'Classes', c);
-                    if isempty(sortCom);    return; end
-                    if isempty(com)
-                        com = sortCom;
-                    else
-                        com = [com newline sortCom];
-                    end
-                elseif ~noPressed
+            labels = vertcat(labels{:});
+            if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
+                errorMessage = sprintf(['Map labels of the %i cluster solution are inconsistent across datasets. Please sort maps such that map labels are identical ' ...
+                    'across all datasets before proceeding.'], c);
+                if matches('SelectedSets', p.UsingDefaults)
+                    errorDialog(errorMessage, 'Backfit microstate maps to EEG error');
                     return;
+                else
+                    error(errorMessage);
                 end
             end        
+        end
+    
+    % Otherwise check that the template set is sorted if using a mean set
+    elseif strcmp(TemplateMode, 'mean')
+        for c=FitPar.Classes
+            if matches('none', ChosenTemplate.msinfo.MSMaps(c).SortMode)
+                errorMessage = sprintf(['The %i cluster solution of template set "%s" remains unsorted. Please sort ' ...
+                    'the template set before proceeding.'], c, ChosenTemplate.setname);
+                if matches('TemplateSet', p.UsingDefaults)
+                    errorDialog(errorMessage, 'Backfit microstate maps to EEG error');
+                    return;
+                else
+                    error(errorMessage);
+                end
+            end
+
+            if any(arrayfun(@(x) all(ChosenTemplate.msinfo.MSMaps(c).ColorMap(x,:) == [.75 .75 .75]), 1:c))
+                errorMessage = sprintf(['The %i cluster solution of the template set "%s" contains maps without assigned labels. ' ...
+                    'For all maps to be assigned a label, the cluster solution must either be manually assigned labels, ' ...
+                    'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], c, ChosenTemplate.setname);
+                if matches('SelectedSets', p.UsingDefaults)
+                    errorDialog(errorMessage, 'Backfit microstate maps to EEG error');
+                    return;
+                else
+                    error(errorMessage);
+                end
+            end
         end
     end
 
@@ -494,8 +495,12 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
             else
                 [LocalToGlobal, GlobalToLocal] = MakeResampleMatrices(SelectedEEG(s).chanlocs,ChosenTemplate.chanlocs);
                 if any(isnan(LocalToGlobal(:)))
-                    errordlg2(['Set ' SelectedEEG(s).setname ' does not have all channel positions defined'],'Backfit microstate maps error');
-                    return;
+                    if matches('SelectedSets', p.UsingDefaults)
+                        errordlg2(['Set ' SelectedEEG(s).setname ' does not have all channel positions defined'],'Backfit microstate maps to EEG error');
+                        return;
+                    else
+                        error(['Set ' SelectedEEG(s).setname ' does not have all channel positions defined']);
+                    end
                 end
                 if SelectedEEG(s).nbchan > ChosenTemplate.nbchan
                     [MSClass,gfp,IndGEVs] = AssignMStates(SelectedEEG(s),Maps,FitPar, msinfo.ClustPar.IgnorePolarity, LocalToGlobal);
@@ -608,7 +613,12 @@ function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
 
     % if the child cannot be found, search the children of the children
     if ~containsChild
-        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
+        setnames = {AllEEG.setname};
+        isEmpty = cellfun(@isempty,setnames);
+        if any(isEmpty)
+            setnames(isEmpty) = {''};
+        end
+        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches(setnames, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
         containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
     end
 

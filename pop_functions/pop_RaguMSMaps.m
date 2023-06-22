@@ -19,20 +19,32 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG to export. If not provided, a GUI
+%   -> Vector of set indices of ALLEEG to export. If not provided, a GUI
 %   will appear to choose sets.
 %
 % Key, Value inputs (optional):
 %
 %   "Classes"
-%   -> Number of microstate classes to export from each of the selected
-%   sets. If not provided, a GUI will appear to select the number of
-%   classes to export.
+%   -> Integer indicating which cluster solutionto export from each of the 
+%   selected sets. If not provided, a GUI will appear to select the number 
+%   of classes to export.
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -75,8 +87,14 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
     AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isPublished);
     
     if isempty(AvailableSets)
-        errordlg2('No valid sets for topographic testing found.', 'Export microstates to Ragu error');
-        return;
+        errorMessage = ['No valid sets for topographic testing found. Use ' ...
+            '"Tools->Identify microstate maps per dataset to find and store microstate map data'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Export microstates to Ragu error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -88,11 +106,9 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
+            error(['The following sets are invalid: ' invalidSetsTxt ...
                 '. Make sure you have not selected empty sets, dynamics sets, or sets ' ...
-                'without microstate maps.'];
-            errordlg2(errorMessage, 'Export microstates to Ragu error');
-            return;
+                'without microstate maps.']);
         end
     % Otherwise, prompt the user to select sets
     else
@@ -110,7 +126,7 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Export microstates to Ragu error');
+            errordlg2('You must select at least one dataset','Export microstates to Ragu error');
             return;
         end
     end
@@ -132,12 +148,65 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
         Classes = classRange(outstruct.Classes);
     else
         if Classes < MinClasses || Classes > MaxClasses          
-            errorMessage = sprintf(['The specified number of classes %i is invalid.' ...
+            error(['The specified number of classes %i is invalid.' ...
                 ' Valid class numbers are in the range %i-%i.'], Classes, MinClasses, MaxClasses);
-            errordlg2(errorMessage, 'Export microstates to Ragu error');
-            return;
         end
     end
+
+    %% Check for consistent sorting across datasets
+    setnames = {AllEEG(SelectedSets).setname};
+    isEmpty = cellfun(@isempty,setnames);
+    if any(isEmpty)
+        setnames{isEmpty} = '';
+    end
+    % First check if any datasets remain unsorted
+    SortModes = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(Classes).SortMode, SelectedSets, 'UniformOutput', false);
+    if matches('none', SortModes)
+        unsortedSets = setnames(strcmp(SortModes, 'none'));
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(sprintf('The %i cluster solutions of the following sets remain unsorted. Please sort all sets before proceeding.', Classes), ...
+                'Export microstates to Ragu error', unsortedSets);
+            return;
+        else
+            unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+            error(['The %i cluster solutions of the following sets remain unsorted: ' newline unsortedSetsTxt ...
+                    'Please sort all sets before proceeding.'], Classes);
+        end
+    end
+
+    % Check for unassigned labels
+    Colors = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(Classes).ColorMap, SelectedSets, 'UniformOutput', false);
+    unlabeled = cellfun(@(x) any(arrayfun(@(y) all(x(y,:) == [.75 .75 .75]), 1:size(x,1))), Colors);
+    if any(unlabeled)
+        unsortedSets = setnames(unlabeled);
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(sprintf(['The %i cluster solutions of the following sets contain maps without assigned labels. ' ...
+                'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], Classes), ...
+                'Export microstates to Ragu error', unsortedSets);
+            return;
+        else
+            unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+            error(['The %i cluster solutions of the following sets contain maps without assigned labels: ' newline unsortedSetsTxt ...
+                'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], Classes);
+        end
+    end
+
+    % Check for consistent labels 
+    labels = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(Classes).Labels, SelectedSets, 'UniformOutput', false);
+    labels = vertcat(labels{:});
+    if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
+        errorMessage = sprintf(['Map labels of the %i cluster solution are inconsistent across datasets. Please sort maps such that map labels are identical ' ...
+            'across all datasets before proceeding.'], Classes);
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Export microstates to Ragu error');
+            return;
+        else
+            error(errorMessage);
+        end
+    end        
+
     rd = MsMapsAndDesign4Ragu(AllEEG(SelectedSets), Classes);
  %    rd = SaveMSMapsForRagu(AllEEG(SelectedSets), Classes);
 

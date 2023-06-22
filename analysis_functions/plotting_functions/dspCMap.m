@@ -1,8 +1,6 @@
 function [c,imap,xm,ym] = dspCMap(map,ChanPos,varargin)
 % dspCMaocp - Display topographic scalp maps
 % ----------------------------------------
-% Copyright 2009-2011 Thomas Koenig
-% distributed under the terms of the GNU AFFERO General Public License
 %
 % Usage: dspCMap(map,ChanPos,CStep)
 %
@@ -32,7 +30,23 @@ function [c,imap,xm,ym] = dspCMap(map,ChanPos,varargin)
 % 'Plot'            Plots additional x_points 
 % 'Linewidth'       Sets linewidth
 % 'NoExtrapolation' Prevents maps to be etrapolated)
-
+%
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 
 if iscell(ChanPos)
     ChanPos = GetChannelPositionsFromLabels(ChanPos);
