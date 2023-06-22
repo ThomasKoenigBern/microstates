@@ -70,6 +70,10 @@ function AllEEG = ClearDataSortedByParent(AllEEG, Children, ClassIndex)
                 ClassIndex = AllEEG(sIdx).msinfo.ClustPar.MinClasses:AllEEG(sIdx).msinfo.ClustPar.MaxClasses;
             end
             for n = 1:numel(ClassIndex)
+                for j = 1:ClassIndex(n)
+                    AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).Labels{j} = sprintf('MS_%i.%i',ClassIndex(n),j);
+                end
+                AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).ColorMap = repmat([.75 .75 .75], ClassIndex(n), 1);
                 AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).SortedBy = [];
                 AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).SortMode = 'none';
             end

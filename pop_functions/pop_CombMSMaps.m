@@ -349,7 +349,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     EEGout.xmax        = EEGout.times(end);    
 
     %% Command string generation
-    com = sprintf('[EEG, com] = pop_CombMSMaps(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
+    com = sprintf('EEG = pop_CombMSMaps(%s, %s, ''MeanName'', ''%s'', ''IgnorePolarity'', %i);', inputname(1), mat2str(SelectedSets), MeanName, IgnorePolarity);
 
     %% Show maps
     if ShowMaps        

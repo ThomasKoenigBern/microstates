@@ -242,7 +242,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).TemplateLabels, 1:numel(SelectedEEG), 'UniformOutput', false);
     labels = vertcat(labels{:});
     if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
-        errorMessage = sprintf('Map labels of the %i cluster solution are inconsistent across datasets.', c);
+        errorMessage = sprintf('Map labels of the %i cluster solution are inconsistent across datasets.', nClasses);
         if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Plot temporal parameters error');
             return;
@@ -390,7 +390,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     h2.XLabel = 'To';
     h2.YLabel = 'From';
 
-    com = sprintf('[fig_h, com] = pop_ShowMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
+    com = sprintf('fig_h = pop_ShowMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
 
 end
 

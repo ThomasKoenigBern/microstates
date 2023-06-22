@@ -238,7 +238,7 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
  
     Randomizer_ShowTanovaResults(rd);
 
-    com = sprintf('com = pop_RaguMSMaps(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
+    com = sprintf('pop_RaguMSMaps(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
 end
 
 function defineWithinDesign(src, ~)

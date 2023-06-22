@@ -338,7 +338,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     EEGout = newEEG;
     CurrentSet = numel(AllEEG);     % update CurrentSet so new datasets will be appended to the end of ALLEEG
 
-    com = sprintf('[EEG, CURRENTSET, com] = pop_GetMSDynamics(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), nClasses);
+    com = sprintf('[EEG, CURRENTSET] = pop_GetMSDynamics(%s, %s, ''Classes'', %i, ''Rectify'', %i, ''Normalize'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Rectify, Normalize);
 end
 
 function hasDyn = isDynamicsSet(in)

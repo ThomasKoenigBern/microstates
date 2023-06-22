@@ -306,7 +306,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
         PlotMSDyn([], [], setTab);
     end
 
-    com = sprintf('com = pop_ShowIndMSDyn(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), nClasses);
+    com = sprintf('pop_ShowIndMSDyn(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), nClasses);
 end
 
 function PlotMaps(~, ~, EEG, nClasses)

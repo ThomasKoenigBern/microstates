@@ -523,9 +523,9 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     CurrentSet = SelectedSets;   
 
     if ischar(TemplateSet) || isstring(TemplateSet)
-        fitCom = sprintf('[EEG, CURRENTSET, com] = pop_FitMSMaps(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
+        fitCom = sprintf('[EEG, CURRENTSET] = pop_FitMSMaps(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
     elseif isnumeric(TemplateSet)
-        fitCom = sprintf('[EEG, CURRENTSET, com] = pop_FitMSMaps(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
+        fitCom = sprintf('[EEG, CURRENTSET] = pop_FitMSMaps(%s, %s, ''FitPar'', %s, ''TemplateSet'', ''%s'');', inputname(1), mat2str(SelectedSets), struct2String(FitPar), TemplateSet);
     end
 
     if isempty(com)

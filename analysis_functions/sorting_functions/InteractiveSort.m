@@ -65,7 +65,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
     if ud.minPanelWidth > figSize1(3)*mapPanelNormWidth || ud.minPanelHeight > figSize1(4)*mapPanelNormHeight
         ud.Scroll = true;
         fig_h = uifigure('Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], 'Units', 'pixels', ...
-            'Position', figSize2, 'MenuBar', 'none', 'ToolBar', 'none');
+            'Position', figSize2, 'MenuBar', 'none', 'ToolBar', 'none', 'Tag', 'InteractiveSort', 'HandleVisibility', 'on');
         if ud.minPanelWidth < fig_h.Position(3) - 20
             ud.minPanelWidth = fig_h.Position(3) - 50;
         end
@@ -76,6 +76,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
     % Otherwise use a normal figure (faster rendering) 
     else
         fig_h = figure('NumberTitle', 'off', 'Name', ['Microstate maps of ' AllEEG(SelectedSet).setname], ...
+            'Position', figSize1, 'MenuBar', 'figure', 'ToolBar', 'none', 'Tag', 'InteractiveSort');
     end           
     
     ud.MSMaps = AllEEG(SelectedSet).msinfo.MSMaps;
@@ -312,6 +313,14 @@ function [yesPressed, selection] = questDlg(showOptions)
 
     questDlg = figure('Name', 'Edit & sort microstate maps', 'NumberTitle', 'off', ...
         'Color', [.66 .76 1], 'WindowStyle', 'modal', 'MenuBar', 'none', 'ToolBar', 'none');
+    questDlg.Position(3:4) = [500 190];
+%     questDlg.Position(3) = 500;
+%     if showOptions
+%         questDlg.Position(4) = 240;
+%     else
+%         questDlg.Position(4) = 135;
+%     end
+    movegui(questDlg, 'center');
     questDlg.UserData.yesPressed = yesPressed;
     questDlg.UserData.selection = selection;
     questDlg.CloseRequestFcn = 'uiresume()';
@@ -322,22 +331,20 @@ function [yesPressed, selection] = questDlg(showOptions)
         questDlg.UserData.bg = uibuttongroup(questDlg, 'Units', 'normalized', 'Position', [.05 .3 .9 .4], 'BackgroundColor', [.66 .76 1], 'BorderType', 'none');
         uicontrol(questDlg.UserData.bg, 'Style', 'radiobutton', 'String', 'Sort dependent sets by this set', 'Units', 'normalized', ...
             'Position', [.05 .5 .9 .4], 'BackgroundColor', [.66 .76 1], 'FontSize', 12);
-            'Position', [.05 .65 .9 .3], 'BackgroundColor', [.66 .76 1], 'FontSize', 12);
         uicontrol(questDlg.UserData.bg, 'Style', 'radiobutton', 'String', 'Clear dependent sorting', 'Units', 'normalized', ...
-            'Position', [.05 .35 .9 .3], 'BackgroundColor', [.66 .76 1], 'FontSize', 12);
-        uicontrol(questDlg.UserData.bg, 'Style', 'radiobutton', 'String', 'Only update this set', 'Units', 'normalized', ...
-            'Position', [.05 .05 .9 .3], 'BackgroundColor', [.66 .76 1], 'FontSize', 12);
+            'Position', [.05 .1 .9 .4], 'BackgroundColor', [.66 .76 1], 'FontSize', 12);
+%         uicontrol(questDlg.UserData.bg, 'Style', 'radiobutton', 'String', 'Only update this set', 'Units', 'normalized', ...
+%             'Position', [.05 .05 .9 .3], 'BackgroundColor', [.66 .76 1], 'FontSize', 12);
 
-        uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'Yes', 'Units', 'normalized', ...
-            'Position', [.25 .05 .2 .15], 'Callback', {@btnPressed, questDlg});
-        uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'No', 'Units', 'normalized', ...
-            'Position', [.55 .05 .2 .15], 'Callback', {@btnPressed, questDlg});
-    else
-        uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'Yes', 'Units', 'normalized', ...
-            'Position', [.25 .1 .2 .25], 'Callback', {@btnPressed, questDlg});
-        uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'No', 'Units', 'normalized', ...
-            'Position', [.55 .1 .2 .25], 'Callback', {@btnPressed, questDlg});
+%         uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'Yes', 'Units', 'normalized', ...
+%             'Position', [.25 .05 .2 .15], 'Callback', {@btnPressed, questDlg});
+%         uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'No', 'Units', 'normalized', ...
+%             'Position', [.55 .05 .2 .15], 'Callback', {@btnPressed, questDlg});
     end
+    uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'Yes', 'Units', 'normalized', ...
+        'Position', [.25 .1 .2 .17], 'Callback', {@btnPressed, questDlg});
+    uicontrol(questDlg, 'Style', 'pushbutton', 'String', 'No', 'Units', 'normalized', ...
+        'Position', [.55 .1 .2 .17], 'Callback', {@btnPressed, questDlg});
 
     uiwait(questDlg);
 

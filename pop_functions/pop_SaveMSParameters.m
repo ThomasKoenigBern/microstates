@@ -310,7 +310,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).TemplateLabels, 1:numel(SelectedEEG), 'UniformOutput', false);
     labels = vertcat(labels{:});
     if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
-        errorMessage = sprintf('Map labels of the %i cluster solution are inconsistent across datasets.', c);
+        errorMessage = sprintf('Map labels of the %i cluster solution are inconsistent across datasets.', nClasses);
         if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Export temporal parameters error');
             return;
@@ -385,7 +385,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         end
     end
 
-    com = sprintf('[MSStats, com] = pop_SaveMSStats(%s, %s, ''Classes'', %i, ''FileName'', ''%s'');', inputname(1), mat2str(SelectedSets), nClasses, FileName);
+    com = sprintf('MSStats = pop_SaveMSStats(%s, %s, ''Classes'', %i, ''FileName'', ''%s'');', inputname(1), mat2str(SelectedSets), nClasses, FileName);
 
 end
 
