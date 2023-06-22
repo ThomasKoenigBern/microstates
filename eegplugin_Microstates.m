@@ -78,7 +78,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     addpath(genpath(fileparts(which('eegplugin_Microstates'))));
     
     VersionNumber = '2.0';
-    vers = ['MICROSTATES ' VersionNumber];
+    vers = ['MICROSTATELAB ' VersionNumber];
     
 %     if isempty(MSTEMPLATE)
 %         try
@@ -169,7 +169,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
         comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowMSParameters(ALLEEG);'      catch_strings.add_to_hist];    
         
         toolsmenu = findobj(fig, 'tag', 'tools');
-        toolssubmenu = uimenu( toolsmenu, 'label', 'MICROSTATESLAB','userdata','study:on','Separator','on');
+        toolssubmenu = uimenu( toolsmenu, 'label', 'MICROSTATELAB','userdata','study:on','Separator','on');
         uimenu( toolssubmenu, 'Label', 'Data quality check',                                              'CallBack', comCheckData,          'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Identify microstate maps per dataset',                            'CallBack', comFindMSTemplates,    'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Identify mean microstate maps',                                   'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
