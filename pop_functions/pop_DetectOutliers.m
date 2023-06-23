@@ -188,7 +188,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     setnames = {SelectedEEG.setname};
     isEmpty = cellfun(@isempty,setnames);
     if any(isEmpty)
-        setnames{isEmpty} = '';
+        setnames(isEmpty) = {''};
     end
 
     % First check if any datasets remain unsorted

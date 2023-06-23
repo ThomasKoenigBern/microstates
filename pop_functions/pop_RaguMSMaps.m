@@ -133,6 +133,15 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
     
     MinClasses = max(arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MinClasses, SelectedSets));
     MaxClasses = min(arrayfun(@(x) AllEEG(x).msinfo.ClustPar.MaxClasses, SelectedSets));
+    if MaxClasses < MinClasses
+        errorMessage = 'No overlap in cluster solutions found between all selected sets.';
+        if matches('SelectedSets', p.UsingDefaults)
+            errordlg2(errorMessage, 'Export microstate maps to Ragu error');
+            return;
+        else
+            error(errorMessage);
+        end
+    end
     if matches('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
         classChoices = sprintf('%i Classes|', classRange);
@@ -157,7 +166,7 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
     setnames = {AllEEG(SelectedSets).setname};
     isEmpty = cellfun(@isempty,setnames);
     if any(isEmpty)
-        setnames{isEmpty} = '';
+        setnames(isEmpty) = {''};
     end
     % First check if any datasets remain unsorted
     SortModes = arrayfun(@(x) AllEEG(x).msinfo.MSMaps(Classes).SortMode, SelectedSets, 'UniformOutput', false);

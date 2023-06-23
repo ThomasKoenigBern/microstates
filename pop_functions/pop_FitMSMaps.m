@@ -390,7 +390,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
         setnames = {SelectedEEG.setname};
         isEmpty = cellfun(@isempty,setnames);
         if any(isEmpty)
-            setnames{isEmpty} = '';
+           setnames(isEmpty) = {''};
         end
         for c=FitPar.Classes
             % First check if any datasets remain unsorted

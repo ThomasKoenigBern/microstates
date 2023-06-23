@@ -71,6 +71,12 @@ function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
     if ~ispref('MICROSTATELAB', 'showFitWarning')
         setpref('MICROSTATELAB', 'showFitWarning', 1);
     end
+    if ~ispref('MICROSTATELAB', 'showTopoWarning1')
+        setpref('MICROSTATELAB', 'showTopoWarning1', 1);
+    end
+    if ~ispref('MICROSTATELAB', 'showTopoWarning2')
+        setpref('MICROSTATELAB', 'showTopoWarning2', 1);
+    end
 
     addpath(genpath(fileparts(which('eegplugin_microstatelab'))));
     if ~isempty(which('eegplugin_Microstates'))
@@ -139,7 +145,7 @@ function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
 %         end
 %     end
     
-    pluginpath = fileparts(which('eegplugin_Microstates.m'));                  % Get eeglab path
+    pluginpath = fileparts(which('eegplugin_microstatelab.m'));                  % Get eeglab path
     templatepath = fullfile(pluginpath,'Templates');
 
     Templates = dir(fullfile(templatepath,'*.set'));
@@ -156,6 +162,7 @@ function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
         comCombineMSTemplates  = [try_strings.no_check '[EEG, LASTCOM]                        = pop_CombMSMaps(ALLEEG);'            catch_strings.new_and_hist];
         comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]    = pop_SortMSMaps(ALLEEG);'            catch_strings.store_and_hist];
         comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_DetectOutliers(ALLEEG);'        catch_strings.store_and_hist];
+        comCompareTopos        = [try_strings.no_check '[EEG, CURRENTSET, ~, LASTCOM]         = pop_CompareTopos(ALLEEG);'          catch_strings.store_and_hist];
         comCompareMaps         = [try_strings.no_check '[~, LASTCOM]                          = pop_CompareMSMaps(ALLEEG);'         catch_strings.store_and_hist];
         comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_GetMSDynamics(ALLEEG);'         catch_strings.new_and_hist];
         comFitMSTemplates      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FitMSMaps(ALLEEG);'             catch_strings.store_and_hist];
@@ -174,6 +181,7 @@ function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
         uimenu( toolssubmenu, 'Label', 'Identify mean microstate maps',                                   'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Edit & sort microstate maps',                                     'CallBack', comSortMSTemplates,    'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Outlier detection',                                               'Callback', comDetectOutliers,     'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Compare topographic similarities',                                'Callback', comCompareTopos,       'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Backfit microstate maps to EEG',                                  'Callback', comFitMSTemplates,     'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Export temporal parameters',                                      'Callback', comSaveMSParam,        'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',             'CallBack', comGetMSDynamics,      'userdata', 'study:on', 'Separator', 'on');    

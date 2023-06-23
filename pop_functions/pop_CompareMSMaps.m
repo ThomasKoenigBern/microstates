@@ -431,7 +431,7 @@ function [sharedVarTable, com] = pop_CompareMSMaps(AllEEG, varargin)
         setnames = {SelectedEEG(nonpublishedSets).setname};
         isEmpty = cellfun(@isempty,setnames);
         if any(isEmpty)
-            setnames{isEmpty} = '';
+            setnames(isEmpty) = {''};
         end
 
         % Check for overlap in cluster solutions
