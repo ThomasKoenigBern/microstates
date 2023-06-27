@@ -290,10 +290,23 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
     fig_h = figure('Name', figName, 'NumberTitle', 'off', 'Units', 'pixels', ...
         'Position', figSize, 'ToolBar', 'none', 'Visible', figVisible);
-    
-    t = tiledlayout(fig_h, 2, 3);
+    datacursormode(fig_h, 'on');
+
+    if numel(SelectedSets) == 1
+        t = tiledlayout(fig_h, 2, 3);
+    else
+        plotsPanel = uipanel(fig_h, 'Units', 'normalized', 'Position', [0 0 .85 1], 'BorderType', 'none');
+        t = tiledlayout(plotsPanel, 2, 3);       
+        uicontrol(fig_h, 'Style', 'listbox', 'Units', 'normalized', 'Position', [.86 .02 .12 .96], ...
+            'String', {SelectedEEG.setname}, 'Callback', {@setChanged, t}, 'UserData', struct('nClasses', nClasses));
+        setnames = {};
+        for i=1:numel(SelectedEEG)
+            setnames = [setnames repmat({SelectedEEG(i).setname}, 1, nClasses)];
+        end
+        row1 = dataTipTextRow('Dataset:', setnames);
+    end
     t.TileSpacing = 'compact';
-    t.Padding = 'compact';
+    t.Padding = 'compact';    
 
     % GEV
     gevAx = nexttile(t, 1);
@@ -301,7 +314,11 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         bar(gevAx, x, SelectedEEG.msinfo.MSStats(nClasses).IndExpVar*100);
     else
         IndGEVs = cell2mat(arrayfun(@(x) double(SelectedEEG(x).msinfo.MSStats(nClasses).IndExpVar*100), 1:numel(SelectedSets), 'UniformOutput', false));
-        swarmchart(gevAx, x, IndGEVs, 25, [0 0.4470 0.7410],'filled');
+        gevChart = swarmchart(gevAx, x, IndGEVs, 15, [0 0.4470 0.7410],'filled');  
+        gevStr = arrayfun(@(x) sprintf('%2.2f%%', x), IndGEVs, 'UniformOutput', false);
+        row2 = dataTipTextRow('GEV:', gevStr);
+        gevChart.DataTipTemplate.DataTipRows = [row1 row2];
+        gevChart.DataTipTemplate.Interpreter = 'none';
     end
     ymax = gevAx.YLim(2)*1.1;
     ylim(gevAx, [0 ymax]);
@@ -313,7 +330,11 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         bar(durAx, x, SelectedEEG.msinfo.MSStats(nClasses).MeanDuration*1000);
     else
         Durations = cell2mat(arrayfun(@(x) double(SelectedEEG(x).msinfo.MSStats(nClasses).MeanDuration*1000), 1:numel(SelectedSets), 'UniformOutput', false));
-        swarmchart(durAx, x, Durations, 25, [0 0.4470 0.7410],'filled');
+        durChart = swarmchart(durAx, x, Durations, 15, [0 0.4470 0.7410],'filled');
+        durStr = arrayfun(@(x) sprintf('%3.2f ms', x), Durations, 'UniformOutput', false);
+        row2 = dataTipTextRow('Duration:', durStr);
+        durChart.DataTipTemplate.DataTipRows = [row1 row2];
+        durChart.DataTipTemplate.Interpreter = 'none';
     end
     ymax = durAx.YLim(2)*1.1;
     ylim(durAx, [0 ymax]);
@@ -325,7 +346,11 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         bar(occAx, x, SelectedEEG.msinfo.MSStats(nClasses).MeanOccurrence);
     else
         Occurrences = cell2mat(arrayfun(@(x) double(SelectedEEG(x).msinfo.MSStats(nClasses).MeanOccurrence), 1:numel(SelectedSets), 'UniformOutput', false));
-        swarmchart(occAx, x, Occurrences, 25, [0 0.4470 0.7410],'filled');
+        occStr = arrayfun(@(x) sprintf('%2.2f appear/s', x), Occurrences, 'UniformOutput', false);
+        occChart = swarmchart(occAx, x, Occurrences, 15, [0 0.4470 0.7410],'filled');
+        row2 = dataTipTextRow('Occurrence:', occStr);
+        occChart.DataTipTemplate.DataTipRows = [row1 row2];
+        occChart.DataTipTemplate.Interpreter = 'none';
     end
     ymax = occAx.YLim(2)*1.1;
     ylim(occAx, [0 ymax]);
@@ -337,7 +362,11 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         bar(covAx, x, SelectedEEG.msinfo.MSStats(nClasses).Coverage);
     else
         Coverages = cell2mat(arrayfun(@(x) double(SelectedEEG(x).msinfo.MSStats(nClasses).Coverage), 1:numel(SelectedSets), 'UniformOutput', false));
-        swarmchart(covAx, x, Coverages, 25, [0 0.4470 0.7410],'filled');
+        covStr = arrayfun(@(x) sprintf('%2.2f%%', x), Coverages, 'UniformOutput', false);
+        row2 = dataTipTextRow('Coverage:', covStr);
+        covChart = swarmchart(covAx, x, Coverages, 15, [0 0.4470 0.7410],'filled');
+        covChart.DataTipTemplate.DataTipRows = [row1 row2];
+        covChart.DataTipTemplate.Interpreter = 'none';
     end
     ymax = covAx.YLim(2)*1.1;
     ylim(covAx, [0 ymax]);
@@ -349,7 +378,11 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         bar(gfpAx, x, SelectedEEG.msinfo.MSStats(nClasses).MeanGFP);
     else
         GFPs = cell2mat(arrayfun(@(x) double(SelectedEEG(x).msinfo.MSStats(nClasses).MeanGFP), 1:numel(SelectedSets), 'UniformOutput', false));
-        swarmchart(gfpAx, x, GFPs, 25, [0 0.4470 0.7410],'filled');
+        gfpStr = arrayfun(@(x) sprintf('%2.2f uV', x), GFPs, 'UniformOutput', false);
+        row2 = dataTipTextRow('GFP:', gfpStr);
+        gfpChart = swarmchart(gfpAx, x, GFPs, 15, [0 0.4470 0.7410],'filled');
+        gfpChart.DataTipTemplate.DataTipRows = [row1 row2];
+        gfpChart.DataTipTemplate.Interpreter = 'none';
     end
     ymax = gfpAx.YLim(2)*1.1;
     ylim(gfpAx, [0 ymax]);
@@ -393,6 +426,37 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     com = sprintf('fig_h = pop_ShowMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
 
+end
+
+function setChanged(src, ~, t)
+    nClasses = src.UserData.nClasses;
+    for i=1:numel(t.Children)
+        if strcmp(t.Children(i).Title, 'Mean Observed - Expected Transition Probabilities')
+            continue;
+        end
+        % Delete old data tips
+%         if isfield(t.Children(i).UserData, 'dataTips')
+%             if ~isempty(t.Children(i).UserData.dataTips)
+%                 for j=1:numel(t.Children(i).UserData.dataTips)
+%                     delete(t.Children(i).UserData.dataTips(j));
+%                 end
+%             end
+%         end
+        % Highlight the data points associated with the selected set
+        t.Children(i).Children.CData = repmat([0 .447 .741], numel(t.Children(i).Children.XData), 1);
+        setIdx = nClasses*(src.Value-1)+1:nClasses*src.Value;
+        t.Children(i).Children.CData(setIdx, :) = repmat([.85 .325 .098], nClasses, 1);
+        t.Children(i).Children.SizeData = repmat(15, numel(t.Children(i).Children.XData), 1);
+        t.Children(i).Children.SizeData(setIdx) = 60;
+%         % Make new data tips        
+%         t.Children(i).UserData.dataTips = [];
+%         for j=setIdx
+%             x = t.Children(i).Children.XData(j);
+%             y = t.Children(i).Children.YData(j);
+%             t.Children(i).UserData.dataTips = [t.Children(i).UserData.dataTips ...
+%                 datatip(t.Children(i).Children, x, y)];
+%         end
+    end
 end
 
 function hasDyn = isDynamicsSet(in)
