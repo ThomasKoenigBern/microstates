@@ -149,6 +149,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     % Otherwise, prompt user to choose sets
     else
         defaultSets = find(ismember(AvailableSets, CurrentSet));
+        if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         [res,~,~,outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', {
                     { 'Style', 'text'    , 'string', 'Choose sets for obtaining dynamics', 'fontweight', 'bold'} ...

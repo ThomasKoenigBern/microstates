@@ -205,6 +205,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     % Otherwise, add set selection gui elements
     else
         defaultSets = find(ismember(AvailableSets, CurrentSet));
+        if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         guiElements = [guiElements, ....
                     {{ 'Style', 'text'    , 'string', 'Choose sets for backfitting', 'FontWeight', 'bold'}} ...

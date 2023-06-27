@@ -125,6 +125,7 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
     else
         global CURRENTSET;
         defaultSets = find(ismember(AvailableSets, CURRENTSET));
+        if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         [res,~,~,outstruct] = inputgui('geometry', [1 1 1 1], 'geomvert', [1 1 1 4], 'uilist', {
                     { 'Style', 'text'    , 'string', 'Choose sets to plot', 'fontweight', 'bold'} ...

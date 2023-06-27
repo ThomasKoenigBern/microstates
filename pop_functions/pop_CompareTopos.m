@@ -630,7 +630,7 @@ function exclude(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [1 0 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);
@@ -654,7 +654,7 @@ function keep(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [0 1 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);

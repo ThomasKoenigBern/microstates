@@ -273,7 +273,8 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
         'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
     
     if tblWidth > .4*figSize(3)
-        tblWidth = floor(.4*figSize(3));        
+        tblWidth = floor(.4*figSize(3));   
+        maxSubjWidth = tblWidth - colWidth*numel(MapLabels);
     end
 
     horzLayout = uigridlayout(fig_h, [2 1]);
@@ -324,7 +325,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     ud.setnames = {SelectedEEG.setname};
     opts = {'Keep', 'Exclude'};
     tblData = [ud.setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
-    ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', 'ColumnWidth', ['auto' repmat({colWidth}, 1, numel(MapLabels))], ...
+    ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', 'ColumnWidth', [maxSubjWidth repmat({colWidth}, 1, numel(MapLabels))], ...
         'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
     
@@ -560,7 +561,7 @@ function exclude(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [1 0 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);
@@ -584,7 +585,7 @@ function keep(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [0 1 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);
