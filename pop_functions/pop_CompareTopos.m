@@ -448,6 +448,7 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
     ud.currentIdx = [];
     ud.highlightPoints = [];
     ud.dataTip = [];    
+    ud.Filename = [];
     
     fig_h.UserData = ud;
     
