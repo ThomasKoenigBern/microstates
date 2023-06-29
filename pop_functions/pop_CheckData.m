@@ -168,8 +168,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     ClustPar.GFPPeaks = 1;
     ClustPar.IgnorePolarity = 1;
     ClustPar.Normalize = 1;
-%     SelectedEEG = pop_FindMSMaps(AllEEG, SelectedSets, 'ClustPar', ClustPar);
-    SelectedEEG = AllEEG(SelectedSets);
+    SelectedEEG = pop_FindMSMaps(AllEEG, SelectedSets, 'ClustPar', ClustPar);
 
     %% Compute residuals       
     classRMSE = zeros(numel(SelectedSets), nClasses);

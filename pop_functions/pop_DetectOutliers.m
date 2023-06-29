@@ -265,6 +265,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
 
     maxSubjWidth = max(cellfun(@length, {SelectedEEG.setname}))*9;
+    if maxSubjWidth < 60;   maxSubjWidth = 60;  end
     if maxSubjWidth > 200;  maxSubjWidth = 200; end
     colWidth = 65;
     tblWidth = maxSubjWidth + colWidth*numel(MapLabels);
@@ -326,7 +327,7 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     opts = {'Keep', 'Exclude'};
     tblData = [ud.setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
     ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', 'ColumnWidth', [maxSubjWidth repmat({colWidth}, 1, numel(MapLabels))], ...
-        'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
+        'ColumnName', [{'Dataset'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
     
     ud.MapPanel = uipanel(horzLayout, 'BorderType', 'none', 'Visible', 'off');
@@ -434,7 +435,7 @@ function updatePlot(fig_h)
     if any(reviewIdx);  ud.scatter.CData(reviewIdx, :) = repmat([.929 .694 .125], sum(reviewIdx), 1);   end
 
     ud.scatter.ButtonDownFcn = {@axisClicked, fig_h};
-    row = dataTipTextRow('Subject', ud.setnames);
+    row = dataTipTextRow('Dataset', ud.setnames);
     ud.scatter.DataTipTemplate.DataTipRows = row;
     ud.scatter.DataTipTemplate.Interpreter = 'none';
 
