@@ -2,6 +2,7 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
 
     
     [rd.GroupLabels,rd.IndFeature] = GetUniqueIdentifiers(EEGs,'group');
+
     [rd.conds      ,ConditionIdx ] = GetUniqueIdentifiers(EEGs,'condition');
     [SubjectLabel  ,SubjectIdx]    = GetUniqueIdentifiers(EEGs,'subject');    
     
@@ -50,7 +51,11 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     rd.ContF1 = false;
     rd.Iterations = 1000;
     rd.Threshold = 0.05;
-    rd.IndFeature = ones(size(rd.Names,1),1);
+    if isempty(rd.IndFeature)
+        rd.IndFeature = ones(size(rd.Names,1),1);
+    end
+
+    
     rd.MapStyle = 2;
 
     X = cell2mat({EEGs(1).chanlocs.X});
