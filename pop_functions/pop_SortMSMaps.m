@@ -291,7 +291,9 @@
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
 function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
-    
+
+    [~,nogui] = eegplugin_microstatelab;
+
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
@@ -759,6 +761,11 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
 
     %% Prompt user to select classes if necessary
     if ~isempty(guiElements)
+
+        if nogui == true
+            error("Parameters missing in function pop_SortMSMaps, check the help for pop_SortMSMaps for support");
+        end
+ 
         % Add stepwise sorting option for sorting by own template if GUI is
         % being displayed
         if strcmpi(TemplateSet, 'own') && matches('Stepwise', p.UsingDefaults)

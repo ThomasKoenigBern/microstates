@@ -61,90 +61,27 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
+function [vers,nogui] = eegplugin_microstatelab (fig, try_strings, catch_strings)
+
+    VersionNumber = '2.0';
+    vers = ['MICROSTATELAB ' VersionNumber];
+
+    if ~ispref('MICROSTATELAB', 'showSortWarning')
+        setpref('MICROSTATELAB', 'nogui', false);
+    end
+
+    if ismember('MSTEMPLATE',who('global')) % The function has been called before, we don't need to go into all the setup again
+        nogui = getpref('MICROSTATELAB', 'nogui'); % We get the prefs
+        return
+    end
 
     global MSTEMPLATE;
     
-    if ~ispref('MICROSTATELAB', 'showSortWarning')
-        setpref('MICROSTATELAB', 'showSortWarning', 1);
-    end
-    if ~ispref('MICROSTATELAB', 'showFitWarning')
-        setpref('MICROSTATELAB', 'showFitWarning', 1);
-    end
-    if ~ispref('MICROSTATELAB', 'showTopoWarning1')
-        setpref('MICROSTATELAB', 'showTopoWarning1', 1);
-    end
-    if ~ispref('MICROSTATELAB', 'showTopoWarning2')
-        setpref('MICROSTATELAB', 'showTopoWarning2', 1);
-    end
-
     addpath(genpath(fileparts(which('eegplugin_microstatelab'))));
     if ~isempty(which('eegplugin_Microstates'))
         warning('Old version of the MICROSTATELAB toolbox found in the EEGLAB plugins folder. Please remove any old versions to avoid conflicts.');
     end
-    
-    VersionNumber = '2.0';
-    vers = ['MICROSTATELAB ' VersionNumber];
-    
-%     if isempty(MSTEMPLATE)
-%         try
-%             WebVersionInfo = xml2struct('http://www.thomaskoenig.ch/Download/EEGLAB_Microstates/MSPluginVersionInfo.xml');
-%             WebVersion = WebVersionInfo.MSPluginVersionInfo.Attributes.Version;
-%         
-%             if str2double(WebVersion) > str2double(VersionNumber)
-%                 InfoString{1} = ['Version: ' WebVersion];
-%             
-%                 for i = 1:numel(WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo)
-%                     name = fieldnames(WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes);
-%                     InfoString{i + 1} = [name{1} ': ' WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes.(name{1})];
-%                     if strcmp(name{1},'MSPluginZIP')
-%                         urlZIPName = WebVersionInfo.MSPluginVersionInfo.VersionInfo.VersionInfo{i}.Attributes.(name{1});
-%                     end
-%                 end
-%             
-%                 InfoString{i + 2} = '';
-%                 InfoString{i + 3} = 'Update now?';
-%                 InfoString{i + 4} = '(Requires an EEGLAB restart)';
-%             
-%                 ButtonName = questdlg(InfoString,'New microstates plugin version available', 'Yes', 'No', 'Yes');
-%             
-%                 switch ButtonName
-%                 case 'Yes'
-%                     disp('Downloading');
-%                     pluginpath = fileparts(which('eegplugin_Microstates'));
-%                     tempZipName = tempname;
-%                     urlwrite(['http://www.thomaskoenig.ch/Download/EEGLAB_Microstates/' urlZIPName],[tempZipName '.zip']);
-%                     mkdir(tempZipName);
-%                     unzip([tempZipName '.zip'], tempZipName);
-%                     [~,NewDirName] = fileparts(urlZIPName);
-%                     NewPluginPath = fullfile(fileparts(which('eeglab')),'plugins',NewDirName);
-%                     mkdir(NewPluginPath);
-%                     AllFiles = dir(tempZipName);
-%                     for i = 3:numel(AllFiles)
-%                         movefile(fullfile(tempZipName,AllFiles(i).name), NewPluginPath, 'f');
-%                         disp(['Copied: ' AllFiles(i).name]);
-%                     end
-%                 
-%                     OpenDir = fullfile(fileparts(which('eeglab')),'plugins');
-%                 
-%                     if ispc
-%                         winopen(OpenDir);
-%                     elseif ismac
-%                         system(['open ' OpenDir ' &']);
-%                     else
-%                         error('Unrecognized operating system.');
-%                     end
-%     
-%                     uiwait(msgbox({'When EEGLAB has finished loading:' '- Close EEGLAB' '- type clear global' '- remove/relocate the old Microstates plugin folder from the EEGLAB plugin folder' '- and restart EEGLAB'},'Success'));
-%                 case 'No'
-%                     disp('Working with outdated Microstates plugin.');
-%                 end % switch
-%             end
-%         catch
-%             disp('EEG Microstates plugin update information unavailable');
-%         end
-%     end
-    
+            
     pluginpath = fileparts(which('eegplugin_microstatelab.m'));                  % Get eeglab path
     templatepath = fullfile(pluginpath,'Templates');
 
@@ -155,7 +92,22 @@ function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
     end
     
     MSTEMPLATE = MSTemplate;
+
     if nargin > 0
+        nogui = false;
+        if ~ispref('MICROSTATELAB', 'showSortWarning')
+            setpref('MICROSTATELAB', 'showSortWarning', 1);
+        end
+        if ~ispref('MICROSTATELAB', 'showFitWarning')
+            setpref('MICROSTATELAB', 'showFitWarning', 1);
+        end
+        if ~ispref('MICROSTATELAB', 'showTopoWarning1')
+            setpref('MICROSTATELAB', 'showTopoWarning1', 1);
+        end
+        if ~ispref('MICROSTATELAB', 'showTopoWarning2')
+            setpref('MICROSTATELAB', 'showTopoWarning2', 1);
+        end
+
         % Tools menu
         comCheckData           = [try_strings.no_check '[~, LASTCOM]                          = pop_CheckData(ALLEEG);'             catch_strings.add_to_hist];
         comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FindMSMaps(ALLEEG);'            catch_strings.store_and_hist];
@@ -192,6 +144,9 @@ function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
         uimenu( plotmenu,     'Label', 'Plot temporal dynamics',                                          'CallBack', comShowIndMSDyn,       'userdata', 'study:on');    
         uimenu( plotmenu,     'Label', 'Plot temporal parameters',                                        'CallBack', comShowMSParam,        'userdata', 'study:on');
         uimenu( plotmenu,     'Label', 'Compare microstate maps',                                         'CallBack', comCompareMaps,        'userdata', 'study:on');  
-
+    else
+        nogui = true;
     end
+    setpref('MICROSTATELAB', 'nogui', nogui);
+
 end

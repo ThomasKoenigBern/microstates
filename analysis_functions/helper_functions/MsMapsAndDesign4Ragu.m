@@ -9,9 +9,11 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     nSubjects   = numel(SubjectLabel);
     nConditions = numel(rd.conds);
     rd.Names    = cell(nSubjects,nConditions);
+    rd.Design = [];
 
     for s = 1:nSubjects
         for c = 1:nConditions
+            rd.Design = [rd.Design; c 1];
             idx = find(SubjectIdx == s & ConditionIdx == c);
             if isempty(idx)
                 warning('Condition %s for subject %s is missing, this subject will be excluded',rd.conds{c},SubjectLabel{s});

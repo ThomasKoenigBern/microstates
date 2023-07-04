@@ -78,6 +78,12 @@
 
 function com = pop_ShowIndMSDyn(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
+    if nogui == true
+        error("This function needs a GUI");
+    end
+
     %% Set defaults for outputs
     global MSTEMPLATE;
     com = '';

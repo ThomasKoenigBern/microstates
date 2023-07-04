@@ -169,6 +169,8 @@
 
 function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
     %% Set defaults for outputs
     com = '';
     MSStats = [];
@@ -216,6 +218,10 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         end
     % Otherwise, prompt user to choose sets
     else
+        if nogui == true
+            error("Parameters missing in function pop_SaveMSParameters, check the help for pop_SaveMSParameters for support");
+        end
+ 
         global CURRENTSET;
         defaultSets = find(ismember(AvailableSets, CURRENTSET));
         if isempty(defaultSets);    defaultSets = 1;    end
@@ -256,6 +262,10 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     if matches('Classes', p.UsingDefaults)
         classChoices = sprintf('%i Classes|', commonClasses);
         classChoices(end) = [];
+
+        if nogui == true
+            error("Parameters missing in function pop_SaveMSParameters, check the help for pop_SaveMSParameters for support");
+        end
 
         [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
             { {'Style', 'text', 'string', 'Select number of classes'} ...
@@ -343,6 +353,10 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
 
     if ~strcmp(FileName, 'none')
         if isempty(FileName)
+            if nogui == true
+                error("Parameters missing in function pop_SaveMSParameters, check the help for pop_SaveMSParameters for support");
+            end
+    
             % Set default filename
             if strcmp(FittingTemplates{1}, '<<own>>')
                 defaultFilename = sprintf('TemporalParameters_%i classes_OwnTemplates.csv', nClasses);

@@ -61,6 +61,12 @@
 
 function [setsTable, com] = pop_CheckData(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
+    if nogui == true
+        error("This function needs a GUI to work");
+    end
+
     com = '';
     setsTable = [];
     global MSTEMPLATE;
