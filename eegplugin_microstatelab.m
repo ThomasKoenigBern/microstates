@@ -1,4 +1,4 @@
-% eegplugin_Microstates() - EEGLAB plugin for microstate analyses
+% eegplugin_microstatelab() - EEGLAB plugin for microstate analyses
 %
 % Usage:
 %   >> eegplugin_Microstates(fig, trystrs, catchstrs);
@@ -11,37 +11,41 @@
 %   Integrates the following subfunctions:
 %   --------------------------------------
 %   Computational tools:
-%   <a href="matlab:helpwin pop_FindMSMaps">pop_FindMSMaps</a>  (identify microstate cluster maps)
-%   <a href="matlab:helpwin pop_CombMSMaps">pop_CombMSMaps</a>  (average microstate cluster maps)
-%   <a href="matlab:helpwin pop_SortMSMaps">pop_SortMSMaps</a>  (sorts microstate cluster maps based on a mean)
-%   <a href="matlab:helpwin pop_QuantMSTemplates">pop_QuantMSTemplates</a> (quantifies the presence of microstates in EEG data)
+%   <a href="matlab:helpwin pop_CheckData">pop_CheckData</a> (data quality evaluation)
+%   <a href="matlab:helpwin pop_FindMSMaps">pop_FindMSMaps</a> (identify microstate maps)
+%   <a href="matlab:helpwin pop_CombMSMaps">pop_CombMSMaps</a> (average microstate maps)
+%   <a href="matlab:helpwin pop_SortMSMaps">pop_SortMSMaps</a> (sorts microstate maps)
+%   <a href="matlab:helpwin pop_DetectOutliers">pop_DetectOutliers</a> (detect outlier maps)
+%   <a href="matlab:helpwin pop_FitMSMaps">pop_FitMSMaps</a> (backfit maps to EEG)
+%   <a href="matlab:helpwin pop_SaveMSParameters">pop_SaveMSParameters</a> (export temporal parameters)
+%   <a href="matlab:helpwin pop_GetMSDynamics">pop_GetMSDynamics</a> (obtain microstate activation series)
+%   <a href="matlab:helpwin pop_RaguMSMaps">pop_RaguMSMaps</a>  (test for topographic differences)
 %
 %   Visualisations:
-%   <a href="matlab:helpwin pop_ShowIndMSMaps">pop_ShowIndMSMaps</a>   (view and edit microstate cluster maps)
-%   <a href="matlab:helpwin pop_ShowIndMSDyn">pop_ShowIndMSDyn</a>     (view microstate dynamics)
+%   <a href="matlab:helpwin pop_ShowIndMSMaps">pop_ShowIndMSMaps</a> (view microstate maps)
+%   <a href="matlab:helpwin pop_ShowIndMSDyn">pop_ShowIndMSDyn</a> (view temporal dynamics)
+%   <a href="matlab:helpwin pop_ShowMSParameters">pop_ShowMSParameters</a> (view temporal parameters)
+%   <a href="matlab:helpwin pop_CompareMSMaps">pop_CompareMSMaps</a> (visually compare topographies)
 %
-% A typical basic workflow looks like this:
-% - Identify  microstate maps in each EEG (Tools menu)
-% - Average microstate maps across the datasets (Tools menu)
-% - Edit the mean microstate maps for the desired sequence (Plot menu)
-% - Either
-%     - Sort the individual microstate maps based on the edited average
-%       (Tools menu)
-%     - Quantify the microstate presence based on the sorted individual
-%       microstate maps (Tools menu)
-% - Or   
-%     - Quantify the microstate presence based on the averaged
-%       microstate maps (Tools menu)
+% See "MicrostateAnalysisDemo.m" for a starter script for performing
+% microstate analysis using the command line functions.
 %
-% For a more in depth explanation, see <a href="matlab:helpwin help_HowToDoMicrostateAnalyses">here</a>.
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% In addition, the script TestMSAnalyses.m is supposed to give you a good
-% start for a script that does the entire analyses for you. 
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
 %
-% Author: Thomas Koenig, University of Bern, Switzerland
-%
-% Copyright (C) 2018 Thomas Koenig, University of Bern, Switzerland
-% thomas.koenig@upd.unibe.ch
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -57,25 +61,27 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
+function vers = eegplugin_microstatelab (fig, try_strings, catch_strings)
 
     global MSTEMPLATE;
-    global guiOpts;
-    guiOpts.showCombWarning = true;
-    guiOpts.showSortWarning = true;
-    guiOpts.showGetWarning = true;
-    guiOpts.showQuantWarning1 = true;
-    guiOpts.showQuantWarning2 = true;
-    guiOpts.showQuantWarning3 = true;
-    guiOpts.showQuantWarning4 = true;
-    guiOpts.showQuantWarning5 = true;
-    guiOpts.showDynWarning = true;
-    guiOpts.showCompWarning1 = true;
-    guiOpts.showCompWarning2 = true;
-    guiOpts.showCompWarning3 = true;
-    guiOpts.showTopoWarning1 = true;
+    
+    if ~ispref('MICROSTATELAB', 'showSortWarning')
+        setpref('MICROSTATELAB', 'showSortWarning', 1);
+    end
+    if ~ispref('MICROSTATELAB', 'showFitWarning')
+        setpref('MICROSTATELAB', 'showFitWarning', 1);
+    end
+    if ~ispref('MICROSTATELAB', 'showTopoWarning1')
+        setpref('MICROSTATELAB', 'showTopoWarning1', 1);
+    end
+    if ~ispref('MICROSTATELAB', 'showTopoWarning2')
+        setpref('MICROSTATELAB', 'showTopoWarning2', 1);
+    end
 
-    addpath(genpath(fileparts(which('eegplugin_Microstates'))));
+    addpath(genpath(fileparts(which('eegplugin_microstatelab'))));
+    if ~isempty(which('eegplugin_Microstates'))
+        warning('Old version of the MICROSTATELAB toolbox found in the EEGLAB plugins folder. Please remove any old versions to avoid conflicts.');
+    end
     
     VersionNumber = '2.0';
     vers = ['MICROSTATELAB ' VersionNumber];
@@ -139,7 +145,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
 %         end
 %     end
     
-    pluginpath = fileparts(which('eegplugin_Microstates.m'));                  % Get eeglab path
+    pluginpath = fileparts(which('eegplugin_microstatelab.m'));                  % Get eeglab path
     templatepath = fullfile(pluginpath,'Templates');
 
     Templates = dir(fullfile(templatepath,'*.set'));
@@ -150,20 +156,20 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
     
     MSTEMPLATE = MSTemplate;
     if nargin > 0
-    % Tools menu
+        % Tools menu
         comCheckData           = [try_strings.no_check '[~, LASTCOM]                          = pop_CheckData(ALLEEG);'             catch_strings.add_to_hist];
         comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FindMSMaps(ALLEEG);'            catch_strings.store_and_hist];
         comCombineMSTemplates  = [try_strings.no_check '[EEG, LASTCOM]                        = pop_CombMSMaps(ALLEEG);'            catch_strings.new_and_hist];
         comSortMSTemplates     = [try_strings.no_check '[ALLEEG, EEG, CURRENTSET, LASTCOM]    = pop_SortMSMaps(ALLEEG);'            catch_strings.store_and_hist];
         comDetectOutliers      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_DetectOutliers(ALLEEG);'        catch_strings.store_and_hist];
-%     comCompareTopos        = [try_strings.no_check '[EEG, CURRENTSET, ~, LASTCOM]         = pop_CompareTopos(ALLEEG);'          catch_strings.store_and_hist];
+        comCompareTopos        = [try_strings.no_check '[EEG, CURRENTSET, ~, LASTCOM]         = pop_CompareTopos(ALLEEG);'          catch_strings.store_and_hist];
         comCompareMaps         = [try_strings.no_check '[~, LASTCOM]                          = pop_CompareMSMaps(ALLEEG);'         catch_strings.store_and_hist];
         comGetMSDynamics       = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_GetMSDynamics(ALLEEG);'         catch_strings.new_and_hist];
         comFitMSTemplates      = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FitMSMaps(ALLEEG);'             catch_strings.store_and_hist];
         comSaveMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_SaveMSParameters(ALLEEG);'      catch_strings.add_to_hist];
         comRaguMSTemplates     = [try_strings.no_check 'LASTCOM                               = pop_RaguMSMaps(ALLEEG);'            catch_strings.add_to_hist];
 
-    % Plot menu
+        % Plot menu
         comShowIndMSMaps       = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowIndMSMaps(ALLEEG);'         catch_strings.add_to_hist];
         comShowIndMSDyn        = [try_strings.no_check 'LASTCOM                               = pop_ShowIndMSDyn(ALLEEG);'          catch_strings.store_and_hist];
         comShowMSParam         = [try_strings.no_check '[~, LASTCOM]                          = pop_ShowMSParameters(ALLEEG);'      catch_strings.add_to_hist];    
@@ -175,7 +181,7 @@ function vers = eegplugin_Microstates (fig, try_strings, catch_strings)
         uimenu( toolssubmenu, 'Label', 'Identify mean microstate maps',                                   'CallBack', comCombineMSTemplates, 'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Edit & sort microstate maps',                                     'CallBack', comSortMSTemplates,    'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Outlier detection',                                               'Callback', comDetectOutliers,     'userdata', 'study:on');
-    %     uimenu( toolssubmenu, 'Label', 'Compare topographic similarities',                                'CallBack', comCompareTopos,       'userdata', 'study:on');
+        uimenu( toolssubmenu, 'Label', 'Compare topographic similarities',                                'Callback', comCompareTopos,       'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Backfit microstate maps to EEG',                                  'Callback', comFitMSTemplates,     'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Export temporal parameters',                                      'Callback', comSaveMSParam,        'userdata', 'study:on');
         uimenu( toolssubmenu, 'Label', 'Obtain microstate activation time series (optional)',             'CallBack', comGetMSDynamics,      'userdata', 'study:on', 'Separator', 'on');    

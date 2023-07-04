@@ -6,15 +6,15 @@
 % to extract temporal parameters.
 %
 % Usage:
-%   >> fig_h = pop_ShowMSParameters(ALLEEG, SelectedSets, 'key1', value1, 
-%       'key2', value2)
+%   >> fig_h = pop_ShowMSParameters(ALLEEG, SelectedSets, 'Classes', 
+%       Classes, 'Visible', true/false)
 %
 % Specify the number of classes in the fitting solution using the "Classes"
 % argument.
 % Ex:
 %   >> fig_h = pop_ShowMSParameters(ALLEEG, 1:5, 'Classes', 4);
 %
-% The figure with plotted temporal dynamics parameters can also be 
+% The figure with plotted temporal dynamics parameters can be 
 % generated but not displayed. This option is useful if you would like to 
 % save the plots in a script but avoid the window appearing. To generate an 
 % invisible figure, set the "Visible" argument to 0.
@@ -39,7 +39,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG for which temporal parameters will be
+%   -> Vector of set indices of ALLEEG for which temporal parameters will be
 %   plotted. Selected sets must contain temporal parameters in the "MSStats"
 %   field of "msinfo" (obtained from calling pop_FitMSMaps). If sets
 %   are not provided, a GUI will appear to choose sets.
@@ -47,8 +47,8 @@
 % Key, Value inputs (optional):
 %
 %   "Classes"
-%   -> Scalar integer value indicating the fitting solution whose
-%   associated temporal parameters will be plotted.
+%   -> Integer indicating the fitting solution whose associated temporal 
+%   parameters will be plotted.
 %
 %   "Visible"
 %   -> 1 = Show GUI with plotted temporal parameters, 0 = keep GUI hidden.
@@ -65,10 +65,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %              
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -111,9 +123,14 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     AvailableSets = find(HasStats & ~HasDyn);
     
     if isempty(AvailableSets)
-        errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'], 'Plot temporal parameters error');
-        return;
+        errorMessage = ['No sets with temporal parameters found. ' ...
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Plot temporal parameters error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -130,6 +147,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     else
         global CURRENTSET;
         defaultSets = find(ismember(AvailableSets, CURRENTSET));
+        if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         [res,~,~,outstruct] = inputgui('geometry', [1 1 1 1 1], 'geomvert', [1 1 1 1 4], 'uilist', {
                     { 'Style', 'text'    , 'string', 'Choose sets to plot', 'fontweight', 'bold'} ...
@@ -143,7 +161,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Plot temporal parameters error');
+            errordlg2('You must select at least one dataset','Plot temporal parameters error');
             return;
         end
     end        
@@ -160,7 +178,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     if isempty(commonClasses)
         errorMessage = 'No overlap in cluster solutions used for fitting found between all selected sets.';
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Plot temporal parameters error');
         else
             error(errorMessage);
@@ -182,14 +200,8 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         if ~ismember(nClasses, commonClasses)
             classesTxt = sprintf('%i, ', commonClasses);
             classesTxt = classesTxt(1:end-2);
-            errorMessage = sprintf(['Not all selected sets to plot contain microstate statistics for the %i cluster solution. ' ...
+            error(['Not all selected sets to plot contain microstate statistics for the %i cluster solution. ' ...
                 'Valid class numbers include: %s.'], nClasses, classesTxt);
-            if ~isempty(p.UsingDefaults)
-                errordlg2(errorMessage, 'Plot temporal parameters error');
-            else
-                error(errorMessage);
-            end
-            return;
         end
     end
 
@@ -207,7 +219,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     if unmatched
         errorMessage = 'Fitting parameters differ between selected sets.';  
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Plot temporal parameters error');
         else
             error(errorMessage);
@@ -219,7 +231,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     FittingTemplates = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).FittingTemplate, 1:numel(SelectedEEG), 'UniformOutput', false);
     if numel(unique(FittingTemplates)) > 1
         errorMessage = 'Fitting templates differ across datasets.';
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Plot temporal parameters error');
         else
             error(errorMessage);
@@ -227,32 +239,18 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
         return;
     end
 
-    % Check for consistent fitting template sorting
-    SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
-    if numel(unique(SortedBy)) > 1
-        errorMessage = 'Sorting information for the fitting template differs across datasets.';
-        if ~isempty(p.UsingDefaults)
+    % Check for consistent labels
+    labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSStats(nClasses).TemplateLabels, 1:numel(SelectedEEG), 'UniformOutput', false);
+    labels = vertcat(labels{:});
+    if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
+        errorMessage = sprintf('Map labels of the %i cluster solution are inconsistent across datasets.', nClasses);
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Plot temporal parameters error');
-        else
-            error(errorMessage);
-        end
-        return;
-    end
-
-    % Check for consistent labels if fitting template is own maps
-    if strcmp(FittingTemplates{1}, '<<own>>')
-        labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
-        labels = horzcat(labels{:});
-        if numel(unique(labels)) > nClasses
-            errorMessage = 'Template map labels differ across datasets.';
-            if ~isempty(p.UsingDefaults)
-                errordlg2(errorMessage, 'Plot temporal parameters error');
-            else
-                error(errorMessage);
-            end
             return;
+        else
+            error(errorMessage);
         end
-    end
+    end   
 
     %% Show GUI with plotted temporal parameters
     Labels = SelectedEEG(1).msinfo.MSStats(nClasses).TemplateLabels;
@@ -393,7 +391,7 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     h2.XLabel = 'To';
     h2.YLabel = 'From';
 
-    com = sprintf('[fig_h, com] = pop_ShowMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
+    com = sprintf('fig_h = pop_ShowMSParameters(%s, %s, ''Classes'', %i, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Visible);
 
 end
 

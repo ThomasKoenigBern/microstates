@@ -6,13 +6,8 @@
 % temporal parameters.
 %
 % Usage:
-%   >> [EEG, CURRENTSET] = pop_GetMSDynamics(ALLEEG, SelectedSets, 'key1', 
-%       value1)
-%
-% Specify the number of classes in the fitting solution using the "Classes" 
-% argument.
-% Ex:
-%   >> [EEG, CURRENTSET] = pop_GetMSDynamics(ALLEEG, 1:5, 'Classes', 4);
+%   >> [EEG, CURRENTSET] = pop_GetMSDynamics(ALLEEG, SelectedSets, 
+%       'Classes', Classes, 'Rectify', true/false, 'Normalize', true/false)
 %
 % Graphical interface:
 %
@@ -31,15 +26,26 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG for which new sets containg temporal
+%   -> Vector of set indices of ALLEEG for which new sets containg temporal
 %   dynamics representations will be generated. If not provided, a GUI will
 %   appear to select sets.
 %
 % Key, Value inputs (optional):
 %
 %   "Classes"
-%   -> Scalar integer value indicating the fitting solution whose
-%   associated temporal parameters will be plotted.
+%   -> Integer indicating the fitting solution whose associated temporal 
+%   dynamics will be stored in new sets.
+%
+%   "Rectify"
+%   -> 1 = Remove polarity reversal information from microstate assignments
+%   (store the absolute value of microstate assignments), 0 = retain
+%   polarity reversal information
+%
+%   "Normalize"
+%   -> 1 = Represent microstate activations as binary 1s or 0s, 0 =
+%   represent microstate activations as continuous strengths of
+%   activations, quantified as dot products between each microstate map and
+%   associated voltage vectors.
 %
 % Outputs:
 %
@@ -53,10 +59,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -77,7 +95,6 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
-    global guiOpts;
     global EEG;
     global CURRENTSET;
     EEGout = EEG;
@@ -109,9 +126,14 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     AvailableSets = find(HasStats & ~HasDyn);
     
     if isempty(AvailableSets)
-        errordlg2(['No sets with temporal parameters found. ' ...
-            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'], 'Obtain microstate activation time series error');
-        return;
+        errorMessage = ['No sets with temporal parameters found. ' ...
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Obtain microstate activation time series error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -127,6 +149,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     % Otherwise, prompt user to choose sets
     else
         defaultSets = find(ismember(AvailableSets, CurrentSet));
+        if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         [res,~,~,outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', {
                     { 'Style', 'text'    , 'string', 'Choose sets for obtaining dynamics', 'fontweight', 'bold'} ...
@@ -138,7 +161,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Obtain microstate activation time series error');
+            errordlg2('You must select at least one dataset','Obtain microstate activation time series error');
             return;
         end
     end         
@@ -153,7 +176,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
 
     if isempty(commonClasses)
         errorMessage = 'No overlap in cluster solutions used for fitting found between all selected sets.';
-        if ~isempty(p.UsingDefaults)
+        if matches('SelectedSets', p.UsingDefaults)
             errordlg2(errorMessage, 'Obtain microstate activation time series error');
         else
             error(errorMessage);
@@ -173,14 +196,8 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
         if ~ismember(nClasses, commonClasses)
             classesTxt = sprintf('%i, ', commonClasses);
             classesTxt = classesTxt(1:end-2);
-            errorMessage = sprintf(['Not all selected sets contain microstate dynamics information for the %i cluster solution. ' ...
+            error(['Not all selected sets contain microstate dynamics information for the %i cluster solution. ' ...
                 'Valid class numbers include: %s.'], nClasses, classesTxt);
-            if ~isempty(p.UsingDefaults)
-                errordlg2(errorMessage, 'Obtain microstate activation time series error');
-            else
-                error(errorMessage);
-            end
-            return;
         end
     end
 
@@ -322,7 +339,7 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
     EEGout = newEEG;
     CurrentSet = numel(AllEEG);     % update CurrentSet so new datasets will be appended to the end of ALLEEG
 
-    com = sprintf('[EEG, CURRENTSET, com] = pop_GetMSDynamics(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), nClasses);
+    com = sprintf('[EEG, CURRENTSET] = pop_GetMSDynamics(%s, %s, ''Classes'', %i, ''Rectify'', %i, ''Normalize'', %i);', inputname(1), mat2str(SelectedSets), nClasses, Rectify, Normalize);
 end
 
 function hasDyn = isDynamicsSet(in)
@@ -370,29 +387,4 @@ function Answer = DoesItHaveChildren(in)
     else
         Answer = true;
     end
-end
-
-function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
-    containsChild = false;
-    if isempty(SetsToSearch)
-        return;
-    end
-    
-    % find which sets have children
-    HasChildren = arrayfun(@(x) isfield(AllEEG(x).msinfo, 'children'), SetsToSearch);
-    % if none of the sets to search have children, the child set could not
-    % be found
-    if ~any(HasChildren)
-        return;
-    end
-
-    % search the children of all the mean sets for the child set name
-    containsChild = any(arrayfun(@(x) matches(childSetName, AllEEG(x).msinfo.children), SetsToSearch(HasChildren)));
-
-    % if the child cannot be found, search the children of the children
-    if ~containsChild
-        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
-        containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
-    end
-
 end

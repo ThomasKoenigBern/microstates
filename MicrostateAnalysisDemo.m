@@ -1,9 +1,21 @@
 %%  Demo script for microstate analyses in EEGLAB
 %
-%   Author: Thomas Koenig, University of Bern, Switzerland, 2018
+%   MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+%   Version 1.0
+%
+%   Authors:
+%   Thomas Koenig (thomas.koenig@upd.unibe.ch)
+%   Delara Aryan  (dearyan@chla.usc.edu)
 %  
-%   Copyright (C) 2018 Thomas Koenig, University of Bern, Switzerland
-%   thomas.koenig@upd.unibe.ch
+%   Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+%   If you use this software, please cite as:
+%   "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+%   analysis by Thomas Koenig and Delara Aryan"
+%   In addition, please reference MICROSTATELAB within the Materials and
+%   Methods section as follows:
+%   "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+%   Aryan."
 %  
 %   This program is free software; you can redistribute it and/or modify
 %   it under the terms of the GNU General Public License as published by
@@ -54,7 +66,7 @@
 %   Section 4 will perform clustering to identify individual microstate maps 
 %   for all loaded datasets.
 %
-%   Section 5 will identify group level microstate maps for each combination 
+%   Section 5 will identify mean microstate maps for each combination 
 %   of group and condition.
 %
 %   Section 6 will identify grand mean microstate maps for each group across 
@@ -74,10 +86,10 @@
 %   The maps should be contained in the "msinfo" field of the EEG struct,
 %   and should contain unique labels and colors for each map. After the
 %   grand grand mean maps are sorted, the grand mean maps for each group,
-%   group level maps for each group and condition, and individual maps for
+%   mean maps for each group and condition, and individual maps for
 %   each subject will be sorted by the grand grand mean.
 %
-%   Section 9 will save the individual, group level, grand mean, and grand 
+%   Section 9 will save the individual, mean, grand mean, and grand 
 %   grand mean set files containing the microstate maps data, along with 
 %   figures containing the plotted microstate maps.
 %
@@ -100,6 +112,7 @@ clear variables
 close all
 clc
 
+%% PART 1 - Make updates here
 %% 1. Set clustering, backfitting, and sorting parameters
 
 % Set clustering parameters
@@ -126,6 +139,7 @@ FitPar.b = 30;                                              % smoothing window (
 TemplateNames = {'Koenig2002', 'Custo2017'};
 SortClasses   = {4:6,           7         };
 
+%% PART 2 - Not intended to be edited by novice users
 %% 2. Get input directory and create output directories
 % Set path to directory containing group folders
 inputDir = uigetdir([], 'Directory containing group folders');
@@ -154,10 +168,10 @@ subDir = fullfile(saveDir, [char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mma'))
 mkdir(subDir);
 
 % Make new directories to store results
-subjDir = fullfile(subDir, '1_Set files with individual microstate maps');
-meanDir = fullfile(subDir, '2_Set files with group level and grand mean microstate maps');
-subjFigDir = fullfile(subDir, '3_Png files with individual microstate maps');
-meanFigDir = fullfile(subDir, '4_Png files with group level and grand mean microstate maps');
+subjDir = fullfile(subDir, '1_Set files with microstate maps per dataset');
+meanDir = fullfile(subDir, '2_Set files with mean microstate maps');
+subjFigDir = fullfile(subDir, '3_Png files with microstate maps per dataset');
+meanFigDir = fullfile(subDir, '4_Png files with mean microstate maps');
 quantDir = fullfile(subDir, '5_Csv files of temporal dynamics parameters');
 quantFigDir = fullfile(subDir, '6_Png files of plotted temporal dynamics parameters');
 
@@ -231,12 +245,12 @@ disp('Identifying microstates for all sets...');
 [EEG, CURRENTSET] = pop_FindMSMaps(ALLEEG, AllSubjects, 'ClustPar', ClustPar);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
-%% 5. Identify group level microstate maps for each group/condition
+%% 5. Identify mean microstate maps for each group/condition
 GroupMeanIdx = cell(1, nGroups);
 for i=1:nGroups
     for j=1:numel(condNames{i})
-        fprintf('Identifying group level mean maps for group %s, condition %s...\n', groupNames{i}, condNames{i}{j});
-        EEG = pop_CombMSMaps(ALLEEG, GroupIdx{i}{j}, 'MeanName', ['GroupMean_' groupNames{i} '_' condNames{i}{j}], ...
+        fprintf('Identifying mean maps for group %s, condition %s...\n', groupNames{i}, condNames{i}{j});
+        EEG = pop_CombMSMaps(ALLEEG, GroupIdx{i}{j}, 'MeanName', ['Mean_' groupNames{i} '_' condNames{i}{j}], ...
             'IgnorePolarity', ClustPar.IgnorePolarity);
         [ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, CURRENTSET,'gui','off');
         GroupMeanIdx{i} = [GroupMeanIdx{i} CURRENTSET];
@@ -275,8 +289,8 @@ for i=1:numel(TemplateNames)
     [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 end
 
-% Sort the individual, group level, and grand mean maps by the grand grand mean maps
-disp('Sorting subject, group level, and grand mean maps by grand grand mean maps...');
+% Sort the individual, mean, and grand mean maps by the grand grand mean maps
+disp('Sorting subject, mean, and grand mean maps by grand grand mean maps...');
 [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 1:numel(ALLEEG)-1, 'TemplateSet', GrandGrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'IgnorePolarity', ClustPar.IgnorePolarity);
 [ALLEEG,EEG,CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
@@ -296,12 +310,12 @@ for i=1:nGroups
             pop_saveset(ALLEEG(currGroupIdx(k)), 'filename', ALLEEG(currGroupIdx(k)).filename, 'filepath', subjDir);
         end
 
-        % Save figures with group level microstate maps
+        % Save figures with mean microstate maps
         fig = pop_ShowIndMSMaps(ALLEEG, GroupMeanIdx{i}(j), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
         saveas(fig, fullfile(meanFigDir, [ALLEEG(GroupMeanIdx{i}(j)).setname '.png']));
         close(fig);
     
-        % Save group level set files with microstates data
+        % Save mean set files with microstates data
         pop_saveset(ALLEEG(GroupMeanIdx{i}(j)), 'filename', [ALLEEG(GroupMeanIdx{i}(j)).setname '.set'], 'filepath', meanDir);
     end    
 
@@ -316,6 +330,7 @@ for i=1:nGroups
 end
 
 % Save figures with grand grand mean microstate maps
+
 disp('Plotting and saving grand grand mean maps...');
 fig = pop_ShowIndMSMaps(ALLEEG, GrandGrandMeanIdx, 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses, 'Visible', false);
 saveas(fig, fullfile(meanFigDir, [ALLEEG(GrandGrandMeanIdx).setname '.png']));

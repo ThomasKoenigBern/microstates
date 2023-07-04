@@ -2,10 +2,10 @@
 function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargin)
 
     com = '';
+    setsTable = [];
     global EEG;
     global CURRENTSET;
     global MSTEMPLATE;
-    global guiOpts;
     EEGout = EEG;
     CurrentSet = CURRENTSET;
 
@@ -41,10 +41,10 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
     AvailableMeanSets = find(HasMS & HasChildren & ~HasDyn & ~isEmpty & ~isPublished);
     
     if isempty(AvailableSets)
-        errorMessage = ['No valid sets found. Use Tools->Identify microstate maps per dataset ' ...
-            'before using other functions.'];
-        if isempty(SelectedSets)
-            errordlg2(errorMessage, 'Compare topographical similarities error');
+        errorMessage = ['No valid sets found for comparison. Use ' ...
+            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Compare topographic similarities error');
             return;
         else
             error(errorMessage);
@@ -58,9 +58,9 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
-                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.'];
-            error(errorMessage);
+            error(['The following sets are invalid: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
+                'or sets without microstate maps.']);
         end
     % Otherwise, prompt user to select sets
     else
@@ -71,10 +71,15 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
             { 'Style', 'text'    , 'string', 'Choose sets for comparison', 'fontweight', 'bold'} ...
             { 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'} ...
             { 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}, ...
-            'title', 'Compare topographical similarities');
+            'title', 'Compare topographic similarities');
         
         if isempty(res);    return; end
         SelectedSets = AvailableSets(outstruct.SelectedSets);
+
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one dataset','Compare topographic similarities error');
+            return;
+        end
     end
 
     SelectedEEG = AllEEG(SelectedSets);
@@ -86,9 +91,13 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
     MinClasses = max(AllMinClasses);
     MaxClasses = min(AllMaxClasses);
     if MaxClasses < MinClasses
-        errorMessage = 'No overlap in microstate classes found between all selected sets.';
-        errordlg2(errorMessage, 'Compare topographical similarities error');
-        return;
+        errorMessage = 'No overlap in cluster solutions found between all selected sets.';
+        if matches('SelectedSets', p.UsingDefaults)
+            errordlg2(errorMessage, 'Compare topographic similarities error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
     if matches('Classes', p.UsingDefaults)
         classRange = MinClasses:MaxClasses;
@@ -98,7 +107,7 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
         [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
             { {'Style', 'text', 'string', 'Select number of classes for comparison'} ...
               {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 1, 'Tag', 'Classes'}}, ...
-              'title', 'Compare topographical similarities');
+              'title', 'Compare topographic similarities');
         
         if isempty(res); return; end
 
@@ -157,7 +166,7 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
         [res, ~, ~, outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 1], 'uilist', ...
             {{ 'Style', 'text', 'string', 'Name of template set', 'fontweight', 'bold'} ...
             { 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}, ...
-            'title', 'Compare topographical similarities');
+            'title', 'Compare topographic similarities');
         
         if isempty(res); return; end
         if outstruct.TemplateIndex <= numel(meanSetnames)+1
@@ -186,7 +195,7 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
         errorMessage = sprintf(['Template set "%s" does not contain a %i cluster solution. Select a different template set' ...
             ' or use Tools->Identify group level or grand mean template maps to create a mean set to use as a template.'], TemplateName, nClasses);
         if matches('TemplateSet', p.UsingDefaults)
-            errordlg2(errorMessage, 'Compare topographical similarities');
+            errordlg2(errorMessage, 'Compare topographic similarities');
             return;
         else
             error(errorMessage);
@@ -208,63 +217,94 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
             end
         end
 
-        if ~isempty(warningSetnames) && guiOpts.showSortWarning
-            warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets. Are you sure you would like to proceed?'], TemplateName);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compare topographical similarities warning', warningSetnames);
-            if boxChecked;  guiOpts.showSortWarning = false;    end
-            if ~yesPressed; return;                             end
+        if ~isempty(warningSetnames)
+            if matches('SelectedSets', p.UsingDefaults) && getpref('MICROSTATELAB', 'showTopoWarning1')
+                warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
+                    'the following sets. Are you sure you would like to proceed?'], TemplateName);
+                [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compare topographic similarities warning', warningSetnames);
+                if boxChecked;  setpref('MICROSTATELAB', 'showTopoWarning1', 0);    end
+                if ~yesPressed; return;                                             end
+            else
+                warningSetsTxt = sprintf(['%s' newline], string(warningSetnames));
+                warning(['Template set "%s" is not the parent set of the following sets: ' newline warningSetsTxt], TemplateName);
+            end
         end
     end
 
     %% Check for consistent sorting across sets
-    % First check if any datasets remain unsorted
-    SortModes = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortMode, 1:numel(SelectedEEG), 'UniformOutput', false);
-    if any(strcmp(SortModes, 'none'))
-        errorMessage = ['Some datasets remain unsorted. Please sort all ' ...
-            'sets before proceeding.'];
-        errordlg2(errorMessage, 'Compare topographical similarities error');
-        return;
+    setnames = {SelectedEEG.setname};
+    isEmpty = cellfun(@isempty,setnames);
+    if any(isEmpty)
+        setnames(isEmpty) = {''};
     end
 
-    % Then check that selected sets were sorted by the template set
-    SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
-    emptyIdx = arrayfun(@(x) isempty(SortedBy{x}), 1:numel(SortedBy));
-    SortedBy(emptyIdx) = '';
-    if ~all(contains(SortedBy, TemplateName))
-        warningMessage = sprintf('Not all selected sets are sorted by the template set "%s." Are you sure you would like to continue?', TemplateName);
-        [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compare topographical similarities warning');
-        if boxChecked;  guiOpts.showTopoWarning1 = false;    end
-        if ~yesPressed; return; end
+    % First check if any datasets remain unsorted
+    SortModes = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortMode, 1:numel(SelectedEEG), 'UniformOutput', false);
+    if matches('none', SortModes)
+        unsortedSets = setnames(strcmp(SortModes, 'none'));
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(sprintf('The %i cluster solutions of the following sets remain unsorted. Please sort all sets before proceeding.', nClasses), ...
+                'Compare topographic similarities error', unsortedSets);
+            return;
+        else
+            unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+            error(['The %i cluster solutions of the following sets remain unsorted: ' newline unsortedSetsTxt ...
+                    'Please sort all sets before proceeding.'], nClasses);
+        end
     end
 
     % Check for unassigned labels
-    Colors = cell2mat(arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false)');
-    if any(arrayfun(@(x) all(Colors(x,:) == [.75 .75 .75]), 1:size(Colors,1)))
-        errorMessage = ['Some maps do not have assigned labels. For all maps to be assigned a label, each set must either be ' ...
-            'manually sorted and assigned new labels, or sorted by a template set with equal (ideally) or greater number of maps. Please ' ...
-            'sort sets such that all maps have a label before proceeding.'];
-        errordlg2(errorMessage, 'Compare topographical similarities error');
-        return;
+    Colors = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).ColorMap, 1:numel(SelectedEEG), 'UniformOutput', false);
+    unlabeled = cellfun(@(x) any(arrayfun(@(y) all(x(y,:) == [.75 .75 .75]), 1:size(x,1))), Colors);
+    if any(unlabeled)
+        unsortedSets = setnames(unlabeled);
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(sprintf(['The %i cluster solutions of the following sets contain maps without assigned labels. ' ...
+                'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], nClasses), ...
+                'Compare topographic similarities error', unsortedSets);
+            return;
+        else
+            unsortedSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+            error(['The %i cluster solutions of the following sets contain maps without assigned labels: ' newline unsortedSetsTxt ...
+                'For all maps to be assigned a label, each cluster solution must either be manually assigned labels, ' ...
+                'or sorted by a template solution with an equal or greater number of maps. Please sort maps accordingly before proceeding.'], nClasses);
+        end
     end
 
     % Check for consistent labels 
-    unmatched = false;
-    for c=1:nClasses
-        labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels(c), 1:numel(SelectedSets));
-        if numel(unique(labels)) > 1
-            unmatched = true;
-            break;
+    labels = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).Labels, 1:numel(SelectedEEG), 'UniformOutput', false);
+    labels = vertcat(labels{:});
+    if any(arrayfun(@(x) numel(unique(labels(:,x))), 1:size(labels,2)) > 1)
+        errorMessage = sprintf(['Map labels of the %i cluster solution are inconsistent across datasets. Please sort maps such that map labels are identical ' ...
+            'across all datasets before proceeding.'], nClasses);
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Compare topographic similarities error');
+            return;
+        else
+            error(errorMessage);
         end
     end 
-    if unmatched
-        errorMessage = ['Map labels are inconsistent across cluster solutions. This can occur when sorting is performed using a ' ...
-            'template set with a greater number of maps than the solution being sorted. To achieve consistency, maps should ideally be manually sorted ' ...
-            'and assigned the same set of labels, or sorted using a template set with an equal number of maps. Please re-sort sets to achieve consistency ' ...
-            'before proceeding.'];
-        errordlg2(errorMessage, 'Compare topographical similarities error');
-        return;
-    end            
+
+    % Then check that selected sets were sorted by the template set
+    SortedBy = arrayfun(@(x) SelectedEEG(x).msinfo.MSMaps(nClasses).SortedBy, 1:numel(SelectedEEG), 'UniformOutput', false);
+    isEmpty = cellfun(@isempty,SortedBy);
+    if any(isEmpty)
+        SortedBy(isEmpty) = {''};
+    end
+    if ~all(contains(SortedBy, TemplateName))
+        unsortedSets = setnames(~contains(SortedBy, TemplateName));
+        if matches('SelectedSets', p.UsingDefaults) && getpref('MICROSTATELAB', 'showTopoWarning2')
+            warningMessage = sprintf(['The %i cluster solutions of the following datasets are not sorted by template set "%s."' ...
+                ' Are you sure you would like to proceed?'], nClasses, TemplateName);
+            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Compare topographic similarities warning', unsortedSets);
+            if boxChecked;  setpref('MICROSTATELAB', 'showTopoWarning2', 0);    end
+            if ~yesPressed; return;                                             end
+        else
+            warningSetsTxt = sprintf(['%s' newline], string(unsortedSets));
+            warning(['The %i cluster solution of the following sets are not sorted by template set "%s":' newline warningSetsTxt], nClasses, TemplateName);
+        end
+    end
 
     EEGout = SelectedEEG;
     CurrentSet = SelectedSets;
@@ -290,23 +330,18 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
         screenSize = get(0, 'ScreenSize');
     end
     figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
+    figWidth = figSize(3);
 
     maxSubjWidth = max(cellfun(@length, {SelectedEEG.setname}))*9;
     if maxSubjWidth > 200;  maxSubjWidth = 200; end
     colWidth = 65;
     tblWidth = maxSubjWidth + colWidth*numel(MapLabels);
 
-    fig_h = uifigure('Name', 'Compare topographical similarities', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose);
+    fig_h = uifigure('Name', 'Compare topographic similarities', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose, ...
+        'Units', 'pixels', 'Position', figSize);
     
-    if tblWidth > .4*figSize(3)
-        tblWidth = floor(.4*figSize(3));
-        fig_h.Units = 'pixels';
-        fig_h.Position = figSize;
-        figWidth = figSize(3);
-    else
-        fig_h.Units = 'normalized';
-        fig_h.Position = [.1 .1 .8 .8];
-        figWidth = figSize(3)*.8;
+    if (figSize(3) - tblWidth) <= 720
+        tblWidth = figSize(3)-720;      
     end
 
     horzLayout = uigridlayout(fig_h, [2 1]);
@@ -595,7 +630,7 @@ function exclude(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [1 0 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);
@@ -619,7 +654,7 @@ function keep(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [0 1 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);
@@ -807,7 +842,12 @@ function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
 
     % if the child cannot be found, search the children of the children
     if ~containsChild
-        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
+        setnames = {AllEEG.setname};
+        isEmpty = cellfun(@isempty,setnames);
+        if any(isEmpty)
+            setnames(isEmpty) = {''};
+        end
+        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches(setnames, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
         containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
     end
 

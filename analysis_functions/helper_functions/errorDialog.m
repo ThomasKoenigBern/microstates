@@ -1,7 +1,5 @@
 % GUI helper function to display an error message in response to certain 
-% input cases during argument validation in pop functions. Same as
-% warningDialog.m but only shows an "OK" option (no Yes/No with option to
-% continue)
+% input cases during argument validation in pop functions.
 %
 % Inputs:
 %   - msg: warning message to be displayed
@@ -9,20 +7,31 @@
 %   - listItems: optional, cell array to show as items of a scrollable list
 %   box below the warning message
 %
-% Outputs:
-%   - yesPressed: 1 if the user pressed yes, 0 if not
-%   - noPressed: 1 if the user pressed no, 0 if not
-%   - boxChecked: 1 if the user checked the box to avoid showing the
-%   warning message again, 0 if they did not
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
+
 function errorDialog(msg, title, listItems)
 
     errorDlg = figure("Name", title, "MenuBar", "none", "ToolBar", "none", ...
         "NumberTitle", "off", "WindowStyle", "modal", "Color", [.66 .76 1]);
     if nargin > 2
-        errorDlg.Position(3:4) = [500 450];
+        errorDlg.Position(3:4) = [550 450];
     else
-        errorDlg.Position(3:4) = [500 250];
+        errorDlg.Position(3:4) = [550 200];
     end
     movegui(errorDlg, 'center');
 

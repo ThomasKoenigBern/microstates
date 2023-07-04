@@ -1,15 +1,29 @@
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
+
 function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange)
     
     if numel(nClasses) > 1        
-        errordlg2('Only one cluster solution can be chosen for manual sorting.', 'Sort microstate maps error');
-        return;
+        error('Only one cluster solution can be chosen for manual sorting.');
     end
 
     if nClasses > max(ClassRange) || nClasses < min(ClassRange)
-        warningMessage = sprintf(['The specified set to sort does not contain a %i microstate solution. Valid ' ...
+        error(['The specified set to sort does not contain a %i microstate solution. Valid ' ...
             ' class numbers to sort are in the range %i-%i.'], nClasses, max(ClassRange), min(ClassRange));
-        errordlg2(warningMessage, 'Sort microstate maps error');
-        return;
     end
 
     % Validate SortOrder
@@ -18,28 +32,44 @@ function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange
         absSortOrder = abs(SortOrder(:)');
         if (numel(absSortOrder) ~= nClasses)
             MSMaps = [];
-            errordlg2('Invalid manual sort order given','Sort microstate maps error');
-            return
+            if ~isempty(findobj('Tag', 'InteractiveSort'))
+                errordlg2('Invalid manual sort order provided','Sort microstate maps error');
+                return;
+            else
+                error('Invalid manual sort order provided');
+            end
         end
     
         if numel(unique(absSortOrder)) ~= nClasses
             MSMaps = [];
-            errordlg2('Invalid manual sort order given','Sort microstate maps error');
-            return
+            if ~isempty(findobj('Tag', 'InteractiveSort'))
+                errordlg2('Invalid manual sort order provided','Sort microstate maps error');
+                return;
+            else
+                error('Invalid manual sort order provided');
+            end
         end
     
         if any(unique(absSortOrder) ~= unique(1:nClasses))
             MSMaps = [];
-            errordlg2('Invalid manual sort order given','Sort microstate maps error');
-            return
+            if ~isempty(findobj('Tag', 'InteractiveSort'))
+                errordlg2('Invalid manual sort order provided','Sort microstate maps error');
+                return;
+            else
+                error('Invalid manual sort order provided');
+            end
         end
     end
 
     % Validate NewLabels
     if numel(NewLabels) ~= nClasses
         MSMaps = [];
-        errordlg2('Invalid manual map labels given', 'Sort microstate maps error');
-        return;
+        if ~isempty(findobj('Tag', 'InteractiveSort'))
+            errordlg2('Invalid manual map labels provided','Sort microstate maps error');
+            return;
+        else
+            error('Invalid manual map labels provided');
+        end
     end
 
     % Reorder maps
@@ -75,9 +105,7 @@ function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange
     end
        
     % Update sorting information
-    if ~all(SortOrder == 1:nClasses)
-        MSMaps(nClasses).SortMode = 'manual';
-        MSMaps(nClasses).SortedBy = 'user';
-        MSMaps(nClasses).SpatialCorrelation = [];
-    end
+    MSMaps(nClasses).SortMode = 'manual';
+    MSMaps(nClasses).SortedBy = 'user';
+    MSMaps(nClasses).SpatialCorrelation = [];
 end

@@ -1,3 +1,64 @@
+% pop_CheckData() Perform data quality evaluation to detect dirty clusters
+% due to bad channels in the EEG data.
+%
+% Usage:
+%   >> setsTable = pop_CheckData(ALLEEG, SelectedSets)
+%
+% Graphical interface:
+%
+%   "Choose sets for data quality check"
+%   -> Select sets for data quality evaluation
+%   -> Command line equivalent: "SelectedSets"
+%
+% Inputs:
+%
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
+%
+%   "SelectedSets" (optional)
+%   -> Vector of set indices of ALLEEG to evaluate for data quality. If not 
+%   provided, a GUI will appear to choose sets.
+%
+% Outputs:
+%
+%   "setsTable" 
+%   -> MATLAB table containing sets marked to Review, Keep, or Exclude as
+%   selected in the interactive GUI.
+%
+%   "com"
+%   -> Command necessary to replicate the computation
+%
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
+%
+% This program is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program; if not, write to the Free Software
+% Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 function [setsTable, com] = pop_CheckData(AllEEG, varargin)
 
     com = '';
@@ -23,7 +84,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     AvailableSets = find(~isEmpty & ~HasChildren & ~HasDyn & ~isPublished);
     if isempty(AvailableSets)
         if matches('SelectedSets', p.UsingDefaults)
-            errordlg2('No valid sets found for data quality check.', 'Data quality check error');
+            errorDlg2('No valid sets found for data quality check.', 'Data quality check error');
             return;
         else
             error('No valid sets found for data quality check.');
@@ -37,9 +98,8 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets are invalid: ' invalidSetsTxt ...
-                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.'];
-            error(errorMessage);
+            error(['The following sets are invalid: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.']);
         end
     % Otherwise, prompt user to select sets
     else
@@ -57,7 +117,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
         SelectedSets = AvailableSets(outstruct.SelectedSets);
 
         if numel(SelectedSets) < 1
-            errordlg2('You must select at least one set of microstate maps','Data quality check error');
+            errordlg2('You must select at least one dataset','Data quality check error');
             return;
         end
     end
@@ -75,14 +135,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     ClustPar.Normalize = 1;
     SelectedEEG = pop_FindMSMaps(AllEEG, SelectedSets, 'ClustPar', ClustPar);
 
-    %% Compute residuals
-    nChan = [SelectedEEG.nbchan];
-    if numel(unique(nChan)) > 1
-        errordlg2('Number of channels differs between selected sets', 'Data quality check error');
-        return;
-    end
-
-    ResidualEstimator = VA_MakeSplineResidualMatrix(SelectedEEG(1).chanlocs);
+    %% Compute residuals       
     classRMSE = zeros(numel(SelectedSets), nClasses);
     ud.MSMaps = [];
     for i=1:numel(SelectedSets)
@@ -93,6 +146,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
         SelectedEEG(i).msinfo.MSMaps(nClasses).ExpVar = ExpVar;
         ud.MSMaps = [ud.MSMaps SelectedEEG(i).msinfo.MSMaps(nClasses)];
 
+        ResidualEstimator = VA_MakeSplineResidualMatrix(SelectedEEG(i).chanlocs);
         Residual = ResidualEstimator*Maps';
         classRMSE(i,:) = sqrt(mean(Residual.^2, 1));        
     end
@@ -100,7 +154,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
 
     %% Build GUI      
     fig_h = uifigure('Name', 'Data quality check', 'HandleVisibility', 'on', ...
-        'Units', 'normalized', 'Position', [.1 .1 .8 .8]);
+        'Units', 'normalized', 'Position', [.1 .1 .8 .8], 'CloseRequestFcn', 'uiresume()');
 
     horzLayout = uigridlayout(fig_h, [2 1]);
     horzLayout.RowHeight = {'1x', 150};
@@ -129,7 +183,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     ud.editLabel.Layout.Row = 2;
     ud.editLabel.Layout.Column = 2;
     ud.editBox = uieditfield(selectLayout);
-    ud.editBox.Value = '0.03';
+    ud.editBox.Value = '0.04';
     ud.editBox.Layout.Row = 2;
     ud.editBox.Layout.Column = 3;
     
@@ -144,7 +198,7 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     opts = {'Keep', 'Exclude'};
     tblData = [ud.setnames', repmat(" ", numel(SelectedSets), 1)];
     ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', ...
-        'ColumnName', {'Subject', 'Status'}, 'ColumnFormat', {[], opts}, 'Fontweight', 'bold', ...
+        'ColumnName', {'Dataset', 'Status'}, 'ColumnFormat', {[], opts}, 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
     
     ud.MapPanel = uipanel(horzLayout, 'BorderType', 'none', 'Visible', 'off');
@@ -179,9 +233,10 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     
     fig_h.UserData = ud;
 
-    uiwait();
-    
-    setsTable = ud.setsTable;
+    uiwait();    
+    setsTable = table(ud.setsTable.Data(:,1), ud.setsTable.Data(:,2), 'VariableNames', {'Dataset', 'Status'});
+    delete(fig_h);
+
     com = sprintf('setsTable = pop_CheckData(%s, %s)', inputname(1), mat2str(SelectedSets));
 end
 
@@ -278,7 +333,7 @@ function exclude(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [1 0 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);
@@ -300,7 +355,7 @@ function keep(~, ~, fig_h)
 
     % Update plot
     ud.scatter.CData(ud.currentIdx,:) = [0 1 0];
-    ud.scatterSizeData(ud.currentIdx) = 25;
+    ud.scatter.SizeData(ud.currentIdx) = 25;
 
     % Remove datatip
     delete(ud.dataTip);

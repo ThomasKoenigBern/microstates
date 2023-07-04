@@ -2,7 +2,7 @@
 % maps or manual indexing.
 %
 % Usage: 
-%   >> [ALLEEG, EEG, CURRENTSET, com] = pop_SortMSMaps(ALLEEG, 
+%   >> [ALLEEG, EEG, CURRENTSET] = pop_SortMSMaps(ALLEEG, 
 %       SelectedSets, 'key1', value1, 'key2', value2, ...)
 %
 % SORTING BY TEMPLATE MAPS:
@@ -198,7 +198,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG to sort. If not provided, a GUI
+%   -> Vector of set indices of ALLEEG to sort. If not provided, a GUI
 %   will appear to choose sets.
 %
 % Key, Value inputs (optional):
@@ -259,10 +259,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -283,7 +295,6 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
-    global guiOpts;
     global EEG;
     global CURRENTSET;
     EEGout = EEG;
@@ -371,9 +382,10 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     AvailableMeanSets = AvailableSets(HasChildren);
     
     if isempty(AvailableSets)
-        errorMessage = 'No valid sets for sorting found.';
+        errorMessage = ['No valid sets found for plotting. Use ' ...
+            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
         if isempty(SelectedSets)
-            errordlg2(errorMessage, 'Sort microstate maps error');
+            errorDialog(errorMessage, 'Edit & sort microstate maps error');
             return;
         else
             error(errorMessage);
@@ -549,7 +561,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
     end
 
     if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps','Sort microstate maps error');
+        errordlg2('You must select at least one dataset','Edit & sort microstate maps error');
         return;
     end
 
@@ -618,12 +630,17 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
             end
         end
 
-        if ~isempty(warningSetnames) && guiOpts.showSortWarning
-            warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
-                'the following sets. Are you sure you would like to proceed?'], TemplateName);
-            [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Sort microstate maps warning', warningSetnames);
-            if boxChecked;  guiOpts.showSortWarning = false;    end
-            if ~yesPressed; return;                             end
+        if ~isempty(warningSetnames)
+            if matches('TemplateSet', p.UsingDefaults) && getpref('MICROSTATELAB', 'showSortWarning')
+                warningMessage = sprintf(['Template set "%s" is not the parent set of ' ...
+                    'the following sets. Are you sure you would like to proceed?'], TemplateName);
+                [yesPressed, ~, boxChecked] = warningDialog(warningMessage, 'Backfit microstate maps warning', warningSetnames);
+                if boxChecked;  setpref('MICROSTATELAB', 'showSortWarning', 0); end
+                if ~yesPressed; return;                                         end
+            else
+                warningSetsTxt = sprintf(['%s' newline], string(warningSetnames));
+                warning(['Template set "%s" is not the parent set of the following sets: ' newline warningSetsTxt]);
+            end
         end
     end
 
@@ -675,7 +692,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         TemplateMaxClasses = min(AllMaxClasses);
         if TemplateMaxClasses < TemplateMinClasses
             errorMessage = 'No overlap in microstate classes found between all selected sets for selecting a template solution.';
-            if any(matches({'SelectedSets', 'TemplateSet'}, p.UsingDefaults))
+            if matches('TemplateSet', p.UsingDefaults)
                 errordlg2(errorMessage, 'Edit & sort microstate maps error');
                 return;
             else
@@ -797,7 +814,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                     TemplateClasses);
             end
             if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                errordlg2(errorMessage, 'Edit & sort microstate maps error');
+                errorDialog(errorMessage, 'Edit & sort microstate maps error');
                 return;
             else
                 error(errorMessage);
@@ -824,7 +841,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                 classTxt = classTxt(1:end-2);
                 errorMessage = sprintf('The following cluster solutions of the template set %s are unsorted: %s. Please sort before using as template solutions.', TemplateName, classTxt);                    
                 if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                    errordlg2(errorMessage, 'Edit & sort microstate maps error');
+                    errorDialog(errorMessage, 'Edit & sort microstate maps error');
                     return;
                 else
                     error(errorMessage);
@@ -835,7 +852,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
             if matches('none', SortMode)
                 errorMessage = sprintf('Selected template solution %i of template set %s is unsorted. Please sort before using as a template solution.', TemplateClasses, TemplateName);
                 if matches('TemplateSet', p.UsingDefaults) || interactiveSort
-                    errordlg2(errorMessage, 'Edit & sort microstate maps error');
+                    errorDialog(errorMessage, 'Edit & sort microstate maps error');
                     return;
                 else
                     error(errorMessage);
@@ -1147,7 +1164,12 @@ function containsChild = checkSetForChild(AllEEG, SetsToSearch, childSetName)
 
     % if the child cannot be found, search the children of the children
     if ~containsChild
-        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches({AllEEG.setname}, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
+        setnames = {AllEEG.setname};
+        isEmpty = cellfun(@isempty,setnames);
+        if any(isEmpty)
+            setnames(isEmpty) = {''};
+        end
+        childSetIndices = unique(cell2mat(arrayfun(@(x) find(matches(setnames, AllEEG(x).msinfo.children)), SetsToSearch(HasChildren), 'UniformOutput', false)));
         containsChild = checkSetForChild(AllEEG, childSetIndices, childSetName);
     end
 

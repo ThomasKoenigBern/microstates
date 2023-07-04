@@ -1,8 +1,8 @@
 % pop_FindMSMaps() Interactively identify microstate topographies
 %
 % Usage:
-%   >> [EEG, CURRENTSET, com] = pop_FindMSMaps(ALLEEG, SelectedSets, 
-%       'key1', value1, 'key2', value2, ...)
+%   >> [EEG, CURRENTSET] = pop_FindMSMaps(ALLEEG, SelectedSets, 
+%       'ClustPar', ClustPar)
 %
 % Graphical interface:
 %
@@ -63,7 +63,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG for which microstates will be
+%   -> Vector of set indices of ALLEEG for which microstates will be
 %   identified. If not provided, a GUI will appear to choose sets.
 %
 % Key, Value inputs (optional):
@@ -116,10 +116,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -180,9 +192,15 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
     else
         AvailableSets = find(~isEmpty & ~HasChildren & ~HasDyn & ~isPublished);
     end
+    
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for clustering found.'], 'Identify microstates error');
-        return;
+        errorMessage = 'No valid sets for identifying microstates found.';
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDlg2(errorMessage, 'Identify microstates per dataset error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -192,10 +210,8 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets cannot be clustered: ' invalidSetsTxt ...
-                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.'];
-            errordlg2(errorMessage, 'Identify microstates error');
-            return;
+            error(['The following sets cannot be clustered: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.']);
         end
     % Otherwise, add set selection gui elements
     else
@@ -334,11 +350,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
         if isfield(outstruct, 'ShowMaps')
             ShowMaps = outstruct.ShowMaps;
         end
-    end
 
-    if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps.','Identify microstates error');
-        return;
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one dataset.','Identify microstate maps per dataset error');
+            return;
+        end
     end
 
     ClustPar = checkClustPar(ClustPar);
