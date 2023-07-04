@@ -66,35 +66,33 @@ function [vers,nogui] = eegplugin_microstatelab (fig, try_strings, catch_strings
     VersionNumber = '2.0';
     vers = ['MICROSTATELAB ' VersionNumber];
 
-    if ~ispref('MICROSTATELAB', 'showSortWarning')
-        setpref('MICROSTATELAB', 'nogui', false);
-    end
+    nogui = isempty(findobj('Tag','EEGLAB'));
 
     if ismember('MSTEMPLATE',who('global')) % The function has been called before, we don't need to go into all the setup again
-        nogui = getpref('MICROSTATELAB', 'nogui'); % We get the prefs
-        return
-    end
-
-    global MSTEMPLATE;
+        if nargin < 1 % and no need to setup the GUI, so we're already done
+            return
+        end
+    else  % We need to do the GUI independent setup
+        global MSTEMPLATE;
     
-    addpath(genpath(fileparts(which('eegplugin_microstatelab'))));
-    if ~isempty(which('eegplugin_Microstates'))
-        warning('Old version of the MICROSTATELAB toolbox found in the EEGLAB plugins folder. Please remove any old versions to avoid conflicts.');
-    end
+        addpath(genpath(fileparts(which('eegplugin_microstatelab'))));
+        if ~isempty(which('eegplugin_Microstates'))
+            warning('Old version of the MICROSTATELAB toolbox found in the EEGLAB plugins folder. Please remove any old versions to avoid conflicts.');
+        end
             
-    pluginpath = fileparts(which('eegplugin_microstatelab.m'));                  % Get eeglab path
-    templatepath = fullfile(pluginpath,'Templates');
+        pluginpath = fileparts(which('eegplugin_microstatelab.m'));                  % Get eeglab path
+        templatepath = fullfile(pluginpath,'Templates');
 
-    Templates = dir(fullfile(templatepath,'*.set'));
-    MSTemplate = [];   
-    for t = 1: numel(Templates)
-        MSTemplate = eeg_store(MSTemplate,pop_loadset('filename',Templates(t).name,'filepath',templatepath));
+        Templates = dir(fullfile(templatepath,'*.set'));
+        MSTemplate = [];   
+        for t = 1: numel(Templates)
+            MSTemplate = eeg_store(MSTemplate,pop_loadset('filename',Templates(t).name,'filepath',templatepath));
+        end
+    
+        MSTEMPLATE = MSTemplate;
     end
     
-    MSTEMPLATE = MSTemplate;
-
-    if nargin > 0
-        nogui = false;
+    if nargin > 0 % We setup the GUI if required
         if ~ispref('MICROSTATELAB', 'showSortWarning')
             setpref('MICROSTATELAB', 'showSortWarning', 1);
         end
@@ -144,9 +142,5 @@ function [vers,nogui] = eegplugin_microstatelab (fig, try_strings, catch_strings
         uimenu( plotmenu,     'Label', 'Plot temporal dynamics',                                          'CallBack', comShowIndMSDyn,       'userdata', 'study:on');    
         uimenu( plotmenu,     'Label', 'Plot temporal parameters',                                        'CallBack', comShowMSParam,        'userdata', 'study:on');
         uimenu( plotmenu,     'Label', 'Compare microstate maps',                                         'CallBack', comCompareMaps,        'userdata', 'study:on');  
-    else
-        nogui = true;
     end
-    setpref('MICROSTATELAB', 'nogui', nogui);
-
 end
