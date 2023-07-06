@@ -17,4 +17,9 @@ function [xyz,nelec] = ChanPos2XYZ(chanlocs)
     [z{1:nelec}] = deal(chanlocs.Z);
 
     xyz = [cell2mat(x)' cell2mat(y)' cell2mat(z)'];
+
+    if size(xyz,1) ~= nelec
+        error('Not all channel locations defined');
+    end
+
 end
