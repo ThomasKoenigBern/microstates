@@ -84,6 +84,12 @@
 %
 function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
+    if nogui == true
+        error("This function needs a GUI");
+    end
+
     %% Set defaults for outputs
     com = '';
     fig_h = [];

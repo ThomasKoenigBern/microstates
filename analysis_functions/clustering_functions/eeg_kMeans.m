@@ -64,6 +64,13 @@ else
     pmode = 1;
 end
 
+if ~contains(flags,'+')
+    plusmode = 0;
+else
+    plusmode = 1;
+end
+
+
 % Average reference
 newRef = eye(n_chan);
 newRef = newRef -1/n_chan;
@@ -111,8 +118,30 @@ for run = 1:reruns
         eeg = org_data(idx(1:max_n),:);
     end
 
-    idx = randperm(max_n);
-    model = eeg(idx(1:n_mod),:);
+    if plusmode == false
+        StartingMaps = randi(max_n,n_mod,1);
+    else
+        StartingMaps = nan(n_mod,1,1);
+        StartingMaps(1) = randi(max_n,1);
+        for m = 2:n_mod
+            model   = eeg(StartingMaps(1:m-1),:);
+            corrmat = corr(eeg',model');
+            if ~pmode
+                %Dist = 1-corrmat.^2;
+                Dist = sqrt(2- 2 * abs(corrmat));
+                Dist = Dist.^2;
+            else
+%                Dist = (1 - corrmat);
+                Dist = sqrt(2- 2 * corrmat);
+                Dist = Dist.^2;
+            end
+            Dist = min(Dist,[],2);
+            Dist = Dist / max(Dist);
+            StartingMaps(m) = randsample(max_n,1,true,Dist);
+        end
+    end
+
+    model = eeg(StartingMaps,:);
     model   = L2NormDim(model,2)*newRef;					% Average Reference, equal variance of model
 
     o_ind   = zeros(max_n,1);							% Some initialization
@@ -201,6 +230,8 @@ for run = 1:reruns
     end
  
     tot_fit = sum(loading);
+
+    
     if (tot_fit > best_fit)
         b_model   = model;
         b_ind     = ind;

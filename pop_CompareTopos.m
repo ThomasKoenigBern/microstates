@@ -1,6 +1,12 @@
 
 function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
+    if nogui == true
+        error("This function need a GUI to work");
+    end
+
     com = '';
     setsTable = [];
     global EEG;

@@ -75,6 +75,12 @@
 
 function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     
+    [~,nogui] = eegplugin_microstatelab;
+
+    if nogui == true
+        error("This function needs a GUI to work");
+    end
+
     com = '';
     global CURRENTSET;
     global MSTEMPLATE;

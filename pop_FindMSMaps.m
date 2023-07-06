@@ -149,6 +149,8 @@
 
 function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
@@ -311,9 +313,12 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
         guiGeomV = [guiGeomV 1 1];
     end
     
-
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
+        if nogui == true
+            error("Parameters missing in function pop_FindMSMaps, check the help for pop_FindMSMaps for support");
+        end
+        
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Identify microstate maps per dataset');
 

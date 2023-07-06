@@ -137,6 +137,12 @@
 %
 function [sharedVarTable, com] = pop_CompareMSMaps(AllEEG, varargin)
     
+    [~,nogui] = eegplugin_microstatelab;
+
+    if nogui == true
+        error("This function needs a GUI to work");
+    end
+
     sharedVarTable = [];
     com = '';
     global EEG;

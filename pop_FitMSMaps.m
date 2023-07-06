@@ -140,6 +140,8 @@
 
 function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
@@ -273,6 +275,11 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
 
     %% Prompt user to choose SelectedSets and TemplateSet if necessary
     if ~isempty(guiElements)      
+        
+        if nogui == true
+            error("Parameters missing in function pop_FitMSMaps, check the help for pop_FitMSMaps for support");
+        end
+ 
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Backfit microstate maps');
 

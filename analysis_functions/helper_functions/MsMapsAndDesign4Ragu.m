@@ -2,15 +2,18 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
 
     
     [rd.GroupLabels,rd.IndFeature] = GetUniqueIdentifiers(EEGs,'group');
+
     [rd.conds      ,ConditionIdx ] = GetUniqueIdentifiers(EEGs,'condition');
     [SubjectLabel  ,SubjectIdx]    = GetUniqueIdentifiers(EEGs,'subject');    
     
     nSubjects   = numel(SubjectLabel);
     nConditions = numel(rd.conds);
     rd.Names    = cell(nSubjects,nConditions);
+    rd.Design = [];
 
     for s = 1:nSubjects
         for c = 1:nConditions
+            rd.Design = [rd.Design; c 1];
             idx = find(SubjectIdx == s & ConditionIdx == c);
             if isempty(idx)
                 warning('Condition %s for subject %s is missing, this subject will be excluded',rd.conds{c},SubjectLabel{s});
@@ -50,7 +53,11 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     rd.ContF1 = false;
     rd.Iterations = 1000;
     rd.Threshold = 0.05;
-    rd.IndFeature = ones(size(rd.Names,1),1);
+    if isempty(rd.IndFeature)
+        rd.IndFeature = ones(size(rd.Names,1),1);
+    end
+
+    
     rd.MapStyle = 2;
 
     X = cell2mat({EEGs(1).chanlocs.X});

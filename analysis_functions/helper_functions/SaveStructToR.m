@@ -2,13 +2,13 @@ function [success,err] = SaveStructToR(dat,FileName)
 
     dat = dat(:);
     
-    SingleFieldsToWrite = {'DataSet','Subject','Group','Condition', 'TotalTime', ...
-        'TotalExpVar','MeanDuration', 'MeanOccurrence', 'FittingTemplate', 'SortedBy'};
-    MultipleFieldsToWrite = {'IndExpVar','Duration','Occurrence','Contribution','MeanGFP'};
+    SingleFieldsToWrite = {'Dataset','Subject','Group','Condition', 'TotalTime', ...
+        'TotalExpVar','MeanDurationAll', 'MeanOccurrenceAll', 'FittingTemplate', 'SortedBy'};
+    MultipleFieldsToWrite = {'IndExpVar','MeanDuration','MeanOccurrence','Coverage','MeanGFP'};
     
     
     nObs = numel(dat);
-    nClasses = size(dat(1).('Duration'),2);
+    nClasses = size(dat(1).('MeanDuration'),2);
     
     [fid,err] = fopen(FileName,'wt');
 

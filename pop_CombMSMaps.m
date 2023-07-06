@@ -84,6 +84,8 @@
 
 function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
@@ -239,6 +241,11 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
 
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
+        if nogui == true
+            error("Parameters missing in function pop_CombMSMaps, check the help for pop_CombMSMaps for support");
+        end
+ 
+
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Identify mean microstate maps');
 

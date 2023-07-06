@@ -92,6 +92,8 @@
 
 function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
     %% Set defaults for outputs
     com = '';
     global MSTEMPLATE;
@@ -218,6 +220,11 @@ function [EEGout, CurrentSet, com] = pop_GetMSDynamics(AllEEG, varargin)
 
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
+
+        if nogui == true
+            error("Parameters missing in function pop_GetMSDynamics, check the help for pop_GetMSDynamics for support");
+        end
+
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
              'title','Obtain microstate activation time series');
 
