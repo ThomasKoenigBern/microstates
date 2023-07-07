@@ -1,11 +1,16 @@
 function [LocalToGlobal,GlobalToLocal] = MakeResampleMatrices(chanlocs_local,chanlocs_global)
 
-    [xyz_local ,nelec_local]  = ChanPos2XYZ(chanlocs_local);
-    [xyz_global,nelec_global] = ChanPos2XYZ(chanlocs_global);
-    warning('off','all');
-    LocalToGlobal = splint2(xyz_local ,eye(nelec_local) ,xyz_global);
-    GlobalToLocal = splint2(xyz_global,eye(nelec_global),xyz_local );
-    warning('on','all');
+    if isequal(chanlocs_local,chanlocs_global)
+        LocalToGlobal = eye(numel(chanlocs_global));
+        GlobalToLocal = LocalToGlobal;
+    else
+        [xyz_local ,nelec_local]  = ChanPos2XYZ(chanlocs_local);
+        [xyz_global,nelec_global] = ChanPos2XYZ(chanlocs_global);
+        warning('off','all');
+        LocalToGlobal = splint2(xyz_local ,eye(nelec_local) ,xyz_global);
+        GlobalToLocal = splint2(xyz_global,eye(nelec_global),xyz_local );
+        warning('on','all');
+    end
 end
 
 
