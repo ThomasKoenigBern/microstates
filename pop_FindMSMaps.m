@@ -1,8 +1,8 @@
-% pop_FindMSTemplates() Interactively identify microstate topographies
+% pop_FindMSMaps() Interactively identify microstate topographies
 %
 % Usage:
-%   >> [EEG, CURRENTSET, com] = pop_FindMSTemplates(ALLEEG, SelectedSets, 
-%       'key1', value1, 'key2', value2, ...)
+%   >> [EEG, CURRENTSET] = pop_FindMSMaps(ALLEEG, SelectedSets, 
+%       'ClustPar', ClustPar)
 %
 % Graphical interface:
 %
@@ -56,12 +56,6 @@
 %   "Show maps when done"
 %   -> Show maps when done. If multiple sets are selected, a tab will be
 %   opened for each.
-%   -> Command line equivalent: "ShowMaps"
-%
-%   "Show dynamics when done"
-%   -> Show microstate dynamics when done. If multiple sets are selected, a
-%   window will be opened for each.
-%   -> Command line equivalent: "ShowDyn"
 %
 % Inputs:
 %
@@ -69,7 +63,7 @@
 %   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
 %   "SelectedSets" (optional)
-%   -> Array of set indices of ALLEEG for which microstates will be
+%   -> Vector of set indices of ALLEEG for which microstates will be
 %   identified. If not provided, a GUI will appear to choose sets.
 %
 % Key, Value inputs (optional):
@@ -110,16 +104,6 @@
 %        Normalization will only apply to clustering and not modify data 
 %       stored in the EEG set.
 %
-%   "ShowMaps"
-%   -> 1 = Show maps after clustering. If multiple sets are selected, a tab
-%   will be opened for each. 0 = Do not show maps.
-%   -> Default = do not show maps
-%
-%   "ShowDyn"
-%   -> 1 = Show microstate dynamics after clustering. If multiple sets are
-%   selected, a window will be opened for each. 0 = Do not show dynamics.
-%   -> Default = do not show dynamics
-%
 % Outputs:
 %
 %   "EEG" 
@@ -132,10 +116,22 @@
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -151,7 +147,9 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
+function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
+
+    [~,nogui] = eegplugin_microstatelab;
 
     %% Set defaults for outputs
     com = '';
@@ -167,35 +165,44 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
 
     %% Parse inputs and perform initial validation
     p = inputParser;
-    funcName = 'pop_FindMSTemplates';
-    p.FunctionName = funcName;
+    p.FunctionName = 'pop_FindMSMaps';
     p.StructExpand = false;         % do not expand ClustPar struct input into key, value args
     
     logClass = {'logical', 'numeric'};
     logAttributes = {'binary', 'scalar'};
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
-    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
+    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'nonnegative', '<=', numel(AllEEG)})); % Took out the 'vector attirbute to allow for [] input
     addParameter(p, 'ClustPar', []);
-    addParameter(p, 'ShowMaps', false, @(x) validateattributes(x, logClass, logAttributes));
-    addParameter(p, 'ShowDyn', false, @(x) validateattributes(x, logClass, logAttributes));
+    addParameter(p, 'TTFrD', false, @(x) validateattributes(x, logClass, logAttributes));
 
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
     ClustPar = p.Results.ClustPar;
-    ShowMaps = p.Results.ShowMaps;
-    ShowDyn = p.Results.ShowDyn;
+    DoTTFrD = p.Results.TTFrD;
+    ShowMaps = false;
 
     %% SelectedSets validation
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
+    HasTTFrDF   = arrayfun(@(x) DoesItHaveWavelets(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isEmpty = arrayfun(@(x) isEmptySet(AllEEG(x)), 1:numel(AllEEG));
-    isPublishedSet = arrayfun(@(x) matches(AllEEG(x).setname, {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(and(and(and(~HasChildren, ~HasDyn), ~isEmpty), ~isPublishedSet));
+    isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
+    if DoTTFrD == true
+        AvailableSets = find(~isEmpty & ~HasChildren & ~HasDyn & ~isPublished & HasTTFrDF);
+    else
+        AvailableSets = find(~isEmpty & ~HasChildren & ~HasDyn & ~isPublished);
+    end
+    
     if isempty(AvailableSets)
-        errordlg2(['No valid sets for clustering found.'], 'Identify microstates error');
-        return;
+        errorMessage = 'No valid sets for identifying microstates found.';
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDlg2(errorMessage, 'Identify microstates per dataset error');
+            return;
+        else
+            error(errorMessage);
+        end
     end
 
     % If the user has provided sets, check their validity
@@ -205,10 +212,8 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         if any(~isValid)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
-            errorMessage = ['The following sets cannot be clustered: ' invalidSetsTxt ...
-                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.'];
-            errordlg2(errorMessage, 'Identify microstates error');
-            return;
+            error(['The following sets cannot be clustered: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.']);
         end
     % Otherwise, add set selection gui elements
     else
@@ -216,8 +221,8 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         guiElements = [guiElements, ....
-                    {{ 'Style', 'text'    , 'string', 'Choose sets for clustering'}} ...
-                    {{ 'Style', 'text'    , 'string', 'Use ctrlshift for multiple selection'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Choose sets for clustering', 'fontweight', 'bold'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'}} ...
                     {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
         guiGeom  = [guiGeom  1 1 1];
         guiGeomV = [guiGeomV  1 1 4];
@@ -234,16 +239,16 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
 
-        if contains('UseAAHC', ClustParDefaults)
+        if matches('UseAAHC', ClustParDefaults)
             ClustPar.UseAAHC = floor(ClustPar.UseAAHC) + 1;
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Algorithm', 'fontweight', 'normal'  }} ...
-                {{ 'Style', 'popupmenu', 'string',{'k-means','AAHC'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC}}];
+                {{ 'Style', 'popupmenu', 'string',{'k-means','AAHC'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC, 'Callback', @algorithmChanged}}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('MinClasses', ClustParDefaults)
+        if matches('MinClasses', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Min number of classes', 'fontweight', 'normal'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.MinClasses), 'tag','MinClasses' }}];
@@ -251,7 +256,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('MaxClasses', ClustParDefaults)
+        if matches('MaxClasses', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Max number of classes', 'fontweight', 'normal'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.MaxClasses), 'tag','MaxClasses' }}];
@@ -259,15 +264,15 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('Restarts', ClustParDefaults)
+        if matches('Restarts', ClustParDefaults)
             guiElements = [guiElements ...
-                {{ 'Style', 'text', 'string', 'Number of restarts', 'fontweight', 'normal'  }} ...
+                {{ 'Style', 'text', 'string', 'Number of restarts', 'fontweight', 'normal', 'tag', 'RestartsLabel'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.Restarts),'tag' 'Restarts' }}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('MaxMaps', ClustParDefaults)
+        if matches('MaxMaps', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Max number of maps to use', 'fontweight', 'normal'  }} ...
                 {{ 'Style', 'edit', 'string', sprintf('%i',ClustPar.MaxMaps), 'tag', 'MaxMaps'}}];
@@ -275,21 +280,21 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('GFPPeaks', ClustParDefaults)
+        if matches('GFPPeaks', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string', 'GFP peaks only' 'tag', 'GFPPeaks','Value', ClustPar.GFPPeaks }}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('IgnorePolarity', ClustParDefaults)
+        if matches('IgnorePolarity', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string', 'No polarity','tag','IgnorePolarity','Value', ClustPar.IgnorePolarity }}];
             guiGeom = [guiGeom 1];
             guiGeomV = [guiGeomV 1];
         end
     
-        if contains('Normalize', ClustParDefaults)
+        if matches('Normalize', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'checkbox', 'string', 'Normalize EEG before clustering','tag','Normalize' ,'Value', ClustPar.Normalize }}];
             guiGeom = [guiGeom 1];
@@ -297,35 +302,25 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         end
     end
 
-    %% Add other options as gui elements if they were not provided
+    %% Add other options as gui elements
     % (Only display in GUI if other cluster parameters are already being
     % displayed, otherwise use defaults)
-    if ~isempty(p.UsingDefaults) && ~isempty(ClustParDefaults)
+    if ~isempty(ClustParDefaults)
         guiElements = [guiElements ...
-            {{ 'Style', 'text', 'string', 'Additional options', 'fontweight', 'bold'}}];
-        guiGeom = [guiGeom 1];
-        guiGeomV = [guiGeomV 1];
-
-        if contains('ShowMaps', p.UsingDefaults)
-            guiElements = [guiElements ...
-                {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
-            guiGeom = [guiGeom 1];
-            guiGeomV = [guiGeomV 1];
-        end
-    
-        if contains('ShowDyn', p.UsingDefaults)
-            guiElements = [guiElements ...
-                {{ 'Style', 'checkbox', 'string','Show dynamics when done','tag','ShowDyn','Value', ShowDyn }}];
-            guiGeom = [guiGeom 1];
-            guiGeomV = [guiGeomV 1];
-        end
+            {{ 'Style', 'text', 'string', 'Additional options', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'checkbox', 'string','Show maps when done','tag','ShowMaps','Value', ShowMaps}}];
+        guiGeom = [guiGeom 1 1];
+        guiGeomV = [guiGeomV 1 1];
     end
     
-
     %% Prompt user to fill in remaining parameters if necessary
     if ~isempty(guiElements)
+        if nogui == true
+            error("Parameters missing in function pop_FindMSMaps, check the help for pop_FindMSMaps for support");
+        end
+        
         [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
-             'title','Identify individual template maps');
+             'title','Identify microstate maps per dataset');
 
         if isempty(res); return; end
 
@@ -360,14 +355,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
         if isfield(outstruct, 'ShowMaps')
             ShowMaps = outstruct.ShowMaps;
         end
-        if isfield(outstruct, 'ShowDyn')
-            ShowDyn = outstruct.ShowDyn;
-        end
-    end
 
-    if numel(SelectedSets) < 1
-        errordlg2('You must select at least one set of microstate maps.','Identify microstates error');
-        return;
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one dataset.','Identify microstate maps per dataset error');
+            return;
+        end
     end
 
     ClustPar = checkClustPar(ClustPar);
@@ -375,10 +367,6 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     if ClustPar.UseAAHC && ClustPar.Normalize
         warndlg2('There is an issue with the currently implemented AAHC algorithm and normalization, normalization has been set to false.','Clustering algorithm selection');
         ClustPar.Normalize = false;
-    end
-
-    if ~isfield(ClustPar,'UseEMD')
-        ClustPar.UseEMD = false;
     end
     
     FailedSets = [];
@@ -396,26 +384,35 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             MapsPerSegment = inf(nSegments,1);
         end
     
-        MapsToUse = [];
-        for s = 1:nSegments
-            if ClustPar.GFPPeaks == 1
-                gfp = std(AllEEG(sIndex).data(:,:,s),1,1);
-                IsGFPPeak = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
-                if numel(IsGFPPeak) > MapsPerSegment(s) && MapsPerSegment(s) > 0
-                    idx = randperm(numel(IsGFPPeak));
-                    IsGFPPeak = IsGFPPeak(idx(1:MapsPerSegment(s)));
-                end
-                MapsToUse = [MapsToUse AllEEG(sIndex).data(:,IsGFPPeak,s)];
+        if DoTTFrD
+            if isfield(AllEEG(sIndex).TTFrD.Wavelets,'Include')
+                MapsToUse = AllEEG(sIndex).TTFrD.Wavelets.Maps(:,AllEEG(sIndex).TTFrD.Wavelets.Include);
             else
-                if (size(AllEEG(sIndex).data,2) > ClustPar.MaxMaps) && MapsPerSegment(s) > 0
-                    idx = randperm(size(AllEEG(sIndex).data,2));
-                    MapsToUse = [MapsToUse AllEEG(sIndex).data(:,idx(1:MapsPerSegment(s)),s)];
+                MapsToUse = AllEEG(sIndex).TTFrD.Wavelets.Maps;
+            end
+        else
+
+            MapsToUse = [];
+            for s = 1:nSegments
+                if ClustPar.GFPPeaks == 1
+                    gfp = std(AllEEG(sIndex).data(:,:,s),1,1);
+                    IsGFPPeak = find([false (gfp(1,1:end-2) < gfp(1,2:end-1) & gfp(1,2:end-1) > gfp(1,3:end)) false]);
+                    if numel(IsGFPPeak) > MapsPerSegment(s) && MapsPerSegment(s) > 0
+                        idx = randperm(numel(IsGFPPeak));
+                        IsGFPPeak = IsGFPPeak(idx(1:MapsPerSegment(s)));
+                    end
+                    MapsToUse = [MapsToUse AllEEG(sIndex).data(:,IsGFPPeak,s)];
                 else
-                    MapsToUse = [MapsToUse AllEEG(sIndex).data(:,:,s)];
+                    if (size(AllEEG(sIndex).data,2) > ClustPar.MaxMaps) && MapsPerSegment(s) > 0
+                        idx = randperm(size(AllEEG(sIndex).data,2));
+                        MapsToUse = [MapsToUse AllEEG(sIndex).data(:,idx(1:MapsPerSegment(s)),s)];
+                    else
+                        MapsToUse = [MapsToUse AllEEG(sIndex).data(:,:,s)];
+                    end
                 end
             end
         end
-        
+
         if size(MapsToUse,2) < ClustPar.MaxClasses
             warning('Not enough data to cluster in set %s',AllEEG(sIndex).setname);
             FailedSets = [FailedSets,sIndex]; %#ok<AGROW> 
@@ -430,15 +427,17 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             flags = [flags 'n'];
         end
         
-        if ClustPar.UseEMD == true
-            flags = [flags 'e'];
+        if isfield(ClustPar, 'UseEMD')
+            if ClustPar.UseEMD == true
+                flags = [flags 'e'];
+            end
         end
         
         if ClustPar.UseAAHC == false
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
                 [b_model,~,~,exp_var] = eeg_kMeans(MapsToUse',nClusters,ClustPar.Restarts,[],flags,AllEEG(sIndex).chanlocs);
        
-                msinfo.MSMaps(nClusters).Maps = b_model;
+                msinfo.MSMaps(nClusters).Maps = double(b_model);
                 msinfo.MSMaps(nClusters).ExpVar = double(exp_var);
                 msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
@@ -452,8 +451,8 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
             [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize);
     
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
-                msinfo.MSMaps(nClusters).Maps = b_model{nClusters-ClustPar.MinClasses+1};
-                msinfo.MSMaps(nClusters).ExpVar = exp_var{nClusters-ClustPar.MinClasses+1};
+                msinfo.MSMaps(nClusters).Maps = double(b_model{nClusters-ClustPar.MinClasses+1});
+                msinfo.MSMaps(nClusters).ExpVar = double(exp_var{nClusters-ClustPar.MinClasses+1});
                 msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
                     msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
@@ -473,20 +472,43 @@ function [EEGout, CurrentSet, com] = pop_FindMSTemplates(AllEEG, varargin)
     SelectedSets(FailedSets) = [];
 
     EEGout = AllEEG(SelectedSets);
-    CurrentSet = SelectedSets;
+    CurrentSet = SelectedSets;    
+    
+    %% Command string generation
+    com = sprintf('[EEG, CURRENTSET] = pop_FindMSMaps(%s, %s, ''ClustPar'', %s);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar));
 
     %% Show maps
     if ShowMaps
         pop_ShowIndMSMaps(EEGout, 1:numel(EEGout), 'Classes', ClustPar.MinClasses:ClustPar.MaxClasses);
+        com = [com newline ...
+            sprintf('fig_h = pop_ShowIndMSMaps(EEG, %s, ''Classes'', %i:%i, ''Visible'', 1);', mat2str(1:numel(SelectedSets)), ClustPar.MinClasses, ClustPar.MaxClasses)];
     end
+end
 
-    %% Show dynamics
-    if ShowDyn
-        [EEGout, CurrentSet, ~] = pop_ShowIndMSDyn(EEGout, 1:numel(EEGout), 'TemplateSet', 'own');
+function algorithmChanged(obj, ~)
+    restartsLabel = findobj(obj.Parent, 'Tag', 'RestartsLabel');
+    restartsEdit = findobj(obj.Parent, 'Tag', 'Restarts');
+    normalizeBox = findobj(obj.Parent, 'Tag', 'Normalize');
+
+    if obj.Value == 1
+        if ~isempty(restartsLabel)
+            restartsLabel.Enable = 'on';
+            restartsEdit.Enable  = 'on';
+        end
+        if ~isempty(normalizeBox)
+            normalizeBox.Value = 1;
+            normalizeBox.Enable  = 'on';
+        end
+    else
+        if ~isempty(restartsLabel)
+            restartsLabel.Enable = 'off';
+            restartsEdit.Enable  = 'off';
+        end
+        if ~isempty(normalizeBox)
+            normalizeBox.Value = 0;
+            normalizeBox.Enable  = 'off';
+        end
     end
-    
-    %% Command string generation
-    com = sprintf('[EEG, CURRENTSET] = pop_FindMSTemplates(%s, %s, ''ClustPar'', %s, ''ShowMaps'', %i, ''ShowDyn'', %i);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar), ShowMaps, ShowDyn);
 end
 
 function [ClustPar, UsingDefaults] = checkClustPar(varargin)
@@ -499,7 +521,7 @@ function [ClustPar, UsingDefaults] = checkClustPar(varargin)
 
     % Parse and validate inputs
     p = inputParser;
-    funcName = 'pop_FindMSTemplates';
+    funcName = 'pop_FindMSMaps';
     p.FunctionName = funcName;
     p.KeepUnmatched = true;
 
@@ -525,37 +547,22 @@ function [ClustPar, UsingDefaults] = checkClustPar(varargin)
     UsingDefaults = p.UsingDefaults;
 end
 
-function [TemplateNames, DisplayNames] = getTemplateNames()
-    global MSTEMPLATE;
-    TemplateNames = {MSTEMPLATE.setname};
-    minClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MinClasses, 1:numel(MSTEMPLATE));
-    maxClasses = arrayfun(@(x) MSTEMPLATE(x).msinfo.ClustPar.MaxClasses, 1:numel(MSTEMPLATE));
-    [minClasses, sortOrder] = sort(minClasses, 'ascend');
-    maxClasses = maxClasses(sortOrder);
-    classRangeTxt = string(minClasses);
-    diffMaxClasses = maxClasses ~= minClasses;
-    classRangeTxt(diffMaxClasses) = sprintf('%s - %s', classRangeTxt(diffMaxClasses), string(maxClasses(diffMaxClasses)));
-    TemplateNames = TemplateNames(sortOrder);
-    nSubjects = arrayfun(@(x) MSTEMPLATE(x).msinfo.MetaData.nSubjects, sortOrder);
-    nSubjects = arrayfun(@(x) sprintf('n=%i', x), nSubjects, 'UniformOutput', false);
-    DisplayNames = strcat(classRangeTxt, " maps - ", TemplateNames, " - ", nSubjects);
-    DisplayNames = ['None' DisplayNames];
-end
-
 function isEmpty = isEmptySet(in)
     isEmpty = all(cellfun(@(x) isempty(in.(x)), fieldnames(in)));
 end
 
 function hasDyn = isDynamicsSet(in)
     hasDyn = false;
-
     % check if set includes msinfo
     if ~isfield(in,'msinfo')
         return;
+    end    
+    % check if set has FitPar
+    if ~isfield(in.msinfo, 'FitPar')
+        return;
     end
-    
-    % check if set is a dynamics set
-    if ~isfield(in.msinfo, 'DynamicsInfo')
+    % check if FitPar contains Rectify/Normalize parameters
+    if ~isfield(in.msinfo.FitPar, 'Rectify')
         return;
     else
         hasDyn = true;
@@ -570,6 +577,33 @@ function Answer = DoesItHaveChildren(in)
     
     if ~isfield(in.msinfo,'children')
         return
+    else
+        Answer = true;
+    end
+end
+
+function isPublished = isPublishedSet(in, templateNames)
+    isPublished = false;
+    if isempty(in.setname)
+        return;
+    end
+
+    if matches(in.setname, templateNames)
+        isPublished = true;
+    end
+end
+
+function Answer = DoesItHaveWavelets(in)
+    Answer = false;
+    if ~isfield(in,'TTFrD')
+        return;
+    end
+    
+    if ~isfield(in.TTFrD,'Wavelets')
+        return
+    end
+    if ~isfield(in.TTFrD.Wavelets,'Maps')
+        return;
     else
         Answer = true;
     end

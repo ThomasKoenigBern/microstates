@@ -15,6 +15,23 @@ function[b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,fl
 % b_loading = Amplitude of the assigned cluster at each moment in time
 % exp_var = explained variance of the model
 
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
+
 if (size(n_mod,1) ~= 1)
 	error('Second argument must be a scalar')
 end
@@ -47,6 +64,13 @@ else
     pmode = 1;
 end
 
+if ~contains(flags,'+')
+    plusmode = 0;
+else
+    plusmode = 1;
+end
+
+
 % Average reference
 newRef = eye(n_chan);
 newRef = newRef -1/n_chan;
@@ -60,7 +84,7 @@ if contains(flags,'e')
 end
 
 if contains(flags,'n')
-    eeg = NormDim(eeg,2);
+    eeg = L2NormDim(eeg,2);
 end
 
 best_fit = 0;
@@ -94,9 +118,31 @@ for run = 1:reruns
         eeg = org_data(idx(1:max_n),:);
     end
 
-    idx = randperm(max_n);
-    model = eeg(idx(1:n_mod),:);
-    model   = NormDim(model,2)*newRef;					% Average Reference, equal variance of model
+    if plusmode == false
+        StartingMaps = randi(max_n,n_mod,1);
+    else
+        StartingMaps = nan(n_mod,1,1);
+        StartingMaps(1) = randi(max_n,1);
+        for m = 2:n_mod
+            model   = eeg(StartingMaps(1:m-1),:);
+            corrmat = corr(eeg',model');
+            if ~pmode
+                %Dist = 1-corrmat.^2;
+                Dist = sqrt(2- 2 * abs(corrmat));
+                Dist = Dist.^2;
+            else
+%                Dist = (1 - corrmat);
+                Dist = sqrt(2- 2 * corrmat);
+                Dist = Dist.^2;
+            end
+            Dist = min(Dist,[],2);
+            Dist = Dist / max(Dist);
+            StartingMaps(m) = randsample(max_n,1,true,Dist);
+        end
+    end
+
+    model = eeg(StartingMaps,:);
+    model   = L2NormDim(model,2)*newRef;					% Average Reference, equal variance of model
 
     o_ind   = zeros(max_n,1);							% Some initialization
 %	ind     =  ones(max_n,1);
@@ -143,7 +189,7 @@ for run = 1:reruns
                 model(i,:) = v(:,1)';
             end
         end
-		model   = NormDim(model,2)*newRef;						% Average Reference, equal variance of model
+		model   = L2NormDim(model,2)*newRef;						% Average Reference, equal variance of model
         covmat = eeg*model';							% Get the unsigned covariance 
         if pmode
             if UseEMD == true
@@ -160,7 +206,6 @@ for run = 1:reruns
         end
     end % while any
 
-    % average reference eeg in case it was not already done
     covmat    = org_data*model';							% Get the unsigned covariance 
     if pmode
         if UseEMD == true
@@ -185,6 +230,8 @@ for run = 1:reruns
     end
  
     tot_fit = sum(loading);
+
+    
     if (tot_fit > best_fit)
         b_model   = model;
         b_ind     = ind;
@@ -197,7 +244,7 @@ end % for run = 1:reruns
 IndGEVnum = zeros(1, n_mod);
 for i = 1:n_mod
     clustMembers = (b_ind == i);
-    IndGEVnum(i) = sum((b_loading(clustMembers)/sqrt(n_chan)).^2);
+    IndGEVnum(i) = sum(b_loading(clustMembers).^2);
 end
 exp_var = IndGEVnum/sum(vecnorm(org_data').^2);
 

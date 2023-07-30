@@ -1,17 +1,30 @@
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
+
 function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename)
 
     CompFigHandle = figure('Units', 'normalized', 'Position', [0.2 0.1 0.6 0.8], ...
-        'Name', 'Compare template maps', 'NumberTitle', 'off', 'MenuBar', 'none', 'ToolBar', 'none');
+        'Name', 'Compare microstate maps', 'NumberTitle', 'off', 'MenuBar', 'none', 'ToolBar', 'none');
 
     CompFigHandle.UserData.SelectedEEG = SelectedEEG;
     CompFigHandle.UserData.nClasses = nClasses;
     CompFigHandle.UserData.Filename = [];
     
-    CompFigHandle.UserData.CompAxis  = subplot('Position',[0.13 0.21 0.61 0.74],'Parent',CompFigHandle);
-    CompFigHandle.UserData.XPMapAxis = subplot('Position',[0.61 0.03 0.10 0.10],'Parent',CompFigHandle);
-    CompFigHandle.UserData.XNMapAxis = subplot('Position',[0.13 0.03 0.10 0.10],'Parent',CompFigHandle);
-    CompFigHandle.UserData.YPMapAxis = subplot('Position',[0.01 0.21 0.10 0.10],'Parent',CompFigHandle);
-    CompFigHandle.UserData.YNMapAxis = subplot('Position',[0.01 0.89 0.10 0.10],'Parent',CompFigHandle);
+    CompFigHandle.UserData.CompAxis  = subplot('Position',[0.05 0.13 0.67 0.85],'Parent',CompFigHandle);
 
     if nClasses == 0
         MinClasses = SelectedEEG.msinfo.ClustPar.MinClasses;
@@ -33,18 +46,19 @@ function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename)
     CompareMapsSolutionChanged(obj, [], CompFigHandle);
     
     if isempty(Filename)
-        CompFigHandle.WindowStyle = 'modal';
-        viewBtnPos = [0.76 0.1 0.22 0.06];
-        uicontrol('style', 'pushbutton', 'string', 'Export shared variances', 'Callback', {@ExportCorrs, CompFigHandle}, 'Units', 'normalized', 'Position', [.76 .03 .22 .06]);
+        CompFigHandle.UserData.wait = 1;
+        viewBtnPos = [0.76 0.09 0.22 0.06];
+        uicontrol('style', 'pushbutton', 'string', 'Export shared variances', 'Callback', {@ExportCorrs, CompFigHandle}, 'Units', 'normalized', 'Position', [.76 .02 .22 .06]);
     else
+        CompFigHandle.UserData.wait = 0;
         viewBtnPos = [.76 .05 .22 .06];
     end
     uicontrol('style', 'listbox', 'string', choice, 'Value', idx,'min',1,'max',10, ...
-        'Callback',{@CompareMapsSolutionChanged,CompFigHandle},'Units','normalized','Position',[0.76 0.21 0.22 0.35]);
+        'Callback',{@CompareMapsSolutionChanged,CompFigHandle},'Units','normalized','Position',[0.76 0.17 0.22 0.39]);
     uicontrol('style', 'pushbutton', 'string', 'View shared variances', 'Callback',{@CompareMapsSolutionCorrsToggle,CompFigHandle},'Units','normalized','Position',viewBtnPos);
-    uicontrol('style', 'pushbutton' , 'string', '-'   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1.2  },'Units','normalized','Position',[0.27  0.05 0.1 0.06]);
-    uicontrol('style', 'pushbutton' , 'string', '+'   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1/1.2},'Units','normalized','Position',[0.37  0.05 0.1 0.06]);
-    uicontrol('style', 'pushbutton' , 'string', '>|<' ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,0},'Units','normalized','Position'    ,[0.47  0.05 0.1 0.06]);
+    uicontrol('style', 'pushbutton' , 'string', '-'   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1.2  },'Units','normalized','Position',[0.225  0.02 0.1 0.05]);
+    uicontrol('style', 'pushbutton' , 'string', '+'   ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,1/1.2},'Units','normalized','Position',[0.335  0.02 0.1 0.05]);
+    uicontrol('style', 'pushbutton' , 'string', '>|<' ,  'Callback',{@CompareMapsSolutionScale,CompFigHandle,0},'Units','normalized','Position'    ,[0.445  0.02 0.1 0.05]);
     CompFigHandle.CloseRequestFcn = {@CompareMapsSolutionClose,CompFigHandle};
 
     if isempty(Filename)
@@ -53,7 +67,7 @@ function Filename = CompareMicrostateSolutions(SelectedEEG, nClasses, Filename)
 
     Filename = CompFigHandle.UserData.Filename;
 
-    if strcmp(CompFigHandle.WindowStyle, 'modal')
+    if isvalid(CompFigHandle)
         delete(CompFigHandle);
     end
 end
@@ -115,7 +129,7 @@ function CompareMapsSolutionClose(~, ~,fh)
         end
     end
 
-    if strcmp(fh.WindowStyle, 'modal')
+    if fh.UserData.wait
         uiresume(fh);
     else
         delete(fh);
@@ -223,7 +237,7 @@ function CompareMapsSolutionChanged(obj, event, CompFig)
         LegendSubSet = [LegendSubSet,ph];
     end
     
-    legend(LegendSubSet,ClassesToDisplay,'Interpreter','none','Position',[0.76,0.58,0.22,0.37]);
+    legend(LegendSubSet,ClassesToDisplay,'Interpreter','none','Position',[0.76,0.58,0.22,0.39]);
 
     axis(FigAxes.CompAxis,'equal');
     axis(FigAxes.CompAxis,'tight');    
@@ -238,26 +252,6 @@ function CompareMapsSolutionChanged(obj, event, CompFig)
     FigAxes.HitMatrix = HitMatrix;
 
     UpdateCorrTable(CompFig);
-    
-    ProCentered = pro-repmat(mean(pro,1),size(pro,1),1);
-    DimMaps = NormDim(ProCentered'* MapCollection,2);
-    
-    X = cell2mat({FigAxes.SelectedEEG(1).chanlocs.X});
-    Y = cell2mat({FigAxes.SelectedEEG(1).chanlocs.Y});
-    Z = cell2mat({FigAxes.SelectedEEG(1).chanlocs.Z});
 
-    axes(FigAxes.XPMapAxis);
-    dspCMap3(FigAxes.XPMapAxis, DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
-
-    axes(FigAxes.XNMapAxis);
-    dspCMap3(FigAxes.XNMapAxis, -DimMaps(1,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
-
-    axes(FigAxes.YPMapAxis);
-    dspCMap3(FigAxes.YPMapAxis, DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
-
-    axes(FigAxes.YNMapAxis);
-    dspCMap3(FigAxes.YNMapAxis, -DimMaps(2,:),[X; Y;Z],'NoScale','Resolution',2,'ShowNose',15);
-
-    CompFig.UserData = FigAxes;
-    
+    CompFig.UserData = FigAxes;    
 end

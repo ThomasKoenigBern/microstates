@@ -1,3 +1,20 @@
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
+
 function PlotMSMaps(fh, classes)
     UserData = get(fh,'UserData');
 
@@ -83,9 +100,9 @@ function PlotMSMaps(fh, classes)
                         ylabel(UserData.Axes{y_pos, x_pos}, ExpVarStr, 'FontSize', 10, 'Rotation', 0, 'HorizontalAlignment', 'right', 'FontWeight', 'bold');
                     else
                         if isfield(UserData.AllMaps(classesToUpdate(y)), 'SharedVar')
-                            ExpVar = mean(UserData.AllMaps(classesToUpdate(y)).SharedVar);
-                            ExpVarStr = sprintf(' %2.2f%% ', ExpVar*100);
-                            ylabel(UserData.Axes{y_pos, x_pos}, ExpVarStr, 'FontSize', 10, 'Rotation', 0, 'HorizontalAlignment', 'right', 'FontWeight', 'bold');
+                            SharedVar = mean(UserData.AllMaps(classesToUpdate(y)).SharedVar);
+                            SharedVarStr = sprintf(' %2.2f%% ', SharedVar*100);
+                            ylabel(UserData.Axes{y_pos, x_pos}, SharedVarStr, 'FontSize', 10, 'Rotation', 0, 'HorizontalAlignment', 'right', 'FontWeight', 'bold');
                         end
                     end                                                
                 end

@@ -2,6 +2,11 @@ function i = vararginmatch(v,str)
 
 % Copyright 2009-2011 Thomas Koenig
 % distributed under the terms of the GNU AFFERO General Public License
+if numel(v) < 1
+    i = 0;
+    return;
+end
+
 if iscell(v(1))
     for i = 1:numel(v)
         if strcmp(v{i},str)

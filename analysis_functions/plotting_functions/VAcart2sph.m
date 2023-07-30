@@ -11,9 +11,9 @@ function [Theta,Phi,Radius] = VAcart2sph(x,y,z)
     Theta = abs(Theta) .* sgnX;
     
     l = sqrt(x.*x + y.*y);
+    l(l == 0) = 1;
     Phi = asin(y./l)/pi*180;
-
-    
+        
     Phi = abs(Phi) .* sgnX .* sgnY;
     
     

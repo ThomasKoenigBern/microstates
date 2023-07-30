@@ -11,10 +11,22 @@
 %        - srate is the sampling rate
 %        - IgnorePolarity is true if the polarity is to be ignored
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by

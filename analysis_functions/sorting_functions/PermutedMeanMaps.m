@@ -1,4 +1,4 @@
-function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Montage, Reruns, UseEMD)
+function [MeanMap,SortedMaps,OldMapFit,SharedVar] = PermutedMeanMaps(in,RespectPolarity, Montage, Reruns, UseEMD)
 
     AutoReruns = false;
 
@@ -27,7 +27,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
     GoBack = 1;
     BestMeanMapFit = -inf;
     BestIndex = nan;
-    in = NormDim(in,3);
+    in = L2NormDim(in,3);
     if nargin < 2;  RespectPolarity = false;    end
     Run = 0;
     while Run < Reruns
@@ -49,7 +49,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
         OldOldOrder = OldOrder;
             
         while WorkToBeDone
-            MeanMap = NormDim(MeanMap,3);
+            MeanMap = L2NormDim(MeanMap,3);
             cnt = cnt + 1;
             fprintf(1,'\b%s',progStrArray(mod(cnt-1, 4)+1));
             % See how the prototype fits
@@ -95,11 +95,11 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
                     else
                         [SwappedMaps,Order] = SwapMaps(SortedMaps(Idx(i),:,:),MeanMap,RespectPolarity,Montage);
                     end
-                else        % linear prgramming for larger problems
+                else        % linear programming for larger problems
                     if UseEMD == false
                         [SwappedMaps,Order] = SwapMaps2(SortedMaps(Idx(i),:,:),MeanMap,RespectPolarity);
                     else
-                        [SwappedMaps,Order] = SwapMaps2(SortedMaps(Idx(i),:,:),MeanMap,RespectPolarity);
+                        [SwappedMaps,Order] = SwapMaps2(SortedMaps(Idx(i),:,:),MeanMap,RespectPolarity,Montage);
                     end
                 end
                 SetOrder(Idx(i),:) = Order;
@@ -116,7 +116,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
                     for k = 1:nMaps
                          data = squeeze(SortedMaps(:,k,:));
                          [pc1,~] = eigs(data'*data,1);
-                         MeanMap(1,k,:) = NormDimL2(pc1',2);
+                         MeanMap(1,k,:) = L2NormDim(pc1',2);
                     end
 %                    break;
                 else
@@ -133,7 +133,7 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
                 for k = 1:nMaps
                      data = squeeze(SortedMaps(:,k,:));
                      [pc1,~] = eigs(data'*data,1);
-                     MeanMap(1,k,:) = NormDimL2(pc1',2);
+                     MeanMap(1,k,:) = L2NormDim(pc1',2);
                 end
                 break;
             end
@@ -183,28 +183,9 @@ function [MeanMap,SortedMaps,ExpVar] = PermutedMeanMaps(in,RespectPolarity, Mont
     MeanMap = BestMeanMap;
     SortedMaps = BestSortedMaps;
     OldMapFit = BestOldMapFit;
-
-    % Individual explained variances
-    IndGEVnum = zeros(1, nMaps);
-
-    % Get a nChannels x nMaps array of all individual maps
-    indMaps = [];
-    for s=1:nSubjects
-        indMaps = [indMaps squeeze(in(s, :, :))'];
-    end
-
-    Cov = NormDimL2(MeanMap, 2)*indMaps;
-    if ~RespectPolarity
-        Cov = abs(Cov);
-    end
-    [mfit, class] = max(Cov);
-
-    for c=1:nMaps
-        clustMembers = (class == c);
-        IndGEVnum(c) = sum(mfit(clustMembers).^2);
-    end
-
-    ExpVar = IndGEVnum/sum(vecnorm(indMaps).^2);
+    
+    ExtMeanMap(1,:,:) = MeanMap;
+    SharedVar = mean(GetMapSeriesFit(SortedMaps, ExtMeanMap, RespectPolarity).^2);
     
     fprintf(1,'\n');
     if debug == true

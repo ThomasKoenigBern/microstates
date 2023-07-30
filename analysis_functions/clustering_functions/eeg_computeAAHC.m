@@ -1,7 +1,21 @@
-function [b_model,exp_var] = eeg_computeAAHC(eeg,n_mod,ProgBar, IgnorePolarity, Normalize)
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 
-% Copyright 2009-2011 Thomas Koenig
-% distributed under the terms of the GNU AFFERO General Public License
+function [b_model,exp_var] = eeg_computeAAHC(eeg,n_mod,ProgBar, IgnorePolarity, Normalize)
 
     if nargin < 3;  ProgBar = true; end
     if nargin < 4;  IgnorePolarity = false; end
@@ -12,10 +26,10 @@ function [b_model,exp_var] = eeg_computeAAHC(eeg,n_mod,ProgBar, IgnorePolarity, 
     eeg = eeg*h;									% Average reference of data 
 
     % Initally, all maps are clusters
-    Cluster = NormDimL2(eeg,2);
+    Cluster = L2NormDim(eeg,2);
     
     if Normalize == true
-        eeg = NormDimL2(eeg,2);
+        eeg = L2NormDim(eeg,2);
     end
     
     GEV = sum(eeg.*Cluster,2);
@@ -58,9 +72,9 @@ function [b_model,exp_var] = eeg_computeAAHC(eeg,n_mod,ProgBar, IgnorePolarity, 
             ClusterMembers = Assignment == ClusterToUpdate(f);
             if (IgnorePolarity == true)
                 [pc1,~] = eigs(cov(eeg(ClusterMembers,:)),1);
-                Cluster(ClusterToUpdate(f),:) = NormDimL2(pc1',2);
+                Cluster(ClusterToUpdate(f),:) = L2NormDim(pc1',2);
             else
-                Cluster(ClusterToUpdate(f),:) = NormDimL2(mean(eeg(ClusterMembers,:),1),2);
+                Cluster(ClusterToUpdate(f),:) = L2NormDim(mean(eeg(ClusterMembers,:),1),2);
             end
             % So now we go and see how things fit
             NewFit = Cluster(ClusterToUpdate(f),:)* eeg(ClusterMembers,:)'; % 1 x nFrames

@@ -1,4 +1,4 @@
-%QuantifyMSDynamics() Quantify microstate parameters
+% QuantifyMSDynamics() Quantify microstate parameters
 %
 % Usage:
 %   >> res = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateName, IndGEVs)
@@ -6,28 +6,32 @@
 % Where: - MSClass is a N timepoints x N Segments matrix of momentary labels
 %        - gfp is a N timepoints x N Segments matrix of momentary GFP
 %        values
-%        - info is the structure with the microstate information
 %        - SamplingRate is the sampling rate
-%        - DataInfo contains info about the dataset analyzed
-%        - (added by Delara) TemplateType is the type of templates used to
-%        quantify (0 = own, 1 = mean, 2 = published)
-%        - TemplateName is the name of the microstate map template used for
-%        quantifying
 %        - IndGEVs is a vector with Global Explained Variance values for
 %        each microstate map
-%          The last parameter is only for the documentation of the
-%          results.
 %
 % Output: 
 %         - res: A Matlab table with the results, including the individual 
-%           and total global explained variances, template labels and 
-%           spatial correlations between individual and template maps, and
-%           the observed transition matrix
+%           and total global explained variances, mean durations, mean
+%           occurrences, coverages, mean GFPs, the observed transition
+%           matrix, and the delta transition matrix
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -43,151 +47,104 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [res,EpochData] = QuantifyMSDynamics(MSClass, gfp, info, SamplingRate, DataInfo, TemplateName, IndGEVs, SingleEpochFileTemplate)
-    if nargin < 9
-        SingleEpochFileTemplate = [];
-    end
-
+function res = QuantifyMSDynamics(MSClass, gfp, SamplingRate, TemplateInfo, IndGEVs)
     nEpochs = size(MSClass,2);
-    TimeAxis = (0:(size(MSClass,1)-1)) / SamplingRate;
-
-    % Extract dataset information
-    res.DataSet      = DataInfo.setname;
-    res.Subject      = DataInfo.subject;
-    res.Group        = DataInfo.group;
-    res.Condition    = DataInfo.condition;
+    nClasses = numel(IndGEVs);
+    TimeAxis = (0:(size(MSClass,1)-1)) / SamplingRate;    
 
     % Compute temporal dynamics
-    eDuration        = nan(1,info.FitPar.nClasses,nEpochs);
-    eOccurrence      = zeros(1,info.FitPar.nClasses,nEpochs);
-    eContribution    = zeros(1,info.FitPar.nClasses,nEpochs);
-    eMeanGFP         = zeros(1,info.FitPar.nClasses,nEpochs);
-    eTotalTime       = zeros(1,nEpochs);
-    eMeanDuration    = nan(1,nEpochs);
-    eMeanOccurrence  = nan(1,nEpochs);
-
-    eOrgTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
-    eExpTM        = zeros(info.FitPar.nClasses,info.FitPar.nClasses,nEpochs);
+    sumDuration   = zeros(1,nClasses);
+    durations     = cell(1,nClasses);
+    numHits       = zeros(1,nClasses);
+    sumGFP        = zeros(1,nClasses);
+    gfps          = cell(1,nClasses);
+    numPoints     = zeros(1,nClasses);
+    TotalTime     = 0;
+    eOrgTM        = zeros(nClasses,nClasses,nEpochs);
     
-    for e = 1: nEpochs      % e: from 1 to number of maps
+    for e = 1: nEpochs
 
-        ChangeIndex = find([0 diff(MSClass(:,e)')]);
-        StartTimes   = TimeAxis(ChangeIndex(1:(end-1)    ));
-        EndTimes     = TimeAxis((ChangeIndex(2:end    )-1));
+        % Find indices of microstate class transitions
+        ChangeIndex  = find([0 diff(MSClass(:,e)')]);
+        StartTimes   = TimeAxis(ChangeIndex(1:(end-1)));
+        EndTimes     = TimeAxis((ChangeIndex(2:end)-1));
         
+        % Durations of each microstate class appearance in the epoch
         Duration = EndTimes - StartTimes + TimeAxis(1);
         Class    = MSClass(ChangeIndex,e);
         
-       if numel(Class) == 0
+        if numel(Class) == 0
             Class(1) = nan;
-       end
-        
+        end        
         Class(end) = nan;
 
-        TotalTime = sum(Duration(Class > 0));
-        eTotalTime(e)    = TotalTime;
-
-        eMeanDuration(e) = mean(Duration(Class > 0));
-        MeanOcc = sum(Class > 0) / TotalTime;
-        eMeanOccurrence(e) = MeanOcc;
+        % Times with microstate assignments that are not 0
+        TotalTime = TotalTime + sum(Duration(Class > 0));
         
-        
-        for c1 = 1: info.FitPar.nClasses    % c1: from 1 to number of classes
+        for c1 = 1: nClasses    % c1: from 1 to number of classes
 
             Hits = find(Class == c1);
-            eDuration(1,c1,e)     = mean(Duration(Hits));
-            eOccurrence(1,c1,e)   = numel(Hits) / TotalTime;
-            eContribution(1,c1,e) = sum(Duration(Hits)) / TotalTime;
-            eMeanGFP(1,c1,e)      = 0;
+            sumDuration(c1) = sumDuration(c1) + sum(Duration(Hits));
+            durations{c1}   = [durations{c1} Duration(Hits)];
+            numPoints(c1)   = numPoints(c1) + sum(MSClass(:,e) == c1);
+            sumGFP(c1)      = sumGFP(c1) + sum(gfp(1, MSClass(:,e) == c1, e));
+            gfps{c1}        = [gfps{c1} gfp(1, MSClass(:,e) == c1, e)];
+            numHits(c1)     = numHits(c1) + numel(Hits);            
       
-            for c2 = 1: info.FitPar.nClasses
+            for c2 = 1:nClasses
                 eOrgTM(c1,c2,e) = sum(Class(Hits+1) == c2); 
             end
-
-        end
-        cnt = zeros(info.FitPar.nClasses,1);
-        for n = 1:(numel(Class)-1)
-            if Class(n) == 0
-                continue;
-            end
-            eMeanGFP(1,Class(n),e) = eMeanGFP(1,Class(n),e) + mean(gfp(1,ChangeIndex(n):ChangeIndex(n+1),e),2);
-            cnt(Class(n)) = cnt(Class(n)) + 1;
-        end
-        
-        for c1 = 1: info.FitPar.nClasses
-            eMeanGFP(1,c1,e) = eMeanGFP(1,c1,e) ./ cnt(c1);
-            for c2 = 1: info.FitPar.nClasses
-                eExpTM(c1,c2,e) = eOccurrence(1,c1,e) / MeanOcc * eOccurrence(1,c2,e) / MeanOcc / (1 - eOccurrence(1,c1,e) / MeanOcc);
-            end
-            eExpTM(c1,c1,e) = 0;
         end
     end
 
-    res.TotalTime = sum(eTotalTime);
+    res.TotalTime = TotalTime;
 
-    % Add individual and total GEV values
+    % Total and individual explained variances
     res.TotalExpVar = sum(IndGEVs);  
     res.IndExpVar = IndGEVs;
 
-    % Add temporal dynamics
-    res.Duration     = mynanmean(eDuration,3);
-    res.MeanDuration = mynanmean(eMeanDuration,2);
+    % Temporal dynamics    
+    res.MeanDuration        = sumDuration./numHits;                 % mean duration of each microstate class
+    res.MeanDurationAll     = sum(sumDuration)/sum(numHits);        % mean duration across all microstate classes
     
-    res.Occurrence     = mynanmean(eOccurrence,3);
-    res.MeanOccurrence = mynanmean(eMeanOccurrence,2);
+    res.MeanOccurrence      = numHits./TotalTime;                   % number of occurrences/s for each microstate class
+    res.MeanOccurrenceAll   = sum(numHits)/TotalTime;               % mean number of occurrences/s across all microstate classes
 
-    res.Contribution = mynanmean(eContribution,3);
+    res.Coverage            = (numPoints./sum(numPoints))*100;      % fraction of activation time for each microstate class    
 
-    res.MeanGFP = mynanmean(eMeanGFP,3);
+    res.MeanGFP             = sumGFP./numPoints;                    % mean GFP during activation of each microstate class
     
-    res.OrgTM = mynanmean(eOrgTM,3);
-    res.OrgTM = res.OrgTM / sum(res.OrgTM(:));
-    
-%     res.ExpTM = mynanmean(eExpTM,3);
-    res.DeltaTM = ((res.OrgTM - mynanmean(eExpTM, 3))*100)./mynanmean(eExpTM, 3);
-    res.DeltaTM(isnan(res.DeltaTM)) = 0;
+    orgTM = sum(eOrgTM,3);
+    orgTM = orgTM / sum(eOrgTM, "all");
 
-    % if quantifying by own maps, include spatial correlations between
-    % individual maps and the template maps they were sorted by
-%     if isempty(TemplateName)
-%         for i=1:info.FitPar.nClasses
-%             templateLabel = sprintf('TemplateLabel_MS%i_%i', info.FitPar.nClasses, i);
-%             res.(templateLabel) = info.MSMaps(info.FitPar.nClasses).Labels{i};
-%             spCorrLabel = sprintf('SpCorr_MS%i_%i', info.FitPar.nClasses, i);
-%             res.(spCorrLabel) = info.MSMaps(info.FitPar.nClasses).SpatialCorrelation(i);
-%         end
-%     end
+    expTM = zeros(nClasses, nClasses);
+    for c1 = 1:nClasses
+        for c2 = 1:nClasses
+            if c1 == c2;    continue;   end
+            expTM(c1,c2) = (numHits(c1)/sum(numHits)) * (numHits(c2)/sum(numHits)) /(1 - (numHits(c1)/sum(numHits)) );
+        end 
+    end
+
+    res.OrgTM = orgTM*100;
+    res.DeltaTM = ((orgTM - expTM)*100)./expTM;
+    res.DeltaTM(isnan(res.DeltaTM)) = 0;    
+
+    % Duration and GFP standard deviation
+    res.DurationStdDev = cellfun(@std, durations);
+    res.GFPStdDev      = cellfun(@std, gfps);
+
+    % Add distribution data and individual labels
+    res.DurationDist    = durations;
+    res.GFPDist         = gfps;
+    res.MSClass         = MSClass;
+    res.GFP             = squeeze(gfp);
 
     % Set template and sorting information
-    if isempty(TemplateName)
-        res.FittingTemplate = '<<own>>';
+    res.FittingTemplate = TemplateInfo.name;
+    if isempty(TemplateInfo.SortedBy)
+        res.SortedBy = 'N/A';
     else
-        res.FittingTemplate = TemplateName;
-
+        res.SortedBy = TemplateInfo.SortedBy;
     end
-
-    if isempty(TemplateName)
-        if ~isempty(info.MSMaps(info.FitPar.nClasses).SortedBy)
-            res.SortedBy = info.MSMaps(info.FitPar.nClasses).SortedBy;
-        else
-            res.SortedBy = 'N/A';
-        end
-    else
-        res.SortedBy = TemplateName;
-    end
-    
-    EpochData.Duration     = squeeze(eDuration);
-    EpochData.Occurrence   = squeeze(eOccurrence);
-    EpochData.Contribution = squeeze(eContribution);
-
-    if ~isempty(SingleEpochFileTemplate)
-        OutputFileName = sprintf(SingleEpochFileTemplate,DataInfo.setname);        
-        save(OutputFileName,'eDuration','eOccurrence','eContribution');
-    end
-end
-
-function res = mynanmean(in,dim)
-    isout = isnan(in);
-    in(isout) = 0;
-    res = sum(in,dim) ./ sum(~isout,dim);
+    res.TemplateLabels = TemplateInfo.TemplateLabels;
 end

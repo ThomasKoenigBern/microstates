@@ -9,8 +9,24 @@
 %
 % Outputs:
 %   - selection: character vector of the option the user selected, empty if
-%   they closed the dialog box
+%   the dialog box was closed
 %
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 
 function selection = questionDialog(question, title, options)   
     selection = [];
@@ -30,24 +46,6 @@ function selection = questionDialog(question, title, options)
         "Units", "normalized", "Position", [0.36 0.1 0.28 0.3], "Parent", selectDlg);
     uicontrol("Style", "pushbutton", "String", "Cancel", "Callback", {@btnPressed, selectDlg}, ...
         "Units", "normalized", "Position", [0.67 0.1 0.28 0.3], "Parent", selectDlg);
-% 
-%     selectDlg = uifigure('Name', title);
-%     selectDlg.Position(3:4) = [750 150];
-%     selectDlg.UserData.selection = selection;
-%     selectDlg.CloseRequestFcn = 'uiresume()';
-%     grid1 = uigridlayout(selectDlg, [2 1]);
-%     grid1.BackgroundColor = [.66 .76 1];        % match EEGLAB background color
-%     grid1.Padding = [30 10 30 10];
-%     
-%     questLabel = uilabel(grid1, 'Text', question, 'WordWrap', 'on');
-%     questLabel.FontSize = 14;
-%     
-%     grid2 = uigridlayout(grid1, [1 3]);
-%     grid2.BackgroundColor = [.66 .76 1];        % match EEGLAB background color
-%     
-%     uibutton(grid2, 'Text', options{1}, 'ButtonPushedFcn', {@btnPressed, selectDlg});
-%     uibutton(grid2, 'Text', options{2}, 'ButtonPushedFcn', {@btnPressed, selectDlg});
-%     uibutton(grid2, 'Text', 'Cancel', 'ButtonPushedFcn', {@btnPressed, selectDlg});
 
     uiwait(selectDlg);
 

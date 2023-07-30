@@ -21,10 +21,22 @@
 %   "AllEEG" 
 %   -> AllEEG structure with all the updated EEGs
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -58,6 +70,10 @@ function AllEEG = ClearDataSortedByParent(AllEEG, Children, ClassIndex)
                 ClassIndex = AllEEG(sIdx).msinfo.ClustPar.MinClasses:AllEEG(sIdx).msinfo.ClustPar.MaxClasses;
             end
             for n = 1:numel(ClassIndex)
+                for j = 1:ClassIndex(n)
+                    AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).Labels{j} = sprintf('MS_%i.%i',ClassIndex(n),j);
+                end
+                AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).ColorMap = repmat([.75 .75 .75], ClassIndex(n), 1);
                 AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).SortedBy = [];
                 AllEEG(sIdx).msinfo.MSMaps(ClassIndex(n)).SortMode = 'none';
             end

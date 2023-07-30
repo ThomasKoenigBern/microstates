@@ -4,9 +4,13 @@ function [childIdx, childSetnames] = FindChildSets(AllEEG, MeanSets)
     for s=1:numel(MeanSets)
         childNames = AllEEG(MeanSets(s)).msinfo.children;
         if isempty(childNames);     continue;   end
-        newChildIdx = find(matches({AllEEG.setname}, childNames));
+        setnames = {AllEEG.setname};
+        isEmpty = cellfun(@isempty,setnames);
+        if any(isEmpty)
+            setnames(isEmpty) = {''};
+        end
+        newChildIdx = find(matches(setnames, childNames));
         if isempty(newChildIdx)
-            fprintf('Could not find children of %s for resorting\n', AllEEG(MeanSets(s)).setname);
             continue;
         end
 

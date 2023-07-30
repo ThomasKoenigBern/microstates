@@ -5,7 +5,7 @@ function [TheFit,FitSign] = GetMapSeriesFit(IndMaps,Template,RespectPolarity, ch
     end
 
     if isempty(chanloc)
-        TheFit = mean(IndMaps.*repmat(Template,[nCases,1,1]),3);
+        TheFit = sum(IndMaps.*repmat(Template,[nCases,1,1]),3);
         if ~RespectPolarity
             FitSign = sign(TheFit);
             TheFit = abs(TheFit);    

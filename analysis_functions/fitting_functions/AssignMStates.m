@@ -20,10 +20,22 @@
 %        - gfp: N timepoints x N Segments matrix of momentary gFP values
 %        - IndGEVs: Global explained variance for each microstate map
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -112,7 +124,7 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
             end
 
             % Normalized maps * voltage vectors at GFP peaks
-            Cov = NormDimL2(Maps,2) * TheEEGData(:,IsIn,s);
+            Cov = L2NormDim(Maps,2) * TheEEGData(:,IsIn,s);
             if IgnorePolarity == true
                 Cov = abs(Cov);
             end
@@ -146,19 +158,19 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
             end
 
             Winner(Hit == 0) = 0;       % microstate assignments of 0
-            if params.BControl == true
-                % Kill microstates truncated by boundaries
-                for b = 1:numel(BoundaryPoint)
-                    if BoundaryEpoch(b) == s
-                        FirstPeakAfterBoundary = find(IsIn > BoundaryPoint(b),1);
-                        LastPeakBeforeBoundary = find(IsIn < BoundaryPoint(b),1,'last');
-                        Winner = fill1D(Winner, IsIn(FirstPeakAfterBoundary), 0);
-                        Winner = fill1D(Winner, IsIn(LastPeakBeforeBoundary), 0);                
-                    end
+
+            % Kill microstates truncated by boundaries
+            for b = 1:numel(BoundaryPoint)
+                if BoundaryEpoch(b) == s
+                    FirstPeakAfterBoundary = find(IsIn > BoundaryPoint(b),1);
+                    LastPeakBeforeBoundary = find(IsIn < BoundaryPoint(b),1,'last');
+                    Winner = fill1D(Winner, IsIn(FirstPeakAfterBoundary), 0);
+                    Winner = fill1D(Winner, IsIn(LastPeakBeforeBoundary), 0);                
                 end
-                Winner = fill1D(Winner, IsIn(1)  , 0);
-                Winner = fill1D(Winner, IsIn(end), 0);
             end
+            Winner = fill1D(Winner, IsIn(1)  , 0);
+            Winner = fill1D(Winner, IsIn(end), 0);
+
             MSClass(:,s) = Winner;
         end
     else
@@ -171,7 +183,7 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
                 clustMembers = (Winner == c);
                 if any(clustMembers)
                     %  sum of squared max fits
-                    mfit = NormDimL2(Maps(c,:),2) * TheEEGData(:,clustMembers,s);
+                    mfit = L2NormDim(Maps(c,:),2) * TheEEGData(:,clustMembers,s);
                     IndGEVnum(c) = IndGEVnum(c) + sum(mfit.^2);
                     % sum of squared L2 norms of all voltage vectors in
                     % this cluster
@@ -180,20 +192,19 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
             end
 
             % Kill microstates truncated by boundaries
-            if params.BControl == true
-                for b = 1:numel(BoundaryPoint)
-                    if BoundaryEpoch(b) == s
-                        FirstPointAfterBoundary = ceil( BoundaryPoint(b));
-                        LastPointBeforeBoundary = floor(BoundaryPoint(b));
-                        
-                        Winner = fill1D(Winner, FirstPointAfterBoundary, 0);
-                        Winner = fill1D(Winner, LastPointBeforeBoundary, 0);   
-                    end
+            for b = 1:numel(BoundaryPoint)
+                if BoundaryEpoch(b) == s
+                    FirstPointAfterBoundary = ceil( BoundaryPoint(b));
+                    LastPointBeforeBoundary = floor(BoundaryPoint(b));
+                    
+                    Winner = fill1D(Winner, FirstPointAfterBoundary, 0);
+                    Winner = fill1D(Winner, LastPointBeforeBoundary, 0);   
                 end
-            % Clear the first and last state, because it is undefined
+            end
+
+                % Clear the first and last state, because it is undefined
                 Winner = fill1D(Winner,1           ,0);
                 Winner = fill1D(Winner,numel(Winner),0);
-            end
         
 %             AllMFit = AllMFit + sum(ExpVar(1,Winner > 0),2);
 %             AllMVar = AllMVar + sum(Winner > 0);
@@ -201,7 +212,7 @@ function [MSClass, gfp, IndGEVs] = AssignMStates(eegdata, Maps, params, IgnorePo
         end
 
     end
-    IndGEVs = IndGEVnum/IndGEVdenom;
+    IndGEVs = IndGEVnum/IndGEVdenom; 
 end
 
 

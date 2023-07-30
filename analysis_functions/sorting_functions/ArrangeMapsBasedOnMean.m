@@ -24,11 +24,11 @@ function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBased
     for i=1:nSubjects
         in(i, :, :) = squeeze(in(i, :, :)) * newRef;
     end
-    in = NormDimL2(in, 3);
+    in = L2NormDim(in, 3);
     SortedMaps = in;
 
     MeanMap= MeanMap * newRef;
-    MeanMap = NormDimL2(MeanMap, 2);
+    MeanMap = L2NormDim(MeanMap, 2);
 
     [nSubjects,nMapsToSort,nChannels] = size(in);
     nTemplateMaps = size(MeanMap,1);
@@ -56,11 +56,12 @@ function [SortedMaps,SortOrder, SpatialCorrelation, Polarity] = ArrangeMapsBased
     for n = 1:nSubjects
 		MapsToSort = in(n,:,:);
        
-        if (nMapsToSort > nTemplateMaps) || (nMapsToSort < 7) || (license('test','optimization_toolbox') == false) || isempty(which('intlinprog')) % Full permutations for small n or absent optimzation toolbox
+        if max(nMapsToSort,nTemplateMaps) < 7
+            % Full permutations for small n
             [SwappedMaps,Assignment, pol] = SwapMaps(MapsToSort,ExtMeanMap,RespectPolarity);
-        else        % linear prgramming for larger problems
-            %[SwappedMaps,Assignment,pol] = SwapMaps2(MapsToSort,ExtMeanMap,RespectPolarity);
-            [SwappedMaps,Assignment,pol] = SwapMaps(MapsToSort,ExtMeanMap,RespectPolarity);
+        else 
+            % linear programming for larger problems
+            [SwappedMaps,Assignment,pol] = SwapMaps2(MapsToSort,ExtMeanMap,RespectPolarity);
         end
         
         if nTemplateMaps == nMapsToSort

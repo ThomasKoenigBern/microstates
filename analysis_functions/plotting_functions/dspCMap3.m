@@ -1,8 +1,6 @@
 function [c,imap,xm,ym,chandle] = dspCMap3(ax,map,ChanPos,varargin)
 % dspCMap - Display topographic scalp maps
 % ----------------------------------------
-% Copyright 2009-2011 Thomas Koenig
-% distributed under the terms of the GNU AFFERO General Public License
 %
 % Usage: dspCMap(map,ChanPos,CStep)
 %
@@ -32,6 +30,23 @@ function [c,imap,xm,ym,chandle] = dspCMap3(ax,map,ChanPos,varargin)
 % 'Plot'            Plots additional x_points 
 % 'Linewidth'       Sets linewidth
 % 'NoExtrapolation' Prevents maps to be etrapolated)
+%
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
+%
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 
 
 map = double(map);
@@ -331,7 +346,11 @@ switch cmap
         colormap(ax,cm);
         
     case 'br'
-        clim(ax,[-8*CStep 8*CStep]);
+        if verLessThan('matlab', '9.12')
+            caxis(ax,[-8*CStep 8*CStep]);
+        else
+            clim(ax,[-8*CStep 8*CStep]);
+        end
         colormap(ax,bluered);
         LabBkG = 1;
     case 'rr'
@@ -463,7 +482,7 @@ set(ax,'XLim',[-xmx-15 xmx+15],'YLim',[-ymx-15 ymx+15+NoseRadius],'NextPlot','re
 if vararginmatch(varargin,'Background')
     set(ax,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[]);
 else
-    axis off
+    axis(ax, 'off');
 end
 
 
