@@ -705,9 +705,9 @@ function CompareCallback(~, ~, fh, AllEEG)
     AllEEG(fh.UserData.SelectedSet).msinfo.MSMaps = fh.UserData.MSMaps;
     
     if isempty(fh.UserData.Children)
-        [EEGout, ~, com] = pop_CompareMSMaps(AllEEG, 'IndividualSets', fh.UserData.SelectedSet);
+        [~, com] = pop_CompareMSMaps(AllEEG, fh.UserData.SelectedSet, [], []);
     else
-        [EEGout, ~, com] = pop_CompareMSMaps(AllEEG, 'MeanSets', fh.UserData.SelectedSet);
+        [~, com] = pop_CompareMSMaps(AllEEG, [], fh.UserData.SelectedSet, []);
     end
 
     % If the command contains sorting function calls, we should replot the maps
