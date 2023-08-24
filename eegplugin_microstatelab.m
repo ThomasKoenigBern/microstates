@@ -63,6 +63,12 @@
 %
 function [vers,nogui] = eegplugin_microstatelab (fig, try_strings, catch_strings)
 
+    v = ver;
+    if ~any(strcmp(cellstr(char(v.Name)), 'Optimization Toolbox'))
+        warning('The MICROSTATELAB will need the Optimation Toolbox at one point, please install.');
+    end
+
+
     VersionNumber = '2.0';
     vers = ['MICROSTATELAB ' VersionNumber];
 
