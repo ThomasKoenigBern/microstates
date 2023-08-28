@@ -100,10 +100,6 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
 
     [~,nogui] = eegplugin_microstatelab;
 
-    if nogui == true
-        error("This function needs a GUI");
-    end
-
     %% Set defaults for outputs
     com = '';
     fig_h = [];
@@ -122,6 +118,10 @@ function [fig_h, com] = pop_ShowMSParameters(AllEEG, varargin)
     SelectedSets = p.Results.SelectedSets;
     nClasses = p.Results.Classes;
     Visible = p.Results.Visible;
+
+    if nogui && (isempty(SelectedSets) || isempty(nClasses) || Visible)
+        error("This function needs a GUI");
+    end
 
     %% SelectedSets validation        
     HasStats = arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG));
