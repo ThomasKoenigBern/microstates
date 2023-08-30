@@ -53,9 +53,9 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     rd.ContF1 = false;
     rd.Iterations = 1000;
     rd.Threshold = 0.05;
-    if isempty(rd.IndFeature)
+%     if isempty(rd.IndFeature)
         rd.IndFeature = ones(size(rd.Names,1),1);
-    end
+%     end
 
     
     rd.MapStyle = 2;

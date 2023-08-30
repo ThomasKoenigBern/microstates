@@ -186,20 +186,9 @@ mkdir(quantFigDir);
 scriptPath = [mfilename('fullpath') '.m'];
 copyfile(scriptPath, subDir);
 
-% Start EEGLAB and find Microstates plugin files
+% Start EEGLAB and MICROSTATELAB
 [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab('nogui');
-pluginpath = fileparts(which('eegplugin_Microstates.m'));
-addpath(genpath(pluginpath));
-
-% Load template sets
-templatepath = fullfile(pluginpath,'Templates');
-Templates = dir(fullfile(templatepath,'*.set'));
-MSTemplate = [];   
-for t = 1: numel(Templates)
-    MSTemplate = eeg_store(MSTemplate,pop_loadset('filename',Templates(t).name,'filepath',templatepath));
-end
-global MSTEMPLATE;
-MSTEMPLATE = MSTemplate;
+eegplugin_microstatelab;
 
 GroupIdx = cell(1, nGroups);
 lastGroupIdx = 1;

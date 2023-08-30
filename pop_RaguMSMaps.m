@@ -65,9 +65,8 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
     [~,nogui] = eegplugin_microstatelab;
 
     if nogui == true
-        error("This function needs a GUI");
+        warning("This function needs a GUI");
     end
-
 
     global MSTEMPLATE;
     com = '';
