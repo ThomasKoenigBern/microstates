@@ -1,7 +1,7 @@
 function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
 
     
-    [rd.GroupLabels,rd.IndFeature] = GetUniqueIdentifiers(EEGs,'group');
+    [rd.GroupLabels,~] = GetUniqueIdentifiers(EEGs,'group');
 
     [rd.conds      ,ConditionIdx ] = GetUniqueIdentifiers(EEGs,'condition');
     [SubjectLabel  ,SubjectIdx]    = GetUniqueIdentifiers(EEGs,'subject');    
@@ -12,6 +12,14 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     rd.Design = [];
 
     for s = 1:nSubjects
+        idx = find(SubjectIdx == s);
+
+        if ~all(strcmp(EEGs(idx(1)).group,{EEGs(idx).group}))
+            error('Group labelling inconsistent in subject %s',EEGs(idx(1)).subject);
+        end
+        
+        rd.IndFeature(s,1) = find(strcmp(EEGs(idx(1)).group,rd.GroupLabels),1);
+        
         for c = 1:nConditions
             rd.Design = [rd.Design; c 1];
             idx = find(SubjectIdx == s & ConditionIdx == c);
@@ -53,9 +61,10 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     rd.ContF1 = false;
     rd.Iterations = 1000;
     rd.Threshold = 0.05;
-%     if isempty(rd.IndFeature)
+
+    if isempty(rd.IndFeature)
         rd.IndFeature = ones(size(rd.Names,1),1);
-%     end
+     end
 
     
     rd.MapStyle = 2;
@@ -64,7 +73,7 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     Y = cell2mat({EEGs(1).chanlocs.Y});
     Z = cell2mat({EEGs(1).chanlocs.Z});
 
-    [Theta,Phi,Radius] = VAcart2sph(-Y,X,Z);
+    [Theta,Phi,~] = VAcart2sph(-Y,X,Z);
 
     for i = 1:numel(X)
         rd.Channel(i).Name   = EEGs(1).chanlocs(i).labels;
