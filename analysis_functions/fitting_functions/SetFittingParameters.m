@@ -15,42 +15,16 @@
 % "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
 % Aryan."
 
-function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, AddOptions)
+function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, AddOptions)
     
-    if nargin < 5;  AddOptions = false; end
+    if nargin < 4;  AddOptions = false; end
    
     % Initial validation
-    [FitPar, FitParDefaults] = checkFitPar(funcName, PossibleNs, AddOptions, PeakFit, FitPar);
+    [FitPar, FitParDefaults] = checkFitPar(funcName, PossibleNs, AddOptions, FitPar);
 
     guiElements = {};
     guiGeom = {};
     guiGeomV = []; 
-
-    showPeakFit = true;
-    if PeakFit == 1
-        if ~FitPar.PeakFit
-            warning(['Backfitting on all timepoints rather than only GFP peaks is not recommended if microstates were clustered' ...
-                ' using only GFP peaks. For consistency, set FitPar.PeakFit to true.']);
-        end
-        if ~matches('Classes', FitParDefaults)
-            showPeakFit = false;
-        end
-    elseif PeakFit == 0
-        if FitPar.PeakFit
-            warning(['Backfitting on only GFP peaks is not recommended if microstates were clustered from all timepoints. ' ...
-                'For consistency, set FitPar.PeakFit to false.']);
-        end
-        if ~matches('Classes', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
-            showPeakFit = false;
-        end
-    elseif PeakFit == -1
-        if FitPar.PeakFit && ~matches('Classes', FitParDefaults)
-            showPeakFit = false;
-        end
-        if ~FitPar.PeakFit && ~matches('Classes', FitParDefaults) && ~matches('b', FitParDefaults) && ~matches('lambda', FitParDefaults)
-            showPeakFit = false;
-        end           
-    end
 
     % Add all fitting parameters that were filled in with default values as
     % gui elements
@@ -66,45 +40,36 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, PeakFit, Ad
         guiGeomV = [guiGeomV 1 1 3];
     end
 
-    if matches('PeakFit', FitParDefaults) && showPeakFit
-        if matches('Classes', FitParDefaults)
-            guiElements = [guiElements, {{ 'Style', 'text', 'string', ''}}];
-            guiGeom = [guiGeom 1];
-            guiGeomV = [guiGeomV 1];
-        end
-
-        if PeakFit == -1
-            guiElements = [guiElements, ...
-                {{ 'Style', 'checkbox', 'string' 'Backfit only on GFP peaks' 'tag' 'PeakFit','Value', FitPar.PeakFit, 'Callback', @peakFitChanged }}];            
-        elseif PeakFit == 1
-            guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', ['Template maps will be backfit on GFP peaks only,' newline 'with labels interpolated in between.']}}];
-        else
-            guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Template maps will be backfit on all EEG timepoints.'}}];
-        end
+    if matches('PeakFit', FitParDefaults)
+        guiElements = [guiElements, ...
+            {{ 'Style', 'checkbox', 'string' 'Backfit only on GFP peaks' 'tag' 'PeakFit','Value', FitPar.PeakFit, 'Callback', @peakFitChanged }}];            
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
     end
 
-    if ~FitPar.PeakFit && (matches('b', FitParDefaults) || matches('lambda', FitParDefaults))      
+    if (matches('PeakFit', FitParDefaults) || ~FitPar.PeakFit) && (matches('b', FitParDefaults) || matches('lambda', FitParDefaults))  
+        if FitPar.PeakFit
+            enable = 'off';
+        else
+            enable = 'on';
+        end
         guiElements = [guiElements, ...
-            {{ 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'Tag', 'SmoothingLabel', 'fontweight', 'bold'}}];
+            {{ 'Style', 'text', 'string', 'Label smoothing (window = 0 for no smoothing)', 'Tag', 'SmoothingLabel', 'fontweight', 'bold', 'Enable', enable}}];
         guiGeom = [guiGeom 1];
         guiGeomV = [guiGeomV 1];
 
         if matches('b', FitParDefaults)
             guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Label smoothing window (ms)', 'Tag', 'bLabel', 'fontweight', 'bold'}} ...
-                {{ 'Style', 'edit', 'string', num2str(FitPar.b) 'tag', 'b'}}];
+                {{ 'Style', 'text', 'string', 'Label smoothing window (ms)', 'Tag', 'bLabel', 'fontweight', 'bold', 'Enable', enable}} ...
+                {{ 'Style', 'edit', 'string', num2str(FitPar.b) 'tag', 'b', 'Enable', enable}}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
 
         if matches('lambda', FitParDefaults)
             guiElements = [guiElements, ...
-                {{ 'Style', 'text', 'string', 'Non-Smoothness penalty', 'Tag', 'lambdaLabel', 'fontweight', 'bold'}} ...
-                {{ 'Style', 'edit', 'string', num2str(FitPar.lambda) 'tag', 'lambda'}}];
+                {{ 'Style', 'text', 'string', 'Non-Smoothness penalty', 'Tag', 'lambdaLabel', 'fontweight', 'bold', 'Enable', enable}} ...
+                {{ 'Style', 'edit', 'string', num2str(FitPar.lambda) 'tag', 'lambda', 'Enable', enable}}];
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
@@ -196,7 +161,7 @@ function peakFitChanged(obj, ~)
     end
 end
 
-function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, AddOptions, PeakFit, varargin)
+function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, AddOptions, varargin)
     
     if ~isempty(varargin)
         if isempty(varargin{:})
@@ -215,14 +180,14 @@ function [FitPar, UsingDefaults] = checkFitPar(funcName, PossibleNs, AddOptions,
     logAttributes = {'binary', 'scalar'};
 
     % Numeric inputs
-    addParameter(p, 'b', 0, @(x) validateattributes(x, numClass, numAttributes, funcName, 'FitPar.b'));
-    addParameter(p, 'lambda', 0.3, @(x) validateattributes(x, numClass, numAttributes, funcName, 'FitPar.lambda'));
+    addParameter(p, 'b', 30, @(x) validateattributes(x, numClass, numAttributes, funcName, 'FitPar.b'));
+    addParameter(p, 'lambda', 5, @(x) validateattributes(x, numClass, numAttributes, funcName, 'FitPar.lambda'));
     addParameter(p, 'Classes', min(PossibleNs), ...
         @(x) validateattributes(x, numClass, {'integer', 'positive', 'vector', 'nonnan', '>=', min(PossibleNs), '<=', max(PossibleNs)}, ...
         funcName, 'FitPar.Classes'));
     
     % Logical inputs
-    addParameter(p, 'PeakFit', (PeakFit == 1), @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.PeakFit'));
+    addParameter(p, 'PeakFit', 1, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.PeakFit'));
     if AddOptions
         addParameter(p, 'Rectify', false, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.Rectify'));
         addParameter(p, 'Normalize', false, @(x) validateattributes(x, logClass, logAttributes, funcName, 'FitPar.Normalize'));

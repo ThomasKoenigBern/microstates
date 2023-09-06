@@ -371,24 +371,15 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 errorDialog(errorMessage, 'Backfit microstate maps to EEG error');
                 return;
             else
-                warning(errorMessage);
-                if ~(all(GFPPeaks == 1) || all(GFPPeaks == 0))
-                    PeakFit = -1;
-                else
-                    PeakFit = all(GFPPeaks == 1);
-                end
+                error(errorMessage);
             end            
-        else
-            PeakFit = all(GFPPeaks == 1);
         end
     else
         MinClasses = ChosenTemplate.msinfo.ClustPar.MinClasses;
         MaxClasses = ChosenTemplate.msinfo.ClustPar.MaxClasses;
-
-        PeakFit = ChosenTemplate.msinfo.ClustPar.GFPPeaks;
     end
 
-    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, 'pop_FitMSMaps', PeakFit);
+    FitPar = SetFittingParameters(MinClasses:MaxClasses, FitPar, 'pop_FitMSMaps');
     if isempty(FitPar);  return; end
 
     %% Check for consistent sorting across selected sets if own templates are being used
