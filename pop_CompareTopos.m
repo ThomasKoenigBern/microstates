@@ -521,7 +521,7 @@ function updatePlot(fig_h)
     ud.scatter.SizeData = repmat(10, size(ud.mapVars,2), 1);
     ud.scatter.CData = repmat([0 0 0], size(ud.mapVars,2), 1);    
     % Highlight categorized sets    
-    ud.scatter.SizeData(excludeIdx | keepIdx | reviewIdx) = 25;
+    ud.scatter.SizeData(excludeIdx | keepIdx | reviewIdx) = repmat(25, sum(excludeIdx | keepIdx | reviewIdx), 1);
     if any(excludeIdx); ud.scatter.CData(excludeIdx,:) = repmat([1 0 0], sum(excludeIdx), 1);           end
     if any(keepIdx);    ud.scatter.CData(keepIdx, :) = repmat([0 1 0], sum(keepIdx), 1);                end
     if any(reviewIdx);  ud.scatter.CData(reviewIdx, :) = repmat([.929 .694 .125], sum(reviewIdx), 1);   end
@@ -575,7 +575,7 @@ function autoSelect(~, ~, fig_h)
         % Change color of points corresponding to outlier sets to yellow
         % for review and show datatips
         ud.scatter.CData(outliers,:) = repmat([.929 .694 .125], numel(outliers), 1);
-        ud.scatter.SizeData(outliers) = 25;        
+        ud.scatter.SizeData(outliers) = repmat(25, numel(outliers), 1);        
 
         % Update table to show outlier sets as "Review"
         ud.setsTable.Data(outliers, mapCol) = "Review";
