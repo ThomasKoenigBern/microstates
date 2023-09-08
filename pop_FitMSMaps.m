@@ -176,15 +176,13 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
     TemplateSet = p.Results.TemplateSet;
 
     %% SelectedSets validation
-    HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
     HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
     HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
     isPublished = arrayfun(@(x) isPublishedSet(AllEEG(x), {MSTEMPLATE.setname}), 1:numel(AllEEG));
-    AvailableSets = find(HasMS & ~HasChildren & ~HasDyn & ~isPublished);
+    AvailableSets = find(~HasChildren & ~HasDyn & ~isPublished);
     
     if isempty(AvailableSets)
-        errorMessage = ['No valid sets found for backfitting. Use ' ...
-            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        errorMessage = 'No valid sets found for backfitting.';
         if matches('SelectedSets', p.UsingDefaults)
             errorDialog(errorMessage, 'Backfit microstate maps to EEG error');
             return;
@@ -201,8 +199,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
             invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
             invalidSetsTxt = invalidSetsTxt(1:end-2);
             error(['The following sets cannot be backfit: ' invalidSetsTxt ...
-                '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
-                'or sets without microstate maps.']);
+                '. Make sure you have not selected empty sets, mean sets, or dynamics sets.']);
         end
     % Otherwise, add set selection gui elements
     else
@@ -219,7 +216,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
 
     %% TemplateSet validation
     % If the user has provided a template set number or name, check its
-    % validity
+    % validity    
     meanSets = find(HasChildren & ~HasDyn);
     meanSetnames = {AllEEG(meanSets).setname};
     [publishedSetnames, publishedDisplayNames, sortOrder] = getTemplateNames();
@@ -240,7 +237,7 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
         % the mean setnames, published template setnames, or "own"
         else
             if strcmpi(TemplateSet, 'own')
-                TemplateMode = 'own';                           
+                TemplateMode = 'own';                       
             elseif matches(TemplateSet, publishedSetnames)
                 TemplateMode = 'published';
                 TemplateIndex = sortOrder(matches(publishedSetnames, TemplateSet));
@@ -343,6 +340,28 @@ function [EEGout, CurrentSet, com] = pop_FitMSMaps(AllEEG, varargin)
                 warningSetsTxt = sprintf(['%s' newline], string(warningSetnames));
                 warning(['Template set "%s" is not the parent set of the following sets: ' newline warningSetsTxt], TemplateName);
             end
+        end
+    % If the template set chosen is own maps, make sure all of the selected
+    % sets contain microstates
+    elseif strcmp(TemplateMode, 'own')
+        HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), SelectedSets);                               
+        if ~all(HasMS)            
+            errorSetnames = {AllEEG(SelectedSets).setname};
+            errorSetnames = errorSetnames(~HasMS);                        
+            if matches('SelectedSets', p.UsingDefaults) || matches('TemplateSet', p.UsingDefaults)
+                errorMessage = ['Own microstate maps were selected for backfitting, but the following ' ...
+                    'datasets do not contain microstate maps. Use Tools --> ' ...
+                    'Identify microstate maps per dataset to find and store microstate map data, or ' ...
+                    'select a mean dataset or published dataset for backfitting instead.'];
+                errorDialog(errorMessage, 'Backfit microstate maps error', errorSetnames);
+                return;
+            else
+                errorSetnames = sprintf(['%s' newline], string(errorSetnames));
+                error(['Own microstate maps were selected for backfitting, but the following ' ...
+                'datasets do not contain microstate maps:' newline errorSetnames 'Use Tools --> ' ...
+                'Identify microstate maps per dataset to find and store microstate map data, or ' ...
+                'select a mean dataset or published dataset for backfitting instead.']);
+            end            
         end
     end
 
