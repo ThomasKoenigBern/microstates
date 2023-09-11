@@ -576,9 +576,9 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
 
         % If parameters are provided, perform manual sorting without the
         % GUI and return
-        if ~isempty(Classes) && ~isempty(NewLabels)
-            ClassRange = AllEEG(SelectedSets).msinfo.ClustPar.MinClasses:AllEEG(SelectedSets).msinfo.ClustPar.MaxClasses;
-            SortedMaps = ManualSort(AllEEG(SelectedSets).msinfo.MSMaps, SortOrder, NewLabels, Classes, ClassRange);
+        classRange = AllEEG(SelectedSets).msinfo.ClustPar.MinClasses:AllEEG(SelectedSets).msinfo.ClustPar.MaxClasses;
+        if ~isempty(Classes) && ~isempty(NewLabels)            
+            SortedMaps = ManualSort(AllEEG(SelectedSets).msinfo.MSMaps, SortOrder, NewLabels, Classes, classRange);
             if isempty(SortedMaps); return; end
 
             AllEEG(SelectedSets).msinfo.MSMaps = SortedMaps;
@@ -597,7 +597,17 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
 
             return;
         else
-            [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG, SelectedSets);
+            % Ask for range of classes to display in interactive window
+            classChoices = arrayfun(@(x) {sprintf('%i Classes', x)}, classRange);
+            [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
+                { {'Style', 'text', 'String', 'Select cluster solutions to display in interactive explorer'} ...
+                  {'Style', 'listbox', 'String', classChoices, 'Min', 0, 'Max', 2, 'Value', 1:numel(classRange), 'Tag', 'Classes'}}, ...
+                'title','Edit & sort microstate maps');
+
+            if isempty(res); return; end
+            Classes = classRange(outstruct.Classes);
+
+            [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG, SelectedSets, Classes);
             global ALLEEG;
             AllEEG = ALLEEG;            % refresh ALLEEG in case user modified datasets while explorer was open
             AllEEG = eeg_store(AllEEG, EEGout, CurrentSet);
@@ -641,7 +651,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                 if ~yesPressed; return;                                         end
             else
                 warningSetsTxt = sprintf(['%s' newline], string(warningSetnames));
-                warning(['Template set "%s" is not the parent set of the following sets: ' newline warningSetsTxt]);
+                warning(['Template set "%s" is not the parent set of the following sets: ' newline warningSetsTxt], TemplateName);
             end
         end
     end
@@ -847,7 +857,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                 classTxt = sprintf('%i, ', class);
                 classTxt = classTxt(1:end-2);
                 errorMessage = sprintf('The following cluster solutions of the template set %s are unsorted: %s. Please sort before using as template solutions.', TemplateName, classTxt);                    
-                if matches('TemplateSet', p.UsingDefaults) || interactiveSort
+                if matches('TemplateSet', p.UsingDefaults)
                     errorDialog(errorMessage, 'Edit & sort microstate maps error');
                     return;
                 else
