@@ -93,16 +93,23 @@ function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange
     letters2 = 'a':'z';
     letters1 = arrayfun(@(x) {letters1(x)}, 1:26);
     letters2 = arrayfun(@(x) {letters2(x)}, 1:26);
-    if all(matches(NewLabels(:)', letters1)) || all(matches(NewLabels(:)', letters2))
-        colorIdx = find(matches(letters1, NewLabels(:)'));
-        if isempty(colorIdx)
-            colorIdx = find(matches(letters2, NewLabels(:)'));
+    colorIdx = find(matches(letters1, NewLabels(:)') | matches(letters2, NewLabels(:)'));
+    labelIdx = matches(NewLabels(:)', letters1) | matches(NewLabels(:)', letters2);
+    if ~isempty(colorIdx)
+        colors = getColors(max(colorIdx));        
+        newColors = zeros(nClasses, 3);        
+        newColors(labelIdx,:) = colors(colorIdx,:);
+        if any(~labelIdx)
+            extraIdx = find(colorIdx > 7 & colorIdx <= 7+sum(~labelIdx));
+            colors = getColors(7+sum(~labelIdx)+numel(extraIdx));
+            colors(1:7,:) = [];
+            colors(colorIdx(extraIdx)-7,:) = [];
+            newColors(~labelIdx,:) = colors;
         end
-        colors = getColors(max(colorIdx));
-        MSMaps(nClasses).ColorMap = colors(colorIdx,:);
     else
-        MSMaps(nClasses).ColorMap = getColors(nClasses);
+        newColors = getColors(nClasses);
     end
+    MSMaps(nClasses).ColorMap = newColors;
        
     % Update sorting information
     MSMaps(nClasses).SortMode = 'manual';
