@@ -313,6 +313,10 @@ function [setsTable, com] = pop_CheckData(AllEEG, varargin)
     fig_h.UserData = ud;
 
     uiwait();    
+    RMSEfig = findobj('Tag', 'RMSEfig');
+    if ~isempty(RMSEfig)
+        delete(RMSEfig);
+    end
     setsTable = table(ud.setsTable.Data(:,1), ud.setsTable.Data(:,2), 'VariableNames', {'Dataset', 'Status'});
     delete(fig_h);
 
@@ -476,8 +480,8 @@ function clearAll(~, ~, fig_h)
     ud.excludeBtn.Enable = 'off';
 
     % Update plot
-    ud.scatter.CData(markedIdx,:) = repmat([0 0 0], numel(markedIdx), 1);
-    ud.scatter.SizeData(markedIdx) = 10;
+    ud.scatter.CData = repmat([0 0 0], size(ud.scatter.CData, 1), 1);
+    ud.scatter.SizeData = repmat(10, size(ud.scatter.SizeData, 1), 1);
 
     % Hide maps and clear selection
     ud.MapPanel.Visible = 'off';
@@ -489,8 +493,13 @@ function clearAll(~, ~, fig_h)
 end
 
 function viewRMSE(~, ~, fig_h)
+    RMSEfig = findobj('Tag', 'RMSEfig');
+    if ~isempty(RMSEfig)
+        figure(RMSEfig);
+        return;
+    end
     ud = fig_h.UserData;
-    RMSEfig = uifigure('Name', 'Maximum RMSE of channel residuals');
+    RMSEfig = uifigure('Name', 'Maximum RMSE of channel residuals', 'Tag', 'RMSEfig', 'HandleVisibility', 'on');
     RMSEtable = uitable(RMSEfig, 'Unit','normalized','Position',[0.02 0.02 0.96 0.96]);
     RMSEtable.Data = table(ud.setsTable.Data(:,1), ud.scatter.YData', 'VariableNames', {'Dataset', 'Max RMSE'});
 end
