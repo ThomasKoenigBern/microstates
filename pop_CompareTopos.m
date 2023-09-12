@@ -15,6 +15,10 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
     EEGout = EEG;
     CurrentSet = CURRENTSET;
 
+    guiElements = {};
+    guiGeom = {};
+    guiGeomV = [];
+
     %% Parse inputs and perform initial validation
     p = inputParser;
     funcName = 'pop_CompareTopos';
@@ -68,61 +72,17 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
                 '. Make sure you have not selected empty sets, mean sets, dynamics sets, ' ...
                 'or sets without microstate maps.']);
         end
-    % Otherwise, prompt user to select sets
+    % Otherwise, add set selection gui elements
     else
         defaultSets = find(ismember(AvailableSets, CurrentSet));
         if isempty(defaultSets);    defaultSets = 1;    end
         AvailableSetnames = {AllEEG(AvailableSets).setname};
-        [res, ~, ~, outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', { ...
-            { 'Style', 'text'    , 'string', 'Choose sets for comparison', 'fontweight', 'bold'} ...
-            { 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'} ...
-            { 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}, ...
-            'title', 'Compare topographic similarities');
-        
-        if isempty(res);    return; end
-        SelectedSets = AvailableSets(outstruct.SelectedSets);
-
-        if numel(SelectedSets) < 1
-            errordlg2('You must select at least one dataset','Compare topographic similarities error');
-            return;
-        end
-    end
-
-    SelectedEEG = AllEEG(SelectedSets);
-
-    %% Classes validation
-    % Prompt user to provide number of classes if necessary
-    AllMinClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MinClasses, 1:numel(SelectedEEG));
-    AllMaxClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MaxClasses, 1:numel(SelectedEEG));
-    MinClasses = max(AllMinClasses);
-    MaxClasses = min(AllMaxClasses);
-    if MaxClasses < MinClasses
-        errorMessage = 'No overlap in cluster solutions found between all selected sets.';
-        if matches('SelectedSets', p.UsingDefaults)
-            errordlg2(errorMessage, 'Compare topographic similarities error');
-            return;
-        else
-            error(errorMessage);
-        end
-    end
-    if matches('Classes', p.UsingDefaults)
-        classRange = MinClasses:MaxClasses;
-        classChoices = sprintf('%i Classes|', classRange);
-        classChoices(end) = [];
-
-        [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
-            { {'Style', 'text', 'string', 'Select number of classes for comparison'} ...
-              {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 1, 'Tag', 'Classes'}}, ...
-              'title', 'Compare topographic similarities');
-        
-        if isempty(res); return; end
-
-        nClasses = classRange(outstruct.Classes);
-    else
-        if (nClasses < MinClasses) || (nClasses > MaxClasses)
-            error(['The specified number of classes %i is invalid.' ...
-                ' Valid class numbers are in the range %i-%i.'], nClasses, MinClasses, MaxClasses);
-        end
+        guiElements = [guiElements, ....
+                    {{ 'Style', 'text'    , 'string', 'Choose sets for comparison', 'FontWeight', 'bold'}} ...
+                    {{ 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'}} ...
+                    {{ 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}];
+        guiGeom  = [guiGeom  1 1 1];
+        guiGeomV = [guiGeomV  1 1 4];
     end
 
     %% TemplateSet validation
@@ -166,48 +126,92 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
                     'mean sets or in the microstates/Templates folder.'], TemplateSet);
             end
         end        
-    % Otherwise, prompt user to select template set
-    else        
+    % Otherwise, add template set selection gui elements
+    else
         combinedSetnames = [meanSetnames publishedDisplayNames];
-        [res, ~, ~, outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 1], 'uilist', ...
-            {{ 'Style', 'text', 'string', 'Name of template set', 'fontweight', 'bold'} ...
-            { 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}, ...
-            'title', 'Compare topographic similarities');
-        
+        guiElements = [guiElements ...
+            {{ 'Style', 'text', 'string', 'Name of template set', 'fontweight', 'bold'}} ...
+            {{ 'Style', 'popupmenu', 'string', combinedSetnames, 'tag', 'TemplateIndex', 'Value', TemplateIndex }}];
+        guiGeom = [guiGeom 1 1];
+        guiGeomV = [guiGeomV 1 1];
+    end
+
+    %% Prompt user to choose SelectedSets and TemplateSet if necessary
+    if ~isempty(guiElements)      
+        [res,~,~,outstruct] = inputgui('geometry', guiGeom, 'geomvert', guiGeomV, 'uilist', guiElements,...
+             'title','Compare topographic similarities');
+
         if isempty(res); return; end
-        if outstruct.TemplateIndex <= numel(meanSetnames)+1
-            TemplateIndex = outstruct.TemplateIndex;
-            TemplateSet = AvailableMeanSets(TemplateIndex);
-            TemplateName = meanSetnames{TemplateIndex};
-        else
-            TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames);
-            TemplateSet = publishedSetnames{TemplateIndex};
-            TemplateName = TemplateSet;
-            TemplateIndex = sortOrder(TemplateIndex);
-            usingPublished = true;
+        
+        if isfield(outstruct, 'SelectedSets')
+            SelectedSets = AvailableSets(outstruct.SelectedSets);
+        end
+
+        if isfield(outstruct, 'TemplateIndex')
+            if outstruct.TemplateIndex <= numel(meanSetnames)
+                TemplateIndex = outstruct.TemplateIndex;
+                TemplateSet = AvailableMeanSets(TemplateIndex);
+                TemplateName = meanSetnames{TemplateIndex};
+            else
+                TemplateIndex = outstruct.TemplateIndex - numel(meanSetnames);
+                TemplateSet = publishedSetnames{TemplateIndex};
+                TemplateName = TemplateSet;
+                TemplateIndex = sortOrder(TemplateIndex);
+                usingPublished = true;
+            end
+        end
+
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one dataset','Compare topographic similarities error');
+            return;
         end
     end
 
+    SelectedEEG = AllEEG(SelectedSets);    
     if usingPublished
         ChosenTemplate = MSTEMPLATE(TemplateIndex);
     else
         ChosenTemplate = AllEEG(AvailableMeanSets(TemplateIndex));
-    end    
+    end
 
-    %% Verify template set compatibility
-    % Check that the template set contains a cluster solution matching the
-    % selected number of classes
-    if ChosenTemplate.msinfo.ClustPar.MinClasses > nClasses || ChosenTemplate.msinfo.ClustPar.MaxClasses < nClasses
-        errorMessage = sprintf(['Template set "%s" does not contain a %i cluster solution. Select a different template set' ...
-            ' or use Tools->Identify group level or grand mean template maps to create a mean set to use as a template.'], TemplateName, nClasses);
-        if matches('TemplateSet', p.UsingDefaults)
-            errordlg2(errorMessage, 'Compare topographic similarities');
+    %% Classes validation
+    % Prompt user to provide number of classes if necessary
+    AllMinClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MinClasses, 1:numel(SelectedEEG));
+    AllMaxClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MaxClasses, 1:numel(SelectedEEG));
+    AllMinClasses = [ChosenTemplate.msinfo.ClustPar.MinClasses AllMinClasses];
+    AllMaxClasses = [ChosenTemplate.msinfo.ClustPar.MaxClasses AllMaxClasses];
+    MinClasses = max(AllMinClasses);
+    MaxClasses = min(AllMaxClasses);
+    if MaxClasses < MinClasses
+        errorMessage = 'No overlap in cluster solutions found between all selected sets and template set.';
+        if matches('SelectedSets', p.UsingDefaults)
+            errordlg2(errorMessage, 'Compare topographic similarities error');
             return;
         else
             error(errorMessage);
         end
     end
+    if matches('Classes', p.UsingDefaults)
+        classRange = MinClasses:MaxClasses;
+        classChoices = sprintf('%i Classes|', classRange);
+        classChoices(end) = [];
 
+        [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
+            { {'Style', 'text', 'string', 'Select number of classes for comparison'} ...
+              {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 1, 'Tag', 'Classes'}}, ...
+              'title', 'Compare topographic similarities');
+        
+        if isempty(res); return; end
+
+        nClasses = classRange(outstruct.Classes);
+    else
+        if (nClasses < MinClasses) || (nClasses > MaxClasses)
+            error(['The specified number of classes %i is invalid.' ...
+                ' Valid class numbers are in the range %i-%i.'], nClasses, MinClasses, MaxClasses);
+        end
+    end
+
+    %% Verify template set compatibility
     % If the template set chosen is a mean set, make sure it is a parent
     % set of all the selected sets
     if ~usingPublished
@@ -317,7 +321,7 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
 
     %% Build GUI
     MapLabels = SelectedEEG(1).msinfo.MSMaps(nClasses).Labels;
-
+    
     % Get usable screen size
     toolkit = java.awt.Toolkit.getDefaultToolkit();
     jframe = javax.swing.JFrame;
@@ -337,19 +341,20 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
     end
     figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
     figWidth = figSize(3);
-
+    
     maxSubjWidth = max(cellfun(@length, {SelectedEEG.setname}))*9;
+    if maxSubjWidth < 60;   maxSubjWidth = 60;  end
     if maxSubjWidth > 200;  maxSubjWidth = 200; end
     colWidth = 65;
     tblWidth = maxSubjWidth + colWidth*numel(MapLabels);
-
+    
+    if (figSize(3) - tblWidth) <= 500
+        tblWidth = figSize(3)-500;      
+    end
+    
     fig_h = uifigure('Name', 'Compare topographic similarities', 'HandleVisibility', 'on', 'CloseRequestFcn', @figClose, ...
         'Units', 'pixels', 'Position', figSize);
     
-    if (figSize(3) - tblWidth) <= 720
-        tblWidth = figSize(3)-720;      
-    end
-
     horzLayout = uigridlayout(fig_h, [2 1]);
     horzLayout.RowHeight = {'1x', 150};
     vertLayout = uigridlayout(horzLayout, [1 2]);
@@ -358,48 +363,59 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
     vertLayout.Padding = [0 0 0 0];
     
     axLayout = uigridlayout(vertLayout, [2 1]);
-    axLayout.RowHeight = {70, '1x'};
+    axLayout.RowHeight = {110, '1x'};
     axLayout.Padding = [0 0 0 0];
     
-    selectLayout = uigridlayout(axLayout, [2 9]);
-    selectLayout.ColumnWidth = {'1x', 80, 150, 40, 65, 40, 40, 105, '1x'};
+    selectLayout = uigridlayout(axLayout, [3 8]);
+    selectLayout.ColumnWidth = {'1x', 70, 60, 40, 105, 40, 160, '1x'};
     selectLayout.Padding = [0 0 0 0];
     
     selMapLabel = uilabel(selectLayout, 'Text', 'Select map', 'FontWeight', 'bold', 'HorizontalAlignment', 'right');
-    selMapLabel.Layout.Row = 2;
+    selMapLabel.Layout.Row = 1;
     selMapLabel.Layout.Column = 2;    
     ud.selMap = uidropdown(selectLayout, 'Items', MapLabels, 'ItemsData', 2:numel(MapLabels)+1, 'ValueChangedFcn', {@mapChanged, fig_h});
-    ud.selMap.Layout.Row = 2;
+    ud.selMap.Layout.Row = 1;
     ud.selMap.Layout.Column = 3;
-    
     autoBtn = uibutton(selectLayout, 'Text', 'Auto select', 'ButtonPushedFcn', {@autoSelect, fig_h});
-    autoBtn.Layout.Row = 1;
-    autoBtn.Layout.Column = [5 6];
-    
+    autoBtn.Layout.Row = 2;
+    autoBtn.Layout.Column = [2 3];
     ud.editLabel = uilabel(selectLayout);
     ud.editLabel.Text = 'Threshold';
-    ud.editLabel.Layout.Row = 2;
-    ud.editLabel.Layout.Column = 5;
+    ud.editLabel.Layout.Row = 3;
+    ud.editLabel.Layout.Column = 2;
     ud.editBox = uieditfield(selectLayout);
     ud.editBox.Value = '60';
-    ud.editBox.Layout.Row = 2;
-    ud.editBox.Layout.Column = 6;
+    ud.editBox.Layout.Row = 3;
+    ud.editBox.Layout.Column = 3;
     
     ud.keepBtn = uibutton(selectLayout, 'Text', 'Keep', 'Enable', 'off', 'ButtonPushedFcn', {@keep, fig_h});
     ud.keepBtn.Layout.Row = 1;
-    ud.keepBtn.Layout.Column = 8;
+    ud.keepBtn.Layout.Column = 5;
     ud.excludeBtn = uibutton(selectLayout, 'Text', 'Exclude', 'Enable', 'off', 'ButtonPushedFcn', {@exclude, fig_h});
     ud.excludeBtn.Layout.Row = 2;
-    ud.excludeBtn.Layout.Column = 8;
+    ud.excludeBtn.Layout.Column = 5;
+    ud.clearBtn = uibutton(selectLayout, 'Text', 'Clear all', 'ButtonPushedFcn', {@clearAll, fig_h});
+    ud.clearBtn.Layout.Row = 3;
+    ud.clearBtn.Layout.Column = 5;
+    
+    ud.viewBtn = uibutton(selectLayout, 'Text', 'View shared variances', 'ButtonPushedFcn', {@viewVars, fig_h});
+    ud.viewBtn.Layout.Row = 1;
+    ud.viewBtn.Layout.Column = 7;
+    ud.exportVarsBtn = uibutton(selectLayout, 'Text', 'Export shared variances', 'ButtonPushedFcn', {@exportVars, fig_h});
+    ud.exportVarsBtn.Layout.Row = 2;
+    ud.exportVarsBtn.Layout.Column = 7;
+    ud.exportTblBtn = uibutton(selectLayout, 'Text', 'Export table', 'ButtonPushedFcn', {@exportTable, fig_h});
+    ud.exportTblBtn.Layout.Row = 3;
+    ud.exportTblBtn.Layout.Column = 7;
     
     ud.ax = axes(axLayout);
     ud.ax.ButtonDownFcn = {@axisClicked, fig_h};
     
     ud.setnames = {SelectedEEG.setname};
-    opts = {'Keep', 'Exclude'};
+    opts = {'Keep', 'Exclude', 'Clear'};
     tblData = [ud.setnames', repmat(" ", numel(SelectedSets), numel(MapLabels))];
-    ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', 'ColumnWidth', ['auto' repmat({colWidth}, 1, numel(MapLabels))], ...
-        'ColumnName', [{'Subject'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
+    ud.setsTable = uitable(vertLayout, 'Data', tblData, 'RowName', [], 'RowStriping', 'off', 'ColumnWidth', [maxSubjWidth repmat({colWidth}, 1, numel(MapLabels))], ...
+        'ColumnName', [{'Dataset'}, MapLabels], 'ColumnFormat', [ {[]} repmat({opts}, 1, numel(MapLabels)) ], 'Fontweight', 'bold', ...
         'Multiselect', 'off', 'CellEditCallback', {@cellChanged, fig_h}, 'SelectionChangedFcn', {@selectionChanged, fig_h});
     
     minGridWidth = 60;
@@ -434,10 +450,11 @@ function [EEGout, CurrentSet, setsTable, com] = pop_CompareTopos(AllEEG, varargi
         end 
         ud.mapVars(:,i) = (diag(MyCorr(setMaps', tempMaps')).^2)*100;
     end
-
+    
     ud.currentIdx = [];
     ud.highlightPoints = [];
     ud.dataTip = [];    
+    ud.Filename = [];
     
     fig_h.UserData = ud;
     
@@ -504,13 +521,13 @@ function updatePlot(fig_h)
     ud.scatter.SizeData = repmat(10, size(ud.mapVars,2), 1);
     ud.scatter.CData = repmat([0 0 0], size(ud.mapVars,2), 1);    
     % Highlight categorized sets    
-    ud.scatter.SizeData(excludeIdx | keepIdx | reviewIdx) = 25;
+    ud.scatter.SizeData(excludeIdx | keepIdx | reviewIdx) = repmat(25, sum(excludeIdx | keepIdx | reviewIdx), 1);
     if any(excludeIdx); ud.scatter.CData(excludeIdx,:) = repmat([1 0 0], sum(excludeIdx), 1);           end
     if any(keepIdx);    ud.scatter.CData(keepIdx, :) = repmat([0 1 0], sum(keepIdx), 1);                end
     if any(reviewIdx);  ud.scatter.CData(reviewIdx, :) = repmat([.929 .694 .125], sum(reviewIdx), 1);   end
 
     ud.scatter.ButtonDownFcn = {@axisClicked, fig_h};
-    row1 = dataTipTextRow('Subject:', ud.setnames);
+    row1 = dataTipTextRow('Dataset:', ud.setnames);
     sharedVarStr = arrayfun(@(x) sprintf('%2.2f%%', x), ud.scatter.YData, 'UniformOutput', false);
     row2 = dataTipTextRow('Shared variance:', sharedVarStr);
     ud.scatter.DataTipTemplate.DataTipRows = [row1 row2];
@@ -558,7 +575,7 @@ function autoSelect(~, ~, fig_h)
         % Change color of points corresponding to outlier sets to yellow
         % for review and show datatips
         ud.scatter.CData(outliers,:) = repmat([.929 .694 .125], numel(outliers), 1);
-        ud.scatter.SizeData(outliers) = 25;        
+        ud.scatter.SizeData(outliers) = repmat(25, numel(outliers), 1);        
 
         % Update table to show outlier sets as "Review"
         ud.setsTable.Data(outliers, mapCol) = "Review";
@@ -593,6 +610,8 @@ function cellChanged(~, event, fig_h)
             keep([], [], fig_h);
         case 'Exclude'
             exclude([], [], fig_h);
+        case 'Clear'
+            clear([], [], fig_h);
     end
 end
 
@@ -666,6 +685,98 @@ function keep(~, ~, fig_h)
     delete(ud.dataTip);
 
     fig_h.UserData = ud;
+end
+
+function clear(~, ~, fig_h)
+    ud = fig_h.UserData;
+
+    % Update table
+    ud.setsTable.Data(ud.currentIdx, 2) = " ";
+    tblStyle = uistyle('BackgroundColor', [1 1 1]);
+    addStyle(ud.setsTable, tblStyle, 'cell', [ud.currentIdx 2]);
+
+    % Update buttons   
+    ud.keepBtn.Enable = 'on';
+    ud.excludeBtn.Enable = 'on';
+
+    % Update plot
+    ud.scatter.CData(ud.currentIdx,:) = [0 0 0];
+    ud.scatter.SizeData(ud.currentIdx) = 10;
+
+    fig_h.UserData = ud;
+end
+
+function clearAll(~, ~, fig_h)
+    ud = fig_h.UserData;
+
+    mapCol = ud.selMap.Value;
+
+    % Update table
+    ud.setsTable.Data(:, 2:end) = " ";
+    selectedStyle = uistyle('BackgroundColor', [1 1 1]);
+    addStyle(ud.setsTable, selectedStyle, 'column', mapCol);
+    unselectedStyle = uistyle('BackgroundColor', [.75 .75 .75]);
+    addStyle(ud.setsTable, unselectedStyle, 'column', ud.selMap.ItemsData(ud.selMap.ItemsData ~= mapCol));
+    
+    % Update buttons   
+    ud.keepBtn.Enable = 'off';
+    ud.excludeBtn.Enable = 'off';
+
+    % Update plot
+    ud.scatter.CData = repmat([0 0 0], size(ud.scatter.CData,1), 1);
+    ud.scatter.SizeData = repmat(10, size(ud.scatter.SizeData,1), 1);
+
+    % Hide maps and clear selection
+    ud.MapPanel.Visible = 'off';
+    ud.setsTable.Selection = [];
+    if ~isempty(ud.highlightPoints);    delete(ud.highlightPoints);   end
+    if ~isempty(ud.dataTip);            delete(ud.dataTip);           end
+
+    fig_h.UserData = ud;
+end
+
+function viewVars(~, ~, fig_h)
+    ud = fig_h.UserData;
+    varsFig = uifigure('Name', 'Shared variances');
+    varsTable = uitable(varsFig, 'Unit','normalized','Position',[0.02 0.02 0.96 0.96]);
+    varsTable.Data = cell2table([convertStringsToChars(ud.setsTable.Data(:,1)), num2cell(ud.mapVars')], 'VariableNames', ud.setsTable.ColumnName);
+end
+
+function exportVars(~, ~, fig_h)
+    ud = fig_h.UserData;
+    varsTable = cell2table([convertStringsToChars(ud.setsTable.Data(:,1)), num2cell(ud.mapVars')], 'VariableNames', ud.setsTable.ColumnName);
+    
+    [FName, PName, idx] = uiputfile({'*.csv', 'Comma separated file'; '*.txt', 'Tab delimited file'; '*.xlsx', 'Excel file'; '*.mat', 'Matlab Table'}, 'Save shared variances');
+    if FName == 0
+        return;
+    end
+    
+    Filename = fullfile(PName, FName);
+    if idx < 4
+        writetable(varsTable, Filename);
+    else
+        save(Filename, 'varsTable');
+    end
+
+    ud.Filename = [ud.Filename {Filename}];
+    fig_h.UserData = ud;
+end
+
+function exportTable(~, ~, fig_h)
+    ud = fig_h.UserData;
+    setsTable = cell2table(convertStringsToChars(ud.setsTable.Data), 'VariableNames', ud.setsTable.ColumnName);
+
+    [FName, PName, idx] = uiputfile({'*.csv', 'Comma separated file'; '*.txt', 'Tab delimited file'; '*.xlsx', 'Excel file'; '*.mat', 'Matlab Table'}, 'Save annotations');
+    if FName == 0
+        return;
+    end
+    
+    Filename = fullfile(PName, FName);
+    if idx < 4
+        writetable(setsTable, Filename);
+    else
+        save(Filename, 'setsTable');
+    end
 end
 
 function highlightSets(fig_h)

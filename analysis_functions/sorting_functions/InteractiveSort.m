@@ -15,14 +15,14 @@
 % "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
 % Aryan."
 
-function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG, SelectedSet)
+function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG, SelectedSet, Classes)
     
     EEGout = AllEEG(SelectedSet);
     CurrentSet = SelectedSet;
     childIdx = [];
     childEEG = [];
     com = '';
-    Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
+%     Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
     
     % Compute initial figure size and whether scrolling is needed
     % (for larger number of solutions/maps)
@@ -83,7 +83,8 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
     ud.chanlocs = AllEEG(SelectedSet).chanlocs;
     ud.setname = AllEEG(SelectedSet).setname;
     ud.ClustPar = AllEEG(SelectedSet).msinfo.ClustPar;
-    ud.wasSorted = false;
+    ud.Classes = Classes;
+    ud.wasSorted = false([1 numel(Classes)]);
     ud.SelectedSet = SelectedSet;
     ud.com = '';
     if isfield(AllEEG(SelectedSet).msinfo, 'children')
@@ -92,7 +93,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
         ud.Children = [];
     end
     
-    for j = ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses    
+    for j = ud.Classes   
         if isfield(ud.MSMaps(j),'Labels')
             if ~isempty(ud.MSMaps(j).Labels)
                 continue
@@ -122,7 +123,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
         buildFig(fig_h, AllEEG);
     end
     fig_h.CloseRequestFcn = {@figClose, fig_h};                            
-    PlotMSMaps2(fig_h, fig_h.UserData.MapPanel, ud.MSMaps(ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses), ...
+    PlotMSMaps2(fig_h, fig_h.UserData.MapPanel, ud.MSMaps(ud.Classes), ...
         ud.chanlocs, 'ShowExpVar', 1);
     if ~isvalid(fig_h)
         return
@@ -135,7 +136,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
     ud = fig_h.UserData;
     delete(fig_h);
     
-    if ud.wasSorted
+    if any(ud.wasSorted)
         hasChildren = ~isempty(ud.Children);
         [yesPressed, selection] = questDlg(hasChildren);
     
@@ -155,7 +156,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
                 elseif strcmp(selection, 'Sort dependent sets by this set')                    
                     if ~isempty(childIdx)
                         IgnorePolarity = AllEEG(SelectedSet).msinfo.ClustPar.IgnorePolarity;
-                        Classes = AllEEG(SelectedSet).msinfo.ClustPar.MinClasses:AllEEG(SelectedSet).msinfo.ClustPar.MaxClasses;
+                        Classes = Classes(ud.wasSorted);
                         [~, childEEG, childIdx, sortCom] = pop_SortMSMaps(AllEEG, childIdx, 'TemplateSet', SelectedSet, ...
                             'IgnorePolarity', IgnorePolarity, 'Classes', Classes);
                     else
@@ -197,13 +198,13 @@ function buildFig(fig_h, AllEEG)
     
     uicontrol(panel1, 'Style', 'Text', 'String', 'Sorting procedure', 'Units', 'normalized', 'Position', [.005 .6 .2 .33], 'HorizontalAlignment', 'left');
     Actions = {'1) Reorder maps in selected solution manually by map index','2) Reorder maps in selected solution(s) based on template set'};               
-    if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1
+    if numel(ud.Classes) > 1
         Actions = [Actions '3) Use stepwise sorting to reorder all solutions by selected template solution'];
     end
     ud.ActChoice = uicontrol(panel1, 'Style', 'popupmenu','String', Actions, 'Units','Normalized','Position', [.2 .8 .785 .15], 'Callback',{@ActionChangedCallback,fig_h});
     
     uicontrol(panel1, 'Style', 'Text', 'String', 'Solution(s) to sort', 'Units', 'normalized', 'Position', [.005 .05 .2 .4], 'HorizontalAlignment', 'left');    
-    AvailableClassesText = arrayfun(@(x) {sprintf('%i Classes', x)}, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
+    AvailableClassesText = arrayfun(@(x) {sprintf('%i Classes', x)}, ud.Classes);
     ud.ClassList = uicontrol(panel1, 'Style', 'listbox','String', AvailableClassesText, 'Units','Normalized','Position', [.2 .05 .785 .65], 'Callback',{@solutionChanged, fig_h}, 'Min', 0, 'Max', 1);
     
     ud.OrderTxt = uicontrol(panel2, 'Style', 'Text', 'String', 'Sort Order (negative to flip polarity)', 'Units', 'normalized', 'Position', [.01 .6 .34 .32], 'HorizontalAlignment', 'left');
@@ -259,7 +260,7 @@ function buildUIFig(fig_h, AllEEG)
     
     uilabel(ud.SortLayout, 'Text', 'Sorting procedure');
     Actions = {'1) Reorder maps in selected solution manually by map index','2) Reorder maps in selected solution(s) based on template set'};               
-    if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1
+    if numel(ud.Classes) > 1
         Actions = [Actions '3) Use stepwise sorting to reorder all solutions by selected template solution'];
     end
     ud.ActChoice = uidropdown(ud.SortLayout, 'Items', Actions, 'ItemsData', 1:numel(Actions), 'ValueChangedFcn', {@ActionChangedCallback, fig_h});
@@ -267,7 +268,7 @@ function buildUIFig(fig_h, AllEEG)
     classLabel = uilabel(ud.SortLayout, 'Text', 'Solution(s) to sort');
     classLabel.Layout.Row = [2 4];
     classLabel.Layout.Column = 1;
-    AvailableClassesText = arrayfun(@(x) {sprintf('%i Classes', x)}, ud.ClustPar.MinClasses:ud.ClustPar.MaxClasses);
+    AvailableClassesText = arrayfun(@(x) {sprintf('%i Classes', x)}, ud.Classes);
     ud.ClassList = uilistbox(ud.SortLayout, 'Items', AvailableClassesText, 'ItemsData', 1:length(AvailableClassesText), 'ValueChangedFcn', {@solutionChanged, fig_h}, 'Multiselect', 'off');
     ud.ClassList.Layout.Row = [2 4];
     ud.ClassList.Layout.Column = 2;
@@ -387,7 +388,7 @@ function solutionChanged(~, ~, fig)
         return;
     end
 
-    nClasses = ud.ClustPar.MinClasses + ud.ClassList.Value - 1;
+    nClasses = ud.Classes(ud.ClassList.Value);
 
     if ud.Scroll
         ud.Edit1.Value = sprintf('%i ', 1:nClasses);
@@ -432,7 +433,7 @@ function ActionChangedCallback(~,~,fh)
    
     choice = ud.ActChoice.Value;
     manualSort = choice == 1;
-    if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1        
+    if numel(ud.Classes) > 1
         templateSort = (choice == 2) | (choice == 3);
         stepwise = choice == 3;
     else
@@ -511,7 +512,7 @@ function ActionChangedCallback(~,~,fh)
         end
 
         if stepwise
-            ud.ClassList.Value = 1:(ud.ClustPar.MaxClasses-ud.ClustPar.MinClasses+1);
+            ud.ClassList.Value = 1:numel(ud.Classes);
             ud.ClassList.Enable = 'off';
 
             if ud.Scroll
@@ -554,11 +555,11 @@ function Sort(~,~,fh,AllEEG)
     ud = fh.UserData;
 
     AllEEG(ud.SelectedSet).msinfo.MSMaps = fh.UserData.MSMaps;
-    nClasses = ud.ClustPar.MinClasses + ud.ClassList.Value - 1;
+    nClasses = ud.Classes(ud.ClassList.Value);
 
     choice = ud.ActChoice.Value;
     manualSort = choice == 1;    
-    if (ud.ClustPar.MaxClasses - ud.ClustPar.MinClasses) >= 1        
+    if numel(ud.Classes) > 1        
         templateSort = (choice == 2) | (choice == 3);
         stepwise = choice == 3;
     else       
@@ -617,7 +618,11 @@ function Sort(~,~,fh,AllEEG)
 
     if ~isempty(com)
         fh.UserData.MSMaps = EEGout.msinfo.MSMaps;
-        fh.UserData.wasSorted = true;
+        if stepwise
+            fh.UserData.wasSorted = true([numel(fh.UserData.Classes) 1]);
+        else
+            fh.UserData.wasSorted(ismember(fh.UserData.Classes, nClasses)) = true;
+        end
         PlotMSMaps2(fh, ud.MapPanel, fh.UserData.MSMaps(nClasses), ud.chanlocs, 'ShowExpVar', 1);
 
         if isempty(fh.UserData.com)
@@ -634,7 +639,7 @@ end
 function MapInfo(~, ~, fh)
     UserData = get(fh,'UserData');    
 
-    choice = arrayfun(@(x) {sprintf('%i Classes', x)}, UserData.ClustPar.MinClasses:UserData.ClustPar.MaxClasses);
+    choice = arrayfun(@(x) {sprintf('%i Classes', x)}, UserData.Classes);
     
     [InfoTxt,InfoTit] = GetInfoText(UserData,1);
     
@@ -658,7 +663,7 @@ function MapInfoSolutionChanged(obj,event,fh)
 end
 
 function [txt,tit] = GetInfoText(UserData,idx)
-    nClasses = idx + UserData.ClustPar.MinClasses -1 ;
+    nClasses = UserData.Classes(idx);
 
     tit = sprintf('Info for %i classes:',nClasses);
 
@@ -705,16 +710,16 @@ function CompareCallback(~, ~, fh, AllEEG)
     AllEEG(fh.UserData.SelectedSet).msinfo.MSMaps = fh.UserData.MSMaps;
     
     if isempty(fh.UserData.Children)
-        [EEGout, ~, com] = pop_CompareMSMaps(AllEEG, 'IndividualSets', fh.UserData.SelectedSet);
+        [~, com] = pop_CompareMSMaps(AllEEG, fh.UserData.SelectedSet, [], []);
     else
-        [EEGout, ~, com] = pop_CompareMSMaps(AllEEG, 'MeanSets', fh.UserData.SelectedSet);
+        [~, com] = pop_CompareMSMaps(AllEEG, [], fh.UserData.SelectedSet, []);
     end
 
     % If the command contains sorting function calls, we should replot the maps
     if contains(com, 'pop_Sort')
         fh.UserData.MSMaps = EEGout.msinfo.MSMaps;
         fh.UserData.wasSorted = true;
-        PlotMSMaps2(fh, fh.UserData.MapPanel, fh.UserData.MSMaps(fh.UserData.ClustPar.MinClasses:fh.UserData.ClustPar.MaxClasses), ...
+        PlotMSMaps2(fh, fh.UserData.MapPanel, fh.UserData.MSMaps(fh.UserData.Classes), ...
             fh.UserData.chanlocs, 'ShowExpVar', 1);
         ActionChangedCallback([], [], fh);
     end

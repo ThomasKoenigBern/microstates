@@ -126,7 +126,7 @@ function FitPar = SetFittingParameters(PossibleNs, FitPar, funcName, AddOptions)
         end
 
         % Re-check FitPar values
-        FitPar = checkFitPar(funcName, PossibleNs, AddOptions, 'PeakFit', FitPar);
+        FitPar = checkFitPar(funcName, PossibleNs, AddOptions, FitPar);
     end
 
     if FitPar.PeakFit
