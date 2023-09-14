@@ -93,13 +93,14 @@ function  MSMaps = ManualSort(MSMaps, SortOrder, NewLabels, nClasses, ClassRange
     letters2 = 'a':'z';
     letters1 = arrayfun(@(x) {letters1(x)}, 1:26);
     letters2 = arrayfun(@(x) {letters2(x)}, 1:26);
-    colorIdx = find(matches(letters1, NewLabels(:)') | matches(letters2, NewLabels(:)'));
+    colorIdx = cellfun(@(x) find(matches(letters1, x) | matches(letters2, x)), NewLabels);
     labelIdx = matches(NewLabels(:)', letters1) | matches(NewLabels(:)', letters2);
     if ~isempty(colorIdx)
         colors = getColors(max(colorIdx));        
         newColors = zeros(nClasses, 3);        
         newColors(labelIdx,:) = colors(colorIdx,:);
         if any(~labelIdx)
+            colorIdx = unique(colorIdx);
             extraIdx = find(colorIdx > 7 & colorIdx <= 7+sum(~labelIdx));
             colors = getColors(7+sum(~labelIdx)+numel(extraIdx));
             colors(1:7,:) = [];

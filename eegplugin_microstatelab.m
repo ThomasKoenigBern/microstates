@@ -1,7 +1,7 @@
 % eegplugin_microstatelab() - EEGLAB plugin for microstate analyses
 %
 % Usage:
-%   >> eegplugin_Microstates(fig, trystrs, catchstrs);
+%   >> eegplugin_microstatelab(fig, trystrs, catchstrs);
 %
 % Inputs:
 %   fig        - [integer]  EEGLAB figure
