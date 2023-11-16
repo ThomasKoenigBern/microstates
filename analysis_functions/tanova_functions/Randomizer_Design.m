@@ -365,7 +365,7 @@ function UpdateTablesFromDesign(handles)
 out = get(handles.output,'UserData');
 
 l1 = unique(out.Design(~isnan(out.Design(:,1)),1));
-l2 = unique(out.Design(~isnan(out.Design(:,2)),2))
+l2 = unique(out.Design(~isnan(out.Design(:,2)),2));
 
 if(all(isnan(l2)))
     if(isfield(out,'DLabels2'))
