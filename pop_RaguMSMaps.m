@@ -123,7 +123,7 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
         if isempty(defaultSets);    defaultSets = 1;    end        
         AvailableSetnames = {AllEEG(AvailableSets).setname};
         [res, ~, ~, outstruct] = inputgui('geometry', {1 1 1}, 'geomvert', [1 1 4], 'uilist', { ...
-                    { 'Style', 'text'    , 'string', 'Choose sets to export', 'FontWeight', 'bold'} ...
+                    { 'Style', 'text'    , 'string', 'Choose sets to analyze', 'FontWeight', 'bold'} ...
                     { 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'} ...
                     { 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}, ...
                     'title', 'Export microstate maps to Ragu');
@@ -239,36 +239,52 @@ function com = pop_RaguMSMaps(AllEEG, varargin)
         'FontSize', 12, 'BackgroundColor', [.66 .76 1], 'HorizontalAlignment', 'left');
     uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Edit design', 'Position', [300 85 100 30], 'FontSize', 11, ...
         'Callback', @defineBetweenDesign);
-    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Ok', 'Position', [300 10 100 30], 'Enable', 'off', 'Tag', 'Ok', 'Callback', 'uiresume()');
-    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Cancel', 'Position', [190 10 100 30], 'Callback', @(src,event)close(src.Parent));
+    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Done'  , 'Position', [300 10 100 30], 'Callback', 'uiresume()');
+    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'TANOVA', 'Position', [ 80 10 100 30], 'Callback', @ShowTanova);
+    uicontrol(inputGUI, 'Style', 'pushbutton', 'String', 'Save 4 RAGU', 'Position', [190 10 100 30], 'Callback', @SaveToRagu);
 
     uiwait(inputGUI);
     if ~isvalid(inputGUI)
         return;
     end
-    rd = inputGUI.UserData;
     delete(inputGUI);
 
+    com = sprintf('pop_RaguMSMaps(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
+end
+
+
+
+function SaveToRagu(src,~)
+    rd = src.Parent.UserData;
+    [filename, pathname] = uiputfile('*.mat', 'Save for Ragu');
+
+    if filename == 0
+        return
+    end
+    
+    save(fullfile(pathname,filename),'rd');
+
+end
+
+
+
+function ShowTanova(src,~)
+    rd = src.Parent.UserData;
     rd = Randomizer_ComputeTanova(rd);
  
     Randomizer_ShowTanovaResults(rd);
-
-    com = sprintf('pop_RaguMSMaps(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), Classes);
+    src.Parent.UserData = rd;
 end
 
 function defineWithinDesign(src, ~)
     
     rd = src.Parent.UserData;
-    okBtn = findobj(src.Parent, 'Tag', 'Ok');
 
     Output = Randomizer_Design([], [], [], rd);
     if ~isempty(Output)
         rd = get(Output,'UserData');
         close(Output);
         src.Parent.UserData = rd;
-        if ~isempty(rd.Design)
-            okBtn.Enable = 'on';
-        end
     end
 
 end
@@ -276,18 +292,13 @@ end
 function defineBetweenDesign(src, ~)
 
     rd = src.Parent.UserData;
-    okBtn = findobj(src.Parent, 'Tag', 'Ok');    
 
     Output = Randomizer_IndFeatures([], [], [], rd);
     if ~isempty(Output)
         rd = get(Output,'UserData');
         close(Output);
         src.Parent.UserData = rd;
-        if numel(unique(rd.IndFeature)) > 1
-            okBtn.Enable = 'on';
-        end
     end
-
 end
 
 function hasDyn = isDynamicsSet(in)

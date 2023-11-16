@@ -365,7 +365,7 @@ function UpdateTablesFromDesign(handles)
 out = get(handles.output,'UserData');
 
 l1 = unique(out.Design(~isnan(out.Design(:,1)),1));
-l2 = unique(out.Design(~isnan(out.Design(:,2)),2));
+l2 = unique(out.Design(~isnan(out.Design(:,2)),2))
 
 if(all(isnan(l2)))
     if(isfield(out,'DLabels2'))
@@ -435,6 +435,10 @@ rows = {};
 set(handles.tblLevel1,'RowName',rows,'Data',data);
 out.DLabels1 = DLabels1;
 
+if out.TwoFactors == true
+    out.DLabels2 = DLabels2;
+end
+
 data = {};
 if(isfield(out,'DLabels2'))
     [data{1:numel(DLabels2),1}] = deal(DLabels2.Label);
@@ -442,7 +446,8 @@ if(isfield(out,'DLabels2'))
     [rows{1:numel(DLabels2),1}] = deal(DLabels2.Level);
 
     set(handles.tblLevel2,'RowName',rows,'Data',data);
-    out.DLabels2 = DLabels2;
+else
+    set(handles.tblLevel2,'RowName',[],'Data',[]);
 end
 set(handles.output,'UserData',out);
 

@@ -1,7 +1,8 @@
-function[b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,flags,chanloc)
+function [b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,flags,chanloc)
 % EEG_MOD Create the EEG model I'm working with
 %
-% function[b_model,b_ind,b_loading,exp_var] = eeg_mod_r(eeg,n_mod,reruns,max_n)
+% function [b_model,b_ind,b_loading,exp_var] = eeg_kMeans(eeg,n_mod,reruns,max_n,flags,chanloc)
+
 
 % input arguments
 % eeg = the input data (number of time instances * number of channels)
@@ -48,6 +49,10 @@ end
 
 if nargin < 4
     max_n = n_frame;
+end
+
+if nargin < 5
+    flags = '';
 end
 
 if isempty(max_n)
