@@ -129,7 +129,7 @@ function [EEGout, CurrentSet, childIdx, childEEG, com] = InteractiveSort(AllEEG,
         return
     end
     
-    uiwait();
+    uiwait(fig_h);
     if ~isvalid(fig_h)
         return
     end
@@ -378,7 +378,7 @@ function figClose(~,~,fh)
         end
     end
     
-    uiresume();
+    uiresume(fh);
 end
 
 function solutionChanged(~, ~, fig)

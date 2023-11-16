@@ -691,11 +691,6 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
             error(['The following specified cluster solutions to sort are invalid: %s' ...
                 '. Valid class numbers are in the range %i-%i.'], invalidClassesTxt, MinClasses, MaxClasses);
         end        
-
-        % Save Classes as "all" if all were selected
-        if all(ismember(classRange, Classes))
-            Classes = 'all';
-        end
     end
 
     % Template classes
@@ -759,7 +754,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         if isnumeric(Classes) && ~all(ismember(classRange, Classes))
             warning(['Stepwise sorting reorders all cluster solutions of the selected datasets, ' ...
                 'but ''Classes'' was set to %s. Overriding ''Classes'' to ''all''.'], mat2str(Classes));
-            Classes = 'all';
+            Classes = classRange;
         end
 
         % Show warning if template set is not 'own'
@@ -791,10 +786,7 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
         if isempty(res); return; end
 
         if isfield(outstruct, 'Classes')
-            Classes = classRange(outstruct.Classes);
-            if all(ismember(classRange, Classes))
-                Classes = 'all';
-            end
+            Classes = classRange(outstruct.Classes);            
         end
 
         if isfield(outstruct, 'TemplateClasses')
@@ -876,6 +868,10 @@ function [AllEEG, EEGout, CurrentSet, com] = pop_SortMSMaps(AllEEG, varargin)
                 end
             end
         end            
+    end
+
+    if all(ismember(classRange, Classes))
+        Classes = 'all';
     end
 
     if Stepwise
