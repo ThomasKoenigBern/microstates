@@ -1,6 +1,14 @@
 function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
 
+    SortingInfo = cell(numel(EEGs),1);
+    for i = 1:numel(EEGs)
+        SortingInfo(i) = {EEGs(i).msinfo.MSMaps(nMaps).SortedBy};
+    end
     
+    if numel(unique(SortingInfo)) > 1
+        warning('Sorting inconsistent, this may produce false positive findings');
+    end
+
     [rd.GroupLabels,~] = GetUniqueIdentifiers(EEGs,'group');
 
     [rd.conds      ,ConditionIdx ] = GetUniqueIdentifiers(EEGs,'condition');
@@ -15,11 +23,15 @@ function rd = MsMapsAndDesign4Ragu(EEGs,nMaps)
     for s = 1:nSubjects
         idx = find(SubjectIdx == s);
 
-        if ~all(strcmp(EEGs(idx(1)).group,{EEGs(idx).group}))
-            error('Group labelling inconsistent in subject %s',EEGs(idx(1)).subject);
+        for i = 1:numel(idx)
+            if ~isequal(EEGs(idx(1)).group,EEGs(idx(i)).group)
+                error('Group labelling inconsistent in subject %s',EEGs(idx(1)).subject);
+            end
         end
         
-        rd.IndFeature(s,1) = find(strcmp(EEGs(idx(1)).group,rd.GroupLabels),1);
+        SubjectFeature = GetUniqueIdentifiers(EEGs(idx(1)),'group');
+        
+        rd.IndFeature(s,1) = find(strcmp(SubjectFeature,rd.GroupLabels),1);
         
         for c = 1:nConditions
             idx = find(SubjectIdx == s & ConditionIdx == c);

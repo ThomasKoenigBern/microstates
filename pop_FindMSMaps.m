@@ -471,9 +471,13 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
     % Remove sets that were not clustered
     SelectedSets(FailedSets) = [];
 
-    EEGout = AllEEG(SelectedSets);
-    CurrentSet = SelectedSets;    
-    
+    if isempty(SelectedSets)
+        EEGout = EEG;
+        CurrentSet = CURRENTSET;
+    else
+        EEGout = AllEEG(SelectedSets);
+        CurrentSet = SelectedSets;    
+    end
     %% Command string generation
     com = sprintf('[EEG, CURRENTSET] = pop_FindMSMaps(%s, %s, ''ClustPar'', %s);',  inputname(1), mat2str(SelectedSets), struct2String(ClustPar));
 

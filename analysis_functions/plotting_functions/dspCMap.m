@@ -500,6 +500,7 @@ tit.Visible = 'on';
 if vararginmatch(varargin,'Title')
     txt = varargin{vararginmatch(varargin,'Title')+1};
     tit.String = txt;
+    tit.Interpreter = 'none';
 end
 
 

@@ -114,7 +114,7 @@ function [vers,nogui] = eegplugin_microstatelab (fig, try_strings, catch_strings
         if ~ispref('MICROSTATELAB', 'showTopoWarning2')
             setpref('MICROSTATELAB', 'showTopoWarning2', 1);
         end
-
+        
         % Tools menu
         comCheckData           = [try_strings.no_check '[~, LASTCOM]                          = pop_CheckData(ALLEEG);'             catch_strings.add_to_hist];
         comFindMSTemplates     = [try_strings.no_check '[EEG, CURRENTSET, LASTCOM]            = pop_FindMSMaps(ALLEEG);'            catch_strings.store_and_hist];
