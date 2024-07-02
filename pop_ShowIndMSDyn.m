@@ -297,9 +297,10 @@ function com = pop_ShowIndMSDyn(AllEEG, varargin)
             minusY = .41;
             plusY = .58;
         end
+        title(ud.ax, sprintf('Epoch %i of %i (%i classes)', ud.Segment, ud.nSegments, ud.nClasses));
 
         uicontrol(setTab, 'Style', 'pushbutton', 'String', '|<<','Units','Normalized','Position', [0.05 0.005 0.08 0.05], 'Callback', {@PlotMSDyn, setTab, 'Move'  ,-Inf});        
-        ud.EpochLabel = uicontrol(setTab, 'Style', 'Text', 'String', sprintf('Epoch %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses), 'Units', 'normalized', 'Position', [.14 .015 .2 .035], 'FontSize', 11, 'FontWeight', 'bold');
+        ud.epochBox = uicontrol(setTab, 'Style', 'Edit', 'String', sprintf('%i',ud.Segment), 'Units', 'normalized', 'Position', [.16 .005 .16 .05], 'Callback', {@PlotMSDyn, setTab, 'Epoch', true});
         uicontrol(setTab, 'Style', 'pushbutton', 'String', '>>|','Units','Normalized','Position', [0.35 0.005 0.08 0.05], 'Callback', {@PlotMSDyn, setTab, 'Move'  , Inf});
         uicontrol(setTab, 'Style', 'pushbutton', 'String', 'Horz. zoom in' ,'Units','Normalized','Position', [0.61 0.005 0.15 0.05], 'Callback', {@PlotMSDyn, setTab, 'ScaleX', -1000});
         uicontrol(setTab, 'Style', 'pushbutton', 'String', 'Horz. zoom out' ,'Units','Normalized','Position', [0.78 0.005 0.15 0.05], 'Callback', {@PlotMSDyn, setTab, 'ScaleX',  1000});
@@ -329,6 +330,7 @@ function PlotMSDyn(obj, ~, setTab, varargin)
     addParameter(p,'ScaleX',0,@isnumeric);
     addParameter(p,'ScaleY',1,@isnumeric);
     addParameter(p,'Slider',0,@isnumeric);
+    addParameter(p, 'Epoch',false,@islogical);
     parse(p,varargin{:});
     
     MoveX = p.Results.Move;
@@ -340,6 +342,17 @@ function PlotMSDyn(obj, ~, setTab, varargin)
     if(ud.nSegments > 1) && p.Results.Move == -inf
         ud.Segment = max(1,ud.Segment -1);
         MoveX = 0;    
+    end
+
+    if p.Results.Epoch
+        newEpoch = str2double(ud.epochBox.String);
+        if isnan(newEpoch) || newEpoch < 1 || newEpoch > ud.nSegments
+            error('Invalid epoch number');
+            return;
+        else
+            ud.Segment = newEpoch;
+        end
+        MoveX = 0;
     end
  
     ud.Start = ud.Start + MoveX;
@@ -393,7 +406,7 @@ function PlotMSDyn(obj, ~, setTab, varargin)
     xlabel(ud.ax, 'Latency', 'FontSize', 11);
     ylabel(ud.ax, 'GFP', 'FontSize', 11);
     
-    ud.EpochLabel.String = sprintf('Epoch %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses);
+    title(ud.ax, sprintf('Epoch %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses));
     nPoints = numel(ud.Time);
     dt = ud.Time(2) - ud.Time(1);
     % Show the markers;
