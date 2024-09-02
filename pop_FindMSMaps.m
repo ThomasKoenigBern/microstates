@@ -415,7 +415,9 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
 
         if size(MapsToUse,2) < ClustPar.MaxClasses
             warning('Not enough data to cluster in set %s',AllEEG(sIndex).setname);
-            FailedSets = [FailedSets,sIndex]; %#ok<AGROW> 
+%            FailedSets = [FailedSets,sIndex]; %#ok<AGROW> 
+            FailedSets = [FailedSets,i]; %#ok<AGROW> Fix TK 2.9.2024
+
             continue;
         end
 
