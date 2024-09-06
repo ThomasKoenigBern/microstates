@@ -32,6 +32,9 @@
 %   -> Vector of set indices of ALLEEG to average. If not provided, a GUI
 %   will appear to choose sets.
 %
+%   "MaxAttempts" (optional, no GUI)
+%   -> Maximal number of attempts to find the best solution (optional)
+%
 % Key, Value inputs (optional):
 %
 %   "MeanName"
@@ -108,6 +111,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
+    addOptional(p, 'MaxAttempts', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'MeanName', 'GrandMean', @(x) validateattributes(x, strClass, strAttributes));
 
@@ -117,6 +121,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     IgnorePolarity = p.Results.IgnorePolarity;
     MeanName = p.Results.MeanName;
     ShowMaps = false;
+    MaxAttempts = p.Results.MaxAttempts;
 
     %% SelectedSets validation
     % First make sure there are enough sets to combine (at least 2)
@@ -323,7 +328,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
             MapsToSort(index,:,:) = L2NormDim(AllEEG(SelectedSets(index)).msinfo.MSMaps(n).Maps * LocalToGlobal',2);
         end
         % We sort out the stuff
-        [BestMeanMap,~,ExpVar,SharedVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,[],UseEMD);
+        [BestMeanMap,~,ExpVar,SharedVar] = PermutedMeanMaps(MapsToSort,~IgnorePolarity,tmpchanlocs,MaxAttempts,UseEMD);
 
         msinfo.MSMaps(n).Maps = BestMeanMap;
         msinfo.MSMaps(n).ExpVar = ExpVar;
