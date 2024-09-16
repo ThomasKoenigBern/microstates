@@ -1,46 +1,66 @@
-%pop_ShowIndMSDyn() Show microstate dynamics over time
+% pop_ShowIndMSDyn() Plots temporal dynamics of a selected dataset over
+% time. Global field power is plotted on the y axis and different
+% microstate class assignments represented by different colors.If multiple 
+% sets are selected to plot, they will be plotted in separate tabs.
+% pop_FitMSMaps() must be used before calling this function to extract
+% temporal parameters.
 %
 % Usage:
-%   >> [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, MeanSet)
+%   >> pop_ShowIndMSDyn(ALLEEG, SelectedSets, 'Classes', Classes)
 %
-% EEG lab specific:
+% Specify the number of classes in the fitting solution using the "Classes" 
+% argument.
+% Ex:
+%   >> fig_h = pop_ShowMSParameters(ALLEEG, 1:5, 'Classes', 4);
 %
-%   "AllEEG" 
-%   -> AllEEG structure with all the EEGs that may be analysed
+% Graphical interface:
 %
-%   "TheEEG" 
-%   -> EEG structure with the EEG to search for templates
+%   "Choose sets to plot"
+%   -> Select sets whose temporal parameters should be plotted
+%   -> Command line equivalent: "SelectedSets"
 %
-%   UseMean
-%   -> True if a mean cluster center is to be used to quantify the EEG
-%   data, false (default) if the template from the data itself is to be used
+%   "Select number of classes"   
+%   -> Select which fitting solution should be used
+%   -> Command line equivalent: "Classes"
 %
-%   "Number of Classes" / FitPar.nClasses 
-%   -> Number of clusters to quantify
+% Inputs:
 %
-%   "Name of Mean" (GUI)
-%   -> EEG dataset containing the mean clusters to be used if UseMean is
-%   true, else not relevant
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
-%   Meanset (parameter)
-%   -> Index of the AllEEG dataset containing the mean clusters to be used 
-%      if UseMean is true, else not relevant
+%   "SelectedSets" (optional)
+%   -> Vector of set indices of ALLEEG for which temporal parameters will be
+%   plotted. Selected sets must contain temporal parameters in the "MSStats"
+%   field of "msinfo" (obtained from calling pop_FitMSMaps). If sets
+%   are not provided, a GUI will appear to choose sets.
 %
-% Output:
+% Key, Value inputs (optional):
 %
-%   "AllEEG" 
-%   -> AllEEG structure with all the EEG (fitting parameters may be updated)
+%   "Classes"
+%   -> Integer indicating the fitting solution whose associated temporal 
+%   dynamics will be plotted.
 %
-%   "TheEEG" 
-%   -> EEG structure with the EEG (fitting parameters may be updated)
+% Outputs:
 %
 %   "com"
 %   -> Command necessary to replicate the computation
+%              
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -56,151 +76,261 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-function [AllEEG, TheEEG, com] = pop_ShowIndMSDyn(AllEEG,TheEEG,UseMean,FitPar, MeanSet)
+function com = pop_ShowIndMSDyn(AllEEG, varargin)
 
+    [~,nogui] = eegplugin_microstatelab;
+
+    if nogui == true
+        error("This function needs a GUI");
+    end
+
+    %% Set defaults for outputs
+    global MSTEMPLATE;
     com = '';
-    
-    if numel(TheEEG) > 1
-        errordlg2('pop_findMSTemplates() currently supports only a single TheEEG as input');
-        return;
-    end
-    
-    if nargin < 3,     UseMean =  false;    end
-    if nargin < 4,     FitPar  = [];        end 
-    if nargin < 5,     MeanSet = [];        end 
 
-    if UseMean == false && ~isfield(TheEEG,'msinfo')
-        errordlg2('The data does not contain microstate maps','Show microstate dynamics');
-        return;
-    end
-    
-    if UseMean == true && isempty(MeanSet)
-        nonempty = find(cellfun(@(x) isfield(x,'msinfo'), num2cell(AllEEG)));
-        HasChildren = cellfun(@(x) isfield(x,'children'), {AllEEG.msinfo});
-        nonemptyMean = nonempty(HasChildren);
-    
-        AvailableMeans = {AllEEG(nonemptyMean).setname};
-        res = inputgui( 'geometry', {1 1}, 'geomvert', [1 4], 'uilist', { ...
-            { 'Style', 'text', 'string', 'Name of mean', 'fontweight', 'bold'  } ...
-            { 'Style', 'listbox', 'string', AvailableMeans, 'tag','SelectSets'}});
-     
-        if isempty(res)
-            return
-        end
-        MeanSet = nonemptyMean(res{1});
-    end
-    
-    if UseMean == false
-        if isfield(TheEEG.msinfo,'FitPar');                params = TheEEG.msinfo.FitPar;
-        else params = [];
-        end
-    else
-        if isfield(AllEEG(MeanSet).msinfo,'FitPar');     params = AllEEG(MeanSet).msinfo.FitPar;
-        else params = []; %#ok<*SEPEX>
-        end
-    end
-    [FitPar,paramsComplete] = UpdateFitParameters(FitPar,params,{'nClasses','lambda','PeakFit','b','BControl'});
-
-    if nargin < 4 || paramsComplete == false
-        if UseMean == false     
-            FitPar = SetFittingParameters(TheEEG.msinfo.ClustPar.MinClasses:TheEEG.msinfo.ClustPar.MaxClasses,FitPar);
-        else
-            FitPar = SetFittingParameters(AllEEG(MeanSet).msinfo.ClustPar.MinClasses:AllEEG(MeanSet).msinfo.ClustPar.MaxClasses,FitPar);
-        end
-    end
-    if isempty(FitPar.nClasses);   return; end
-    
-    if UseMean == false
-        Maps   = TheEEG.msinfo.MSMaps(FitPar.nClasses).Maps;
-        cmap   = TheEEG.msinfo.MSMaps(FitPar.nClasses).ColorMap;
-    else
-        Maps   = AllEEG(MeanSet).msinfo.MSMaps(FitPar.nClasses).Maps;
-        cmap   = AllEEG(MeanSet).msinfo.MSMaps(FitPar.nClasses).ColorMap;
-        AllEEG(MeanSet).msinfo.FitPar = FitPar;
-    end
-    TheEEG.msinfo.FitPar = FitPar;
-    
-    if UseMean == true
-        LocalToGlobal = MakeResampleMatrices(TheEEG.chanlocs,AllEEG(MeanSet).chanlocs);
-        [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,AllEEG(MeanSet).msinfo.ClustPar.IgnorePolarity,LocalToGlobal);
-    else
-        [MSClass,gfp,fit] = AssignMStates(TheEEG,Maps,FitPar,TheEEG.msinfo.ClustPar.IgnorePolarity);
-    end
-    
-    if isempty(MSClass)
-        return;
-    end
-    fig_h = figure();
-    ud.nClasses = size(Maps,1);
-    ud.Sorted = UseMean;
-    ud.gfp = gfp;
-    ud.Assignment = MSClass;
-    ud.cmap = cmap;
-    ud.Start  =  0;
-    ud.Segment = 1;
-    ud.Time   = TheEEG.times;
-    ud.XRange = min([10000 ud.Time(end)]);
-    ud.event = TheEEG.event;
-
-    ud.MaxY   = 10;
-    ud.nSegments = TheEEG.trials;
-
-    set(fig_h,'userdata',ud);
-    PlotMSDyn([],[],fig_h);
-
-     if UseMean == true
-        set(fig_h, 'Name', ['Microstate dynamics of ' TheEEG.setname ' (Template: ' AllEEG(MeanSet).setname ')'],'NumberTitle','off');
-     else
-        set(fig_h, 'Name', ['Microstate dynamics of ' TheEEG.setname ' (own template)'],'NumberTitle','off');
-     end
-  
-    uicontrol('Style', 'pushbutton', 'String', '|<<','Units','Normalized','Position', [0.11 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'Move'  ,-Inf});
-    uicontrol('Style', 'pushbutton', 'String',  '<<','Units','Normalized','Position', [0.21 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'Move'  ,-10000 });
-	uicontrol('Style', 'pushbutton', 'String',   '<','Units','Normalized','Position', [0.31 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'Move'  , -1000 });
-    uicontrol('Style', 'pushbutton', 'String', '>'  ,'Units','Normalized','Position', [0.41 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'Move'  ,  1000});
-    uicontrol('Style', 'pushbutton', 'String', '>>' ,'Units','Normalized','Position', [0.51 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'Move'  , 10000 });
-    uicontrol('Style', 'pushbutton', 'String', '>>|','Units','Normalized','Position', [0.61 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'Move'  , Inf});
-    uicontrol('Style', 'pushbutton', 'String', '<>' ,'Units','Normalized','Position', [0.71 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'ScaleX', -1000});
-    uicontrol('Style', 'pushbutton', 'String', '><' ,'Units','Normalized','Position', [0.81 0.05 0.08 0.05], 'Callback', {@PlotMSDyn, fig_h, 'ScaleX',  1000});
-    uicontrol('Style', 'slider'    ,'Min',ud.Time(1),'Max',ud.Time(end),'Value',ud.Time(1) ,'Units','Normalized','Position', [0.1 0.12 0.8 0.05], 'Callback', {@PlotMSDyn, fig_h, 'Slider',  1});
-
-    uicontrol('Style', 'pushbutton', 'String', '-'   ,'Units','Normalized','Position', [0.91 0.30 0.07 0.2], 'Callback', {@PlotMSDyn, fig_h, 'ScaleY', 1/0.75});
-    uicontrol('Style', 'pushbutton', 'String', '+'   ,'Units','Normalized','Position', [0.91 0.50 0.07 0.2], 'Callback', {@PlotMSDyn, fig_h, 'ScaleY',   0.75});
-
-    uicontrol('Style', 'text'      , 'String',sprintf('Explained variance: %3.1f%%',fit * 100),'Units','Normalized','Position', [0.1 0.19 0.8 0.03]);
-    
-    if UseMean == false
-        uicontrol('Style', 'pushbutton', 'String', 'Map' ,'Units','Normalized','Position', [0.91 0.70 0.07 0.2], 'Callback', {@PlotMSMaps, TheEEG,ud.nClasses});
-    else
-        uicontrol('Style', 'pushbutton', 'String', 'Map' ,'Units','Normalized','Position', [0.91 0.70 0.07 0.2], 'Callback', {@PlotMSMaps, AllEEG(MeanSet),ud.nClasses});
-    end    
-
-    
-    if UseMean < 2
-        com = sprintf('com = pop_ShowIndMSDyn(%s, %s, 0, %s);'    , inputname(1), inputname(2),struct2String(FitPar));
-    else
-        com = sprintf('com = pop_ShowIndMSDyn(%s, %s, 1, %s, %i);', inputname(1), inputname(2), struct2String(FitPar), MeanSet);
-    end
-end
-
-
-function PlotMSMaps(~,~,TheEEG,nClasses)
-    pop_ShowIndMSMaps(TheEEG,nClasses);
-end
-
-function PlotMSDyn(obj, ~,fh, varargin)
-
-    figure(fh);
-    ax = subplot('Position',[0.1 0.3 0.8 0.65]);
-    ud = get(fh,'UserData');
-    
+    %% Parse inputs and perform initial validation
     p = inputParser;
+    p.FunctionName = 'pop_ShowIndMSDyn';
+
+    addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
+    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
+    addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'scalar'}));
     
+    parse(p, AllEEG, varargin{:});
+
+    SelectedSets = p.Results.SelectedSets;
+    nClasses = p.Results.Classes;
+
+    %% SelectedSets validation        
+    HasStats = arrayfun(@(x) hasStats(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(HasStats & ~HasDyn);
+    
+    if isempty(AvailableSets)
+        errorMessage = ['No sets with temporal parameters found. ' ...
+            'Use Tools->Backfit microstate maps to EEG to extract temporal dynamics.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Plot temporal dynamics error');
+            return;
+        else
+            error(errorMessage);
+        end
+    end
+
+    % If the user has provided sets, check their validity
+    if ~isempty(SelectedSets)
+        SelectedSets = unique(SelectedSets, 'stable');
+        isValid = ismember(SelectedSets, AvailableSets);
+        if any(~isValid)
+            invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
+            invalidSetsTxt = invalidSetsTxt(1:end-2);
+            error(['The following sets do not contain temporal parameters: %s. ' ...
+                'Use pop_FitMSMaps() to extract temporal dynamics first.'], invalidSetsTxt);
+        end
+    % Otherwise, prompt user to choose sets
+    else
+        global CURRENTSET;
+        defaultSets = find(ismember(AvailableSets, CURRENTSET));
+        if isempty(defaultSets);    defaultSets = 1;    end
+        AvailableSetnames = {AllEEG(AvailableSets).setname};
+        [res,~,~,outstruct] = inputgui('geometry', [1 1 1 1], 'geomvert', [1 1 1 4], 'uilist', {
+                    { 'Style', 'text'    , 'string', 'Choose sets to plot', 'fontweight', 'bold'} ...
+                    { 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'} ...
+                    { 'Style', 'text'    , 'string', 'If multiple are chosen, a tab will be created for each.'} ...
+                    { 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}, ...
+                    'title', 'Plot temporal dynamics');
+
+        if isempty(res); return; end
+        SelectedSets = AvailableSets(outstruct.SelectedSets);
+
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one datset','Plot temporal dynamics error');
+            return;
+        end
+    end        
+
+    SelectedEEG = AllEEG(SelectedSets);    
+
+    %% Classes validation
+    classRanges = arrayfun(@(x) SelectedEEG(x).msinfo.FitPar.Classes, 1:numel(SelectedEEG), 'UniformOutput', false)';
+    commonClasses = classRanges{1};
+    for i=2:numel(SelectedSets)
+        commonClasses = intersect(commonClasses, classRanges{i});
+    end
+
+    if isempty(commonClasses)
+        errorMessage = 'No overlap in cluster solutions used for fitting found between all selected sets.';
+        if matches('SelectedSets', p.UsingDefaults)
+            errordlg2(errorMessage, 'Plot temporal dynamics error');
+        else
+            error(errorMessage);
+        end
+        return;
+    end
+    if matches('Classes', p.UsingDefaults)
+        classChoices = sprintf('%i Classes|', commonClasses);
+        classChoices(end) = [];
+
+        [res,~,~,outstruct] = inputgui('geometry', [1 1], 'geomvert', [1 4], 'uilist', ...
+            { {'Style', 'text', 'string', 'Select number of classes'} ...
+              {'Style', 'listbox', 'string', classChoices, 'Value', 1, 'Tag', 'Classes'}}, ...
+              'title', 'Plot temporal dynamics');
+        
+        if isempty(res); return; end
+        nClasses = commonClasses(outstruct.Classes);
+    else
+        if ~ismember(nClasses, commonClasses)
+            classesTxt = sprintf('%i, ', commonClasses);
+            classesTxt = classesTxt(1:end-2);
+            error(['Not all selected sets to plot contain microstate dynamics information for the %i cluster solution. ' ...
+                'Valid class numbers include: %s.'], nClasses, classesTxt);
+        end
+    end
+
+    % Get usable screen size
+    toolkit = java.awt.Toolkit.getDefaultToolkit();
+    jframe = javax.swing.JFrame;
+    insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
+    tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);
+    pause(0.2);
+    titleBarHeight = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    delete(tempFig);
+    % Use the largest monitor available
+    monitorPositions = get(0, 'MonitorPositions');
+    if size(monitorPositions, 1) > 1
+        screenSizes = arrayfun(@(x) monitorPositions(x, 3)*monitorPositions(x,4), 1:size(monitorPositions, 1));
+        [~, i] = max(screenSizes);
+        screenSize = monitorPositions(i, :);
+    else
+        screenSize = get(0, 'ScreenSize');
+    end
+    figSize = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight-insets.bottom-insets.top];
+    fig_h = figure('ToolBar', 'none', 'MenuBar', 'figure', 'NumberTitle', 'off', 'Position', figSize);
+    tabGroup = uitabgroup(fig_h, 'Units', 'normalized', 'Position', [0 0 1 1]);
+
+    %% Plot dynamics
+    SelectedEEG = AllEEG(SelectedSets);
+    HasChildren = arrayfun(@(x) DoesItHaveChildren(AllEEG(x)), 1:numel(AllEEG));
+    meanSets = find(HasChildren);
+    meanSetnames = {AllEEG(meanSets).setname};
+    publishedSetnames = {MSTEMPLATE.setname};
+    for s=1:numel(SelectedSets)
+
+        TemplateName = SelectedEEG(s).msinfo.MSStats(nClasses).FittingTemplate;
+        showMaps = true;
+        if strcmp(TemplateName, '<<own>>')
+            ChosenTemplate = SelectedEEG(s);
+        else
+            % Look for the fitting template in ALLEEG and MSTEMPLATE
+            if matches(TemplateName, meanSetnames)
+                meanIdx = meanSets(matches(meanSetnames, TemplateName));
+                if numel(meanIdx) > 1
+                    warning(['Multiple mean sets found that match the fitting template "%s" ' ...
+                        'for dataset %i. Template maps will not be displayed.'], TemplateName, SelectedSets(s));
+                    showMaps = false;
+                else
+                    ChosenTemplate = AllEEG(meanIdx);                   
+                end
+            elseif matches(TemplateName, publishedSetnames)
+                ChosenTemplate = MSTEMPLATE(matches(publishedSetnames, TemplateName));
+            else
+                warning(['Fitting template "%s" for dataset %i could not be found. ' ...
+                    'Template maps will not be displayed.'], TemplateName, SelectedSets(s));
+                showMaps = false;
+            end               
+        end
+
+        colors = getColors(nClasses);
+        if showMaps                                    
+            cmap = ChosenTemplate.msinfo.MSMaps(nClasses).ColorMap;
+            unassignedMaps = arrayfun(@(x) all(cmap(x,:) == [.75 .75 .75]), 1:nClasses);        
+            if any(unassignedMaps)                
+                cmap(unassignedMaps, :) = colors(unassignedMaps, :);
+            end
+        else
+            cmap = colors;
+        end
+                
+        ud.nClasses = nClasses;
+        ud.gfp = SelectedEEG(s).msinfo.MSStats(nClasses).GFP;
+        ud.Assignment = SelectedEEG(s).msinfo.MSStats(nClasses).MSClass;
+        ud.cmap = cmap;
+        ud.Start  =  0;
+        ud.Segment = 1;
+        ud.Time   = SelectedEEG(s).times;
+        ud.XRange = min([10000 ud.Time(end)]);
+        ud.event = SelectedEEG(s).event;    
+        ud.MaxY   = 10;
+        ud.nSegments = SelectedEEG(s).trials;
+    
+        setTab = uitab(tabGroup);
+        if ~strcmp(TemplateName, '<<own>>')
+            set(setTab, 'Title', ['Microstate dynamics of ' SelectedEEG(s).setname ' (Template: ' TemplateName ')']);
+        else
+            set(setTab, 'Title', ['Microstate dynamics of ' SelectedEEG(s).setname ' (own template)']);
+        end
+        tabGroup.SelectedTab = setTab;        
+
+        minGridWidth = 60;
+        if showMaps
+            ChosenTemplate.msinfo.MSMaps(nClasses).ColorMap = cmap;
+            ud.AllMaps = ChosenTemplate.msinfo.MSMaps;
+            ud.ClustPar = ChosenTemplate.msinfo.ClustPar;
+            ud.chanlocs = ChosenTemplate.chanlocs;
+            if figSize(3)*.98/nClasses >= minGridWidth
+                ud.ax = axes(setTab, 'Position',[0.05 0.18 0.88 0.59]);
+                ud.MapPanel = uipanel(setTab, 'Units', 'normalized', 'Position', [.01 .82 .98 .17], 'BorderType', 'none');               
+                ud.Visible = true; 
+                ud.Edit = false;
+                ud.Scroll = false;
+    
+                set(setTab,'userdata',ud);
+                PlotMSMaps(setTab, nClasses);
+            else
+                ud.ax = axes(setTab, 'Position', [0.05 0.18 0.88 0.8]);
+                uicontrol('Style', 'pushbutton', 'String', 'Maps','Units','Normalized','Position', [0.94 0.64 0.05 0.15], 'Callback', {@PlotMaps, ChosenTemplate, nClasses});                
+            end
+            minusY = .31; 
+            plusY  = .48;
+        else
+            ud.ax = axes(setTab, 'Position', [.05 .18 .88 .8]);
+            minusY = .41;
+            plusY = .58;
+        end
+        title(ud.ax, sprintf('Epoch %i of %i (%i classes)', ud.Segment, ud.nSegments, ud.nClasses));
+
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', '|<<','Units','Normalized','Position', [0.05 0.005 0.08 0.05], 'Callback', {@PlotMSDyn, setTab, 'Move'  ,-Inf});        
+        ud.epochBox = uicontrol(setTab, 'Style', 'Edit', 'String', sprintf('%i',ud.Segment), 'Units', 'normalized', 'Position', [.16 .005 .16 .05], 'Callback', {@PlotMSDyn, setTab, 'Epoch', true});
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', '>>|','Units','Normalized','Position', [0.35 0.005 0.08 0.05], 'Callback', {@PlotMSDyn, setTab, 'Move'  , Inf});
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', 'Horz. zoom in' ,'Units','Normalized','Position', [0.61 0.005 0.15 0.05], 'Callback', {@PlotMSDyn, setTab, 'ScaleX', -1000});
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', 'Horz. zoom out' ,'Units','Normalized','Position', [0.78 0.005 0.15 0.05], 'Callback', {@PlotMSDyn, setTab, 'ScaleX',  1000});
+        uicontrol(setTab, 'Style', 'slider'    ,'Min',ud.Time(1),'Max',ud.Time(end),'Value',ud.Time(1) ,'Units','Normalized','Position', [0.05 0.07 0.88 0.03], ...
+            'BackgroundColor', [.6 .6 .6], 'Callback', {@PlotMSDyn, setTab, 'Slider',  1});
+    
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', '-'   ,'Units','Normalized','Position', [0.94 minusY 0.05 0.15], 'Callback', {@PlotMSDyn, setTab, 'ScaleY', 1/0.75});
+        uicontrol(setTab, 'Style', 'pushbutton', 'String', '+'   ,'Units','Normalized','Position', [0.94 plusY  0.05 0.15], 'Callback', {@PlotMSDyn, setTab, 'ScaleY',   0.75});                  
+
+        set(setTab,'userdata',ud);
+        PlotMSDyn([], [], setTab);
+    end
+
+    com = sprintf('pop_ShowIndMSDyn(%s, %s, ''Classes'', %i);', inputname(1), mat2str(SelectedSets), nClasses);
+end
+
+function PlotMaps(~, ~, EEG, nClasses)
+    pop_ShowIndMSMaps(EEG, 1, 'Classes', nClasses);
+end
+
+function PlotMSDyn(obj, ~, setTab, varargin)
+   
+    ud = get(setTab,'UserData');
+    
+    p = inputParser;    
     addParameter(p,'Move',0,@isnumeric);
     addParameter(p,'ScaleX',0,@isnumeric);
     addParameter(p,'ScaleY',1,@isnumeric);
     addParameter(p,'Slider',0,@isnumeric);
-    
+    addParameter(p, 'Epoch',false,@islogical);
     parse(p,varargin{:});
     
     MoveX = p.Results.Move;
@@ -212,6 +342,17 @@ function PlotMSDyn(obj, ~,fh, varargin)
     if(ud.nSegments > 1) && p.Results.Move == -inf
         ud.Segment = max(1,ud.Segment -1);
         MoveX = 0;    
+    end
+
+    if p.Results.Epoch
+        newEpoch = str2double(ud.epochBox.String);
+        if isnan(newEpoch) || newEpoch < 1 || newEpoch > ud.nSegments
+            error('Invalid epoch number');
+            return;
+        else
+            ud.Segment = newEpoch;
+        end
+        MoveX = 0;
     end
  
     ud.Start = ud.Start + MoveX;
@@ -230,8 +371,8 @@ function PlotMSDyn(obj, ~,fh, varargin)
     
     ud.XRange = ud.XRange+p.Results.ScaleX;
     
-    if ud.XRange < 1
-        ud.XRange = 1;
+    if ud.XRange < 100
+        ud.XRange = 100;
     end
     
     if ud.XRange > ud.Time(end) - ud.Time(1)
@@ -240,39 +381,32 @@ function PlotMSDyn(obj, ~,fh, varargin)
     
     ud.MaxY = ud.MaxY * p.Results.ScaleY;
     
-    slider = findobj(fh,'Style','slider');
+    slider = findobj(setTab,'Style','slider');
     set(slider,'Value',ud.Start);
         
     Data2Show = find(ud.Time >= ud.Start & ud.Time <= (ud.Start + ud.XRange));
-    Fit = zeros(ud.nClasses,numel(Data2Show));
-    for e = 1:numel(ud.event)
-        if ~isfield(ud.event(e),'epoch')
-            epoch = 1;
-        else
-            epoch = ud.event(e).epoch;
-        end
-        if epoch ~= ud.Segment
-            continue
-        end
-    end
+    Fit = nan(ud.nClasses,numel(Data2Show));
     for c = 1:ud.nClasses
-        idx = ud.Assignment(Data2Show,ud.Segment) == c;
-        Fit(c,idx) = ud.gfp(1,Data2Show(1,idx),ud.Segment);
+        idx = ud.Assignment(Data2Show,ud.Segment) == c;        
+        idx = [0; idx(1:end-1)] | idx;
+        Fit(c,idx) = ud.gfp(Data2Show(1,idx),ud.Segment);
     end
     
-    bar(ud.Time(Data2Show),Fit',1,'stacked','EdgeColor','none');
-    colormap(ud.cmap);
-    hold on
-    axis([ud.Start-0.5 ud.Start+ ud.XRange+0.5 0, ud.MaxY]);
-    xtick = num2cell(get(ax,'XTick')/ 1000);
+    area(ud.ax, ud.Time(Data2Show), Fit', 'LineStyle', 'none');
+    colororder(ud.cmap);
+    hold(ud.ax, 'on');
+    axis(ud.ax, [ud.Start-0.5 ud.Start+ ud.XRange+0.5 0, ud.MaxY]);
+    xtick = num2cell(get(ud.ax,'XTick')/ 1000);
     if (xtick{2} - xtick{1}) >= 1
         labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f',floor(x/3600),floor(rem(x/60,60)),rem(x,60)),xtick, 'UniformOutput',false);
     else
-        labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f:%03.0f',floor(x/3600),floor(rem(x/60,60)),rem(x,60),rem(x*1000,1000)),xtick, 'UniformOutput',false);
+        labels = cellfun(@(x) sprintf('%1.0f:%02.0f:%02.0f:%03.0f',floor(x/3600),floor(rem(x/60,60)),floor(rem(x,60)),rem(x*1000,1000)),xtick, 'UniformOutput',false);
     end
-    set(ax,'XTickLabel',labels,'FontSize',7);
+    set(ud.ax,'XTickLabel',labels,'FontSize',10);
+    xlabel(ud.ax, 'Latency', 'FontSize', 11);
+    ylabel(ud.ax, 'GFP', 'FontSize', 11);
     
-    title(sprintf('Segment %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses))
+    title(ud.ax, sprintf('Epoch %i of %i (%i classes)',ud.Segment,ud.nSegments,ud.nClasses));
     nPoints = numel(ud.Time);
     dt = ud.Time(2) - ud.Time(1);
     % Show the markers;
@@ -289,15 +423,61 @@ function PlotMSDyn(obj, ~,fh, varargin)
         if t < ud.Start || t > ud.Start + ud.XRange
             continue;
         end
-        plot([t,t],[0,ud.MaxY],'-k');
+        plot(ud.ax, [t,t],[0,ud.MaxY],'-k');
         if isnumeric(ud.event(e).type)
             txt = sprintf('%1.0i',ud.event(e).type);
         else
             txt = ud.event(e).type;
         end
-        text(t,ud.MaxY,txt, 'Interpreter','none','VerticalAlignment','top','HorizontalAlignment','right','Rotation',90);
+        text(ud.ax, t,ud.MaxY,txt, 'Interpreter','none','VerticalAlignment','top','HorizontalAlignment','right','Rotation',90);
     end
-    hold off
-    set(fh,'UserData',ud);
+    hold(ud.ax, 'off');
+    set(setTab,'UserData',ud);
 end
 
+function hasStats = hasStats(in)
+    hasStats = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    % check if set has MSStats
+    if ~isfield(in.msinfo, 'MSStats')
+        return;
+    else
+        hasStats = true;
+    end
+end
+
+function Answer = DoesItHaveChildren(in)
+    Answer = false;
+    if ~isfield(in,'msinfo')
+        return;
+    end
+    
+    if ~isfield(in.msinfo,'children')
+        return
+    else
+        Answer = true;
+    end
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end    
+    % check if set has FitPar
+    if ~isfield(in.msinfo, 'FitPar')
+        return;
+    end
+    % check if FitPar contains Rectify/Normalize parameters
+    if ~isfield(in.msinfo.FitPar, 'Rectify')
+        return;
+    else
+        hasDyn = true;
+    end
+end

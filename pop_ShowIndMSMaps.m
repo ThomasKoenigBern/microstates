@@ -1,35 +1,72 @@
-% pop_ShowIndMSMaps() - Display microstate maps
+% pop_ShowIndMSMaps() - Display microstate maps, with the option to display
+% only certain cluster solutions. If multiple sets are selected to plot,
+% they will be plotted in separate tabs. To plot individual maps in their  
+% own windows, right-click a map and select "Plot map in new window."
 %
 % Usage:
-%   >> [AllEEG,TheEEG,com] = pop_ShowIndMSMaps(TheEEG,nclasses, DoEdit, AllEEG)
+%   >> fig_h = pop_ShowIndMSMaps(ALLEEG, SelectedSets, 'Classes', Classes,
+%           'Visible', true/false)
+%
+% The figure with plotted maps can be generated but not displayed.
+% This option is useful if you would like to save microstate maps in a
+% script but avoid each window appearing. To generate an invisible figure,
+% set the "Visible" argument to 0.
+% Ex:
+%   >> fig_h = pop_ShowIndMSMaps(ALLEEG, 1, 'Classes', 4:7, 'Visible', 0)
+%       saveas(fig_h, 'microstate_maps.png')
+%       close(fig_h)
+%
+% Graphical interface:
+%
+%   "Choose sets for plotting"
+%   -> Select sets to plot. If multiple sets are selected, a tab will be
+%   opened for each.
+%   -> Command line equivalent: "SelectedSets"
 %
 % Inputs:
-%   "TheEEG"    - The EEG whose microstate maps are to be shown.
-%   "nclasses"  - Number of microstate classes to be shown.
-%   "DoEdit"    - True if you want edit the microstate map sequence,
-%                 otherwise false. If true, the window goes modal, and the
-%                 AllEEG and EEG structures are updated when clicking the
-%                 close button. Otherwise, the window immediately returns
-%                 and the AllEEG and EEG structures remain unchanged.
-%                 Editing will not only change the order of the maps, but
-%                 also attempt to clear the sorting information in
-%                 microstate maps that were previously sorted on the edited
-%                 templates, and issue warnings if this fails.
+%   "ALLEEG" (required)
+%   -> ALLEEG structure array containing all EEG sets loaded into EEGLAB
 %
-%   "AllEEG"    - AllEEG structure with all the EEGs (only necessary when editing)
+%   "SelectedSets" (optional)
+%   -> Vector of set indices of ALLEEG to plot. If multiple are chosen, a
+%   tab will be opened for each.
 %
-% Output:
+% Key, Value inputs (optional):
+%   "Classes"
+%   -> Vector of class numbers indicating which cluster solutions to plot.
+%   If class numbers are not provided, a GUI will appear to select the 
+%   cluster solution(s) to plot.
 %
-%   "AllEEG" 
-%   -> AllEEG structure with all the updated EEG, if editing was done
+%   "Visible"
+%   -> 1 = Show GUI with plotted microstate maps, 0 = keep GUI hidden.
+%   Useful for scripting purposes to generate and save figures from the
+%   returned figure handle without the figures popping up.
+%
+% Outputs:
+%
+%   "fig_h"
+%   -> Figure handle to window with plotted microstate maps. Useful
+%   for scripting purposes to save figures.
 %
 %   "com"
 %   -> Command necessary to replicate the computation
 %
-% Author: Thomas Koenig, University of Bern, Switzerland, 2016
+% MICROSTATELAB: The EEGLAB toolbox for resting-state microstate analysis
+% Version 1.0
 %
-% Copyright (C) 2016 Thomas Koenig, University of Bern, Switzerland, 2016
-% thomas.koenig@puk.unibe.ch
+% Authors:
+% Thomas Koenig (thomas.koenig@upd.unibe.ch)
+% Delara Aryan  (dearyan@chla.usc.edu)
+% 
+% Copyright (C) 2023 Thomas Koenig and Delara Aryan
+%
+% If you use this software, please cite as:
+% "MICROSTATELAB: The EEGLAB toolbox for resting-state microstate 
+% analysis by Thomas Koenig and Delara Aryan"
+% In addition, please reference MICROSTATELAB within the Materials and
+% Methods section as follows:
+% "Analysis was performed using MICROSTATELAB by Thomas Koenig and Delara
+% Aryan."
 %
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -45,297 +82,251 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-function [AllEEG,TheEEG,com] = pop_ShowIndMSMaps(TheEEG,nclasses, DoEdit, AllEEG)
-    
+function [fig_h, com] = pop_ShowIndMSMaps(AllEEG, varargin)
+
+    [~,nogui] = eegplugin_microstatelab;    
+
+    %% Set defaults for outputs
     com = '';
-    
-    if numel(TheEEG) > 1
-        errordlg2('pop_findMSTemplates() currently supports only a single EEG as input');
-        return;
-    end
-    
-    if nargin < 3
-        DoEdit = false;
-    end
-    
-    if DoEdit == true && nargin < 4
-        errordlg2('Editing requires the AllEEG argument','Edit microstate maps');
-        return;
-    end
-        
-    if nargin < 4
-        AllEEG = [];
-    end
-    
-    if ~isfield(TheEEG,'msinfo')
-        errordlg2('The data does not contain microstate maps','Show microstate maps');
-        return;
-    end
-  
-    ud.AllMaps   = TheEEG.msinfo.MSMaps;
-    ud.chanlocs  = TheEEG.chanlocs;
-    ud.msinfo    = TheEEG.msinfo;
-    ud.setname   = TheEEG.setname;
-    ud.wasSorted = false;
-    if isfield(TheEEG.msinfo,'Children')
-        ud.Children = TheEEG.msinfo.Children;
-    else
-        ud.Children = [];
-    end
-    
-    if nargin < 2
-        nclasses = ud.msinfo.ClustPar.MinClasses;
+    fig_h = [];
+
+    %% Parse inputs and perform initial validation
+    p = inputParser;
+    p.FunctionName = 'pop_ShowIndMSMaps';
+    p.StructExpand = false;
+
+    addRequired(p, 'AllEEG',  @(x) validateattributes(x, {'struct'}, {}));
+    addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));    
+    addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
+    addParameter(p, 'Visible', true, @(x) validateattributes(x, {'logical', 'numeric'}, {'binary', 'scalar'}));
+    parse(p, AllEEG, varargin{:});
+
+    AllEEG = p.Results.AllEEG;
+    SelectedSets = p.Results.SelectedSets;
+    Classes = p.Results.Classes;
+    Visible = p.Results.Visible;
+
+    if nogui && (isempty(SelectedSets) || isempty(Classes) || Visible)
+        error("This function needs a GUI");
     end
 
-    if isempty(nclasses)
-        nclasses = ud.msinfo.ClustPar.MinClasses;
-    end
-
-    ud.nClasses = nclasses;
-
-    fig_h = figure();
-  
-    if DoEdit == true;  eTxt = 'on';
-    else                eTxt = 'off';
-    end
-        
-    ud.MinusButton = uicontrol('Style', 'pushbutton', 'String', 'Less'      , 'Units','Normalized','Position'  , [0.05 0.05 0.15 0.05], 'Callback', {@ChangeMSMaps,-1,fig_h});
-    ud.PlusButton  = uicontrol('Style', 'pushbutton', 'String', 'More'      , 'Units','Normalized','Position'  , [0.20 0.05 0.15 0.05], 'Callback', {@ChangeMSMaps, 1,fig_h});
-    ud.ShowDyn     = uicontrol('Style', 'pushbutton', 'String', 'Dynamics'  , 'Units','Normalized','Position'  , [0.35 0.05 0.15 0.05], 'Callback', {@ShowDynamics, fig_h, TheEEG});
-    ud.Info        = uicontrol('Style', 'pushbutton', 'String', 'Info'      , 'Units','Normalized','Position'  , [0.50 0.05 0.15 0.05], 'Callback', {@MapInfo     , fig_h});
-    ud.Sort        = uicontrol('Style', 'pushbutton', 'String', 'Man. sort' , 'Units','Normalized','Position'  , [0.65 0.05 0.15 0.05], 'Callback', {@ManSort     , fig_h}, 'Enable',eTxt);
-    ud.DoEdit = DoEdit;
-    ud.LabelEdited = false(ud.msinfo.ClustPar.MaxClasses,ud.msinfo.ClustPar.MaxClasses);
-    
-    ud.Labels = cell(ud.msinfo.ClustPar.MaxClasses,ud.msinfo.ClustPar.MaxClasses);
-    ud.TitleHandles = cell(ud.msinfo.ClustPar.MaxClasses,1);
-    for i = ud.msinfo.ClustPar.MinClasses:ud.msinfo.ClustPar.MaxClasses
-        if isfield(ud.AllMaps(i),'Labels')
-            ud.Labels(i,1:i) = ud.AllMaps(i).Labels(1:i);
+    %% SelectedSets validation
+    % Make sure there are valid sets for editing/plotting
+    HasMS = arrayfun(@(x) hasMicrostates(AllEEG(x)), 1:numel(AllEEG));
+    HasDyn = arrayfun(@(x) isDynamicsSet(AllEEG(x)), 1:numel(AllEEG));
+    AvailableSets = find(HasMS & ~HasDyn);    
+    if isempty(AvailableSets)
+        errorMessage = ['No valid sets found for plotting. Use ' ...
+            '"Tools->Identify microstate maps per dataset" to find and store microstate map data.'];
+        if matches('SelectedSets', p.UsingDefaults)
+            errorDialog(errorMessage, 'Plot microstate maps error');
+            return;
         else
-            for j = 1:i
-                ud.Labels{i,j} = sprintf('MS_%i',j);
+            error(errorMessage);
+        end
+    end
+
+    % If the user has provided sets, check their validity
+    if ~isempty(SelectedSets)
+        % Check for empty sets, dynamics sets, or any sets without
+        % microstate maps
+        SelectedSets = unique(SelectedSets, 'stable');
+        isValid = ismember(SelectedSets, AvailableSets);
+        if any(~isValid)
+            invalidSetsTxt = sprintf('%i, ', SelectedSets(~isValid));
+            invalidSetsTxt = invalidSetsTxt(1:end-2);
+            error(['The following sets are invalid: ' invalidSetsTxt ...
+                '. Make sure you have not selected empty sets, dynamics sets, or sets ' ...
+                'without microstate maps.']);
+        end
+    % Otherwise, prompt user to provide sets    
+    else
+        global CURRENTSET;
+        defaultSets = find(ismember(AvailableSets, CURRENTSET));
+        if isempty(defaultSets);    defaultSets = 1;    end        
+        AvailableSetnames = {AllEEG(AvailableSets).setname};
+        
+        [res,~,~,outstruct] = inputgui('geometry', [1 1 1 1], 'geomvert', [1 1 1 4], 'uilist', ...
+            {{ 'Style', 'text'    , 'string', 'Choose sets for plotting', 'FontWeight', 'bold'} ...
+            { 'Style', 'text'    , 'string', 'Use ctrl or shift for multiple selection'} ...
+            { 'Style', 'text'    , 'string', 'If multiple are chosen, a tab will be created for each'} ...
+            { 'Style', 'listbox' , 'string', AvailableSetnames, 'Min', 0, 'Max', 2,'Value', defaultSets, 'tag','SelectedSets'}}, ...
+            'title', 'Plot microstate maps');
+
+        if isempty(res);    return; end
+        SelectedSets = AvailableSets(outstruct.SelectedSets);
+
+        if numel(SelectedSets) < 1
+            errordlg2('You must select at least one dataset','Plot microstate maps error');
+            return;
+        end
+    end
+
+    SelectedEEG = AllEEG(SelectedSets);
+
+    % Prompt user to provide class range to display if necessary
+    AllMinClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MinClasses, 1:numel(SelectedEEG));
+    AllMaxClasses = arrayfun(@(x) SelectedEEG(x).msinfo.ClustPar.MaxClasses, 1:numel(SelectedEEG));
+    MinClasses = min(AllMinClasses);
+    MaxClasses = max(AllMaxClasses);
+    if matches('Classes', p.UsingDefaults)
+        classRange = MinClasses:MaxClasses;
+        classChoices = sprintf('%i Classes|', classRange);
+        classChoices(end) = [];
+
+        [res,~,~,outstruct] = inputgui('geometry', [1 1 1], 'geomvert', [1 1 4], 'uilist', ...
+            { {'Style', 'text', 'string', 'Select classes to display'} ...
+              {'Style', 'text', 'string' 'Use ctrl or shift for multiple selection'} ...
+              {'Style', 'listbox', 'string', classChoices, 'Min', 0, 'Max', 2, 'Value', 1:numel(classRange), 'Tag', 'Classes'}}, ...
+              'title', 'Plot microstate maps');
+        
+        if isempty(res); return; end
+
+        Classes = classRange(outstruct.Classes);
+    else
+        if any(Classes < MinClasses) || any(Classes > MaxClasses)
+            invalidClasses = Classes(or((Classes < MinClasses), (Classes > MaxClasses)));
+            invalidClassesTxt = sprintf('%i, ', invalidClasses);
+            invalidClassesTxt = invalidClassesTxt(1:end-2);
+            error(['The following specified cluster solutions to plot are invalid: %s' ...
+                '. Valid class numbers are in the range %i-%i.'], invalidClassesTxt, MinClasses, MaxClasses);
+        end
+    end        
+
+    % Compute initial figure size and whether scrolling is needed
+    % (for larger number of solutions/maps)
+    expVarWidth = 0;
+    minGridHeight = 80;
+    minGridWidth = 60;    
+    tabHeight = 30;
+    nRows = numel(Classes);
+    nCols = max(Classes);
+
+    % Get usable screen size
+    toolkit = java.awt.Toolkit.getDefaultToolkit();
+    jframe = javax.swing.JFrame;
+    insets = toolkit.getScreenInsets(jframe.getGraphicsConfiguration());
+    tempFig = figure('ToolBar', 'none', 'MenuBar', 'figure', 'Position', [-1000 -1000 0 0]);    
+    pause(0.2);
+    titleBarHeight1 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    tempFig.MenuBar = 'none';
+    pause(0.2);
+    titleBarHeight2 = tempFig.OuterPosition(4) - tempFig.InnerPosition(4) + tempFig.OuterPosition(2) - tempFig.InnerPosition(2);
+    delete(tempFig);
+    % Use the largest monitor available
+    monitorPositions = get(0, 'MonitorPositions');
+    if size(monitorPositions, 1) > 1
+        screenSizes = arrayfun(@(x) monitorPositions(x, 3)*monitorPositions(x,4), 1:size(monitorPositions, 1));
+        [~, i] = max(screenSizes);
+        screenSize = monitorPositions(i, :);
+    else
+        screenSize = get(0, 'ScreenSize');
+    end
+    figSize1 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight1-insets.bottom-insets.top];
+    figSize2 = screenSize + [insets.left, insets.bottom, -insets.left-insets.right, -titleBarHeight2-insets.bottom-insets.top];
+
+    minPanelWidth = expVarWidth + minGridWidth*nCols;
+    minPanelHeight = minGridHeight*nRows;
+
+    if Visible
+        figVisible = 'on';
+    else
+        figVisible = 'off';
+    end
+
+    Scroll = false;
+    % Use scrolling and uifigure for large number of maps
+    if minPanelWidth > figSize1(3) || minPanelHeight > (figSize1(4) - tabHeight)
+        Scroll = true; 
+        fig_h = uifigure('Name', 'Microstate maps', 'Units', 'pixels', ...
+            'Position', figSize2, 'Visible', figVisible);
+        if minPanelWidth < fig_h.Position(3)
+            minPanelWidth = fig_h.Position(3) - 50;
+        end
+        if minPanelHeight < fig_h.Position(4) - tabHeight
+            minPanelHeight = fig_h.Position(4) - tabHeight;
+        end
+    % Otherwise use a normal figure (faster rendering) 
+    else
+        fig_h = figure('ToolBar', 'none', 'MenuBar', 'figure', 'NumberTitle', 'off', ...
+            'Name', 'Microstate maps', 'Position', figSize1, 'Visible', figVisible);            
+    end
+    gridWidth = fig_h.Position(3)/nCols;
+    gridHeight = (fig_h.Position(4) - tabHeight)/nRows;            
+    if gridHeight - gridWidth > 100
+        heightDiff = fig_h.Position(4) - gridWidth*nRows - 200;
+        fig_h.Position(2) = fig_h.Position(2) + .5*heightDiff;
+        fig_h.Position(4) = gridWidth*nRows + 200;
+        minPanelHeight = fig_h.Position(4) - tabHeight - 30;
+    end
+    tabGroup = uitabgroup(fig_h, 'Units', 'normalized', 'Position', [0 0 1 1]);
+
+    for i=1:numel(SelectedEEG) 
+        ClassRange = SelectedEEG(i).msinfo.ClustPar.MinClasses:SelectedEEG(i).msinfo.ClustPar.MaxClasses;
+        plotClasses = ClassRange(ismember(ClassRange, Classes));
+        if isempty(plotClasses)
+            warning('%s does not contain any of the selected cluster solutions to plot, skipping...', SelectedEEG(i).setname);
+            continue;
+        end
+        for j = ClassRange
+            if isfield(SelectedEEG(i).msinfo.MSMaps(j),'Labels')
+                if ~isempty(SelectedEEG(i).msinfo.MSMaps(j).Labels)
+                    continue
+                end
+            end 
+            % Fill in generic labels if dataset does not have them
+            for k = 1:j
+                SelectedEEG(i).msinfo.MSMaps(j).Labels{k} = sprintf('MS_%i.%i',j,k);
             end
         end
+              
+        % Add graphics components
+        setTab = uitab(tabGroup, 'Title', ['Microstate maps of ' SelectedEEG(i).setname]);
+        tabGroup.SelectedTab = setTab;          
+        if Scroll
+            OuterPanel = uipanel(setTab, 'Units', 'normalized', 'Position', [0 0 1 1], 'BorderType', 'none');
+            OuterPanel.Scrollable = 'on';
+            MapPanel = uipanel(OuterPanel, 'Units', 'pixels', 'Position', [0 0 minPanelWidth minPanelHeight], 'BorderType', 'none');
+        else
+            MapPanel = uipanel(setTab, 'Units', 'normalized', 'Position', [0 0 1 1], 'BorderType', 'none');
+        end        
+        PlotMSMaps2(fig_h, MapPanel, SelectedEEG(i).msinfo.MSMaps(plotClasses), SelectedEEG(i).chanlocs, ...
+            'ShowProgress', ~Visible | Scroll, 'Setname', SelectedEEG(i).setname);
+    end    
+    
+    com = sprintf('fig_h = pop_ShowIndMSMaps(%s, %s, ''Classes'', %s, ''Visible'', %i);', inputname(1), mat2str(SelectedSets), mat2str(Classes), Visible);
+end
+
+function hasDyn = isDynamicsSet(in)
+    hasDyn = false;
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
+    end    
+    % check if set has FitPar
+    if ~isfield(in.msinfo, 'FitPar')
+        return;
     end
-        
-    if DoEdit == true
-        ud.Done        = uicontrol('Style', 'pushbutton', 'String', 'Close'     , 'Units','Normalized','Position', [0.80 0.05 0.15 0.05], 'Callback', 'uiresume(gcf)');
+    % check if FitPar contains Rectify/Normalize parameters
+    if ~isfield(in.msinfo.FitPar, 'Rectify')
+        return;
     else
-        ud.Done        = uicontrol('Style', 'pushbutton', 'String', 'Close'     , 'Units','Normalized','Position', [0.80 0.05 0.15 0.05], 'Callback', 'close(gcf)');
+        hasDyn = true;
+    end
+end
+
+function hasMS = hasMicrostates(in)
+    hasMS = false;
+
+    % check if set includes msinfo
+    if ~isfield(in,'msinfo')
+        return;
     end
     
-    set(fig_h,'userdata',ud);
-    PlotMSMaps([],[],fig_h);
-    
-    set(fig_h,'Name', ['Microstate maps of ' TheEEG.setname],'NumberTitle','off');
-    if nargin < 4
-        com = sprintf('[empty,EEG,com] = pop_ShowIndMSMaps(%s, %i, %i);', inputname(1), inputname(1),nclasses,DoEdit);
+    % check if msinfo is empty
+    if isempty(in.msinfo)
+        return;
     else
-        com = sprintf('[AllEEG,EEG,com] = pop_ShowIndMSMaps(%s, %i, %i, %s);', inputname(1), nclasses,DoEdit, inputname(4));
-    end
-    
-    if DoEdit == true
-        uiwait(fig_h);
-        if ~isvalid(fig_h)
-            return
-        end
-        ud = get(fig_h,'Userdata');
-        for k = 1: ud.nClasses
-             ud.Labels{ud.nClasses,k} = get(ud.TitleHandles{k,1},'String');
-        end
-        
-        close(fig_h);
-        
-        if any(ud.LabelEdited(:))
-            ud.wasSorted = true;
-        end
-        
-        if ud.wasSorted == true
-            ButtonName = questdlg2('Update dataset and try to clear depending sorting?', 'Microstate template edit', 'Yes', 'No', 'Yes');
-            switch ButtonName
-                case 'Yes'
-                    TheEEG.msinfo.MSMaps = ud.AllMaps;
-                    for i = ud.msinfo.ClustPar.MinClasses:ud.msinfo.ClustPar.MaxClasses
-                        TheEEG.msinfo.MSMaps(i).Labels = ud.Labels(i,1:i);
-                    end
-                    TheEEG.saved = 'no';
-                    if isfield(TheEEG.msinfo,'children')
-                        AllEEG = ClearDataSortedByParent(AllEEG,TheEEG.msinfo.children);
-                    end
-                case 'No'
-                    disp('Changes abandoned');
-            end
-        end
+        hasMS = true;
     end
 end
-    
-
-function ManSort(obj, event,fh)
-% -----------------------------
-
-    UserData = get(fh,'UserData');
-
-    res = inputgui( 'geometry', {[3 1]}, 'geomvert', 1,  'uilist', { ...
-                 { 'Style', 'text', 'string', 'Index of original position (negative to flip polarity)', 'fontweight', 'bold'  } ...
-                 { 'style', 'edit', 'string', sprintf('%i ',1:UserData.nClasses) } },'title','Reorder microstates');
-
-    if isempty(res)
-        return
-    end
-
-    NewOrder = sscanf(res{1},'%i');
-    NewOrderSign = sign(NewOrder);
-    NewOrder = abs(NewOrder);
-    
-    if numel(NewOrder) ~= UserData.nClasses
-        errordlg2('Invalid order given','Manually rearrange microstate class sequence');
-        return
-    end
-
-    if numel(unique(NewOrder)) ~= UserData.nClasses
-        errordlg2('Invalid order given','Manually rearrange microstate class sequence');
-        return
-    end
-    if any(unique(NewOrder) ~= unique(1:UserData.nClasses)')
-        errordlg2('Invalid order given','Manually rearrange microstate class sequence');
-        return
-    end
-            
-    UserData.AllMaps(UserData.nClasses).Maps = UserData.AllMaps(UserData.nClasses).Maps(NewOrder,:).*repmat(NewOrderSign,1,size(UserData.AllMaps(UserData.nClasses).Maps,2));
-    size(UserData.AllMaps(UserData.nClasses).Maps)
-    UserData.AllMaps(UserData.nClasses).SortedMode = 'manual';
-    UserData.AllMaps(UserData.nClasses).SortedBy = 'user';
-    UserData.wasSorted = true;
-    set(fh,'UserData',UserData);
-    PlotMSMaps(obj,event,fh);
-end
-
-
-
-function ShowDynamics(obj, event,fh, TheEEG)
-% ---------------------------------------
-    UserData = get(fh,'UserData');
-    TheEEG.msinfo.FitPar.nClasses = UserData.nClasses;
-    pop_ShowIndMSDyn(0,TheEEG,0);
-end
-
-function MapInfo(obj, event, fh)
-% ------------------------------
-
-    UserData = get(fh,'UserData');    
-
-    AlgorithmTxt = {'k-means','AAHC'};
-    PolarityText = {'considererd','ignored'};
-    GFPText      = {'all data', 'GFP peaks only'};
-    NormText     = {'not ', ''};
-    if isinf(UserData.msinfo.ClustPar.MaxMaps)
-            MaxMapsText = 'all';
-    else    MaxMapsText = num2str(UserData.msinfo.ClustPar.MaxMaps,'%i');
-    end
-    
-    if ~isfield(UserData.msinfo.ClustPar,'Normalize')
-        UserData.msinfo.ClustPar.Normalize = 1;
-    end
-    
-    txt = { sprintf('Derived from: %s',UserData.setname) ...
-            sprintf('Alorithm used: %s',AlgorithmTxt{UserData.msinfo.ClustPar.UseAAHC+1})...
-            sprintf('Polarity was %s',PolarityText{UserData.msinfo.ClustPar.IgnorePolarity+1})...
-            sprintf('EEG was %snormalized before clustering',NormText{UserData.msinfo.ClustPar.Normalize+1})...
-            sprintf('Extraction was based on %s',GFPText{UserData.msinfo.ClustPar.GFPPeaks+1})...
-            sprintf('Extraction was based on %s maps',MaxMapsText)...
-            sprintf('Explained variance: %4.2f%%',UserData.AllMaps(UserData.nClasses).ExpVar * 100) ...
-%            sprintf('Sorting was based  on %s ',UserData.AllMaps(UserData.nClasses).SortedBy)...
-            };
-    if isempty(UserData.AllMaps(UserData.nClasses).SortedBy)
-        txt = [txt, 'Maps are unsorted'];
-    else
-        txt = [txt sprintf('Sort mode was %s ',UserData.AllMaps(UserData.nClasses).SortMode)];
-        txt = [txt sprintf('Sorting was based  on %s ',UserData.AllMaps(UserData.nClasses).SortedBy)];
-    end
-            
-    if ~isempty(UserData.Children)
-        txt = [txt 'Children: ' UserData.Children];
-    end
-    
-    msgbox(txt,'Info');
-
-end
-
-
-function ChangeMSMaps(obj, event,i,fh)
-% ------------------------------------
-    ud = get(fh,'userdata');
-
-    for k = 1: ud.nClasses
-        ud.Labels{ud.nClasses,k} = get(ud.TitleHandles{k,1},'String');
-    end
-    
-    ud.nClasses = ud.nClasses + i;
-
-    if ud.nClasses < ud.msinfo.ClustPar.MinClasses
-        ud.nClasses = ud.msinfo.ClustPar.MinClasses;
-    end
-
-
-    if ud.nClasses  > ud.msinfo.ClustPar.MaxClasses
-        ud.nClasses = ud.msinfo.ClustPar.MaxClasses;
-    end
-
-    set(fh,'userdata',ud);
-    PlotMSMaps(obj,event,fh);
-end
-
-function EditMSLabel(obj,~,i,j)
-    set(obj,'Editing','on');
-    fh = get(get(obj,'Parent'),'Parent');
-    ud = get(fh,'UserData');
-    ud.LabelEdited(i,j) = true;
-    set(fh,'UserData',ud);
-end
-
-function PlotMSMaps(~, ~,fh)
-% --------------------------
-
-    UserData = get(fh,'UserData');  
-
-    sp_x = ceil(sqrt(UserData.nClasses));
-    sp_y = ceil(UserData.nClasses / sp_x);
-    
-    % fix structure of for loop to put subplots on one row
-    for m = 1:sp_x*sp_y
-        h = subplot(sp_y,sp_x,m);
-        cla(h);
-        set(h, 'Visible','off');
-    end
-    
-    for m = 1:UserData.nClasses
-        subplot(sp_y,sp_x,m);
-        Background = UserData.AllMaps(UserData.nClasses).ColorMap(m,:);
-        X = cell2mat({UserData.chanlocs.X});
-        Y = cell2mat({UserData.chanlocs.Y});
-        Z = cell2mat({UserData.chanlocs.Z});
-        dspCMap(double(UserData.AllMaps(UserData.nClasses).Maps(m,:)),[X; Y;Z],'NoScale','Resolution',3,'Background',Background,'ShowNose',20);
-        
-        UserData.TitleHandles{m,1} = title(UserData.Labels{UserData.nClasses,m},'FontSize',10,'Interpreter','none');
-        
-        if UserData.DoEdit == true
-            set(UserData.TitleHandles{m,1},'ButtonDownFcn',{@EditMSLabel,UserData.nClasses,m});
-        end
-    end
-    
-    if UserData.nClasses == UserData.msinfo.ClustPar.MinClasses
-        set(UserData.MinusButton,'enable','off');
-    else
-        set(UserData.MinusButton,'enable','on');
-    end
-
-    if UserData.nClasses == UserData.msinfo.ClustPar.MaxClasses
-        set(UserData.PlusButton,'enable','off');
-    else
-        set(UserData.PlusButton,'enable','on');
-    end
-    set(fh,'UserData',UserData);  
-
-end
-
