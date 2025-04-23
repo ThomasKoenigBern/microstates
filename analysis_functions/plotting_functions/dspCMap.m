@@ -109,6 +109,13 @@ else
     ShowScale = 1;
 end
 
+if vararginmatch(varargin,'ElectrodeClickCallBack')
+    ElectrodeClickCallback = varargin{vararginmatch(varargin,'ElectrodeClickCallBack')+1};
+else
+    ElectrodeClickCallback = [];
+end
+
+
 if vararginmatch(varargin,'ShowNose')
     NoseRadius = varargin{vararginmatch(varargin,'ShowNose')+1};
 else
@@ -408,16 +415,25 @@ if vararginmatch(varargin,'Label')
         LabBkG = [1 1 1];
     end
 
-    
-    
-    
-     if ~isempty(Label)
-        for i = 1:numel(LabelIndex)
-            PlotElectrode(pxe(LabelIndex(i)),pye(LabelIndex(i)),LabelSize,Label{i},1,EndContourLevel +100,PlotAxis);
-        end
+    if vararginmatch(varargin,'LabelGrey')
+        LabelGrey = varargin{vararginmatch(varargin,'LabelGrey')+1};
     else
-        for i = 1:numel(LabelIndex)
-            PlotElectrode(pxe(LabelIndex(i)),pye(LabelIndex(i)),LabelSize,[],LabBkG,EndContourLevel +100,PlotAxis);
+        LabelGrey = ones(numel(LabelIndex),1);
+    end
+
+    
+    
+    for i = 1:numel(LabelIndex)
+        
+        if ~isempty(Label)
+            handles = PlotElectrode(pxe(LabelIndex(i)),pye(LabelIndex(i)),LabelSize,Label{i},LabelGrey(i),EndContourLevel +100,PlotAxis);
+        else
+            handles = PlotElectrode(pxe(LabelIndex(i)),pye(LabelIndex(i)),LabelSize,[],LabelGrey(i),EndContourLevel +100,PlotAxis);
+        end
+        if ~isempty(ElectrodeClickCallback)
+            for j = 1:numel(handles)
+                handles(j).ButtonDownFcn = {ElectrodeClickCallback,i,PlotAxis};
+            end
         end
     end
 end

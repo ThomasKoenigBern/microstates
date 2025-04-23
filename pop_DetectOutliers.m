@@ -346,8 +346,14 @@ function [EEGout, CurrentSet, com] = pop_DetectOutliers(AllEEG, varargin)
     ud.nChan = SelectedEEG(1).nbchan;
     % Extract microstate maps of the specified solution from all selected sets
     for i=1:numel(SelectedSets)
-        if SelectedEEG(i).nbchan ~= ud.nChan
-            errordlg2('Number of channels differs between selected datasets', 'Outlier detection error');
+%       TK, 26.3.2025
+%        if SelectedEEG(i).nbchan ~= ud.nChan
+%            errordlg2('Number of channels differs between selected datasets', 'Outlier detection error');
+%            errordlg2('Number of channels differs between selected datasets', 'Outlier detection error');
+
+        if ~isequaln(SelectedEEG(i).chanlocs,ud.chanlocs)
+            errordlg2('Montage differs between selected datasets', 'Outlier detection error');
+            delete(fig_h);
             return;
         end
         ud.MSMaps = [ud.MSMaps SelectedEEG(i).msinfo.MSMaps(ud.nClasses)];
@@ -391,13 +397,15 @@ end
 function figClose(fig, ~)
     ud = fig.UserData;
     ud.removeIdx = [];
-    excludeIdx = find(any(strcmp(ud.setsTable.Data, "Exclude"), 2));
-    if ~isempty(excludeIdx)
-        selection = questionDialog('Remove microstate map info from excluded sets?', 'Outlier detection', {'Yes', 'No'});
-        if strcmp(selection, 'Yes')
-            ud.removeIdx = excludeIdx;
+    if isfield(ud,'setsTable')    % TK 26.3.2025
+        excludeIdx = find(any(strcmp(ud.setsTable.Data, "Exclude"), 2));
+        if ~isempty(excludeIdx)
+            selection = questionDialog('Remove microstate map info from excluded sets?', 'Outlier detection', {'Yes', 'No'});
+            if strcmp(selection, 'Yes')
+                ud.removeIdx = excludeIdx;
+            end
         end
-    end
+    end % TK 26.3.2025
 
     fig.UserData = ud;
     uiresume();

@@ -24,6 +24,11 @@
 %   -> Maximum number of clusters to identify
 %   -> Command line equivalent: "ClustPar.MaxClasses"
 %
+%   "Minimum r-value"
+%   -> Minimal r-value within cluster for the distance based clustering
+%      alorithm
+%   -> Command line equivalent: ClustPar.MinR
+%
 %   "Number of restarts"
 %   -> Number of times the k-means algorithm is restarted with a new random
 %   configuration. Ignored if AAHC is selected.
@@ -242,8 +247,11 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
         if matches('UseAAHC', ClustParDefaults)
             ClustPar.UseAAHC = floor(ClustPar.UseAAHC) + 1;
             guiElements = [guiElements ...
-                {{ 'Style', 'text', 'string', 'Algorithm', 'fontweight', 'normal'  }} ...
+                {{ 'Style', 'text', 'string', 'Algorithm', 'fontweight', 'normal'  }},  ...
                 {{ 'Style', 'popupmenu', 'string',{'k-means','AAHC'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC, 'Callback', @algorithmChanged}}];
+%                {{ 'Style', 'popupmenu', 'string',{'k-means','AAHC','r-min'},'tag','UseAAHC', 'Value', ClustPar.UseAAHC, 'Callback', @algorithmChanged}}];
+
+
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
@@ -263,7 +271,18 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
             guiGeom = [guiGeom [1 1]];
             guiGeomV = [guiGeomV 1];
         end
-    
+
+%        if matches('MinR', ClustParDefaults)
+%            EnText = {'off','off','on'};
+%            EnRes = EnText{floor(ClustPar.UseAAHC) + 1};
+%            
+%            guiElements = [guiElements ...
+%                {{ 'Style', 'text', 'string', 'Minimal r value', 'fontweight', 'normal','tag','MinRLabel','Enable',EnRes  }} ...
+%                {{ 'Style', 'edit', 'string', sprintf('%2.2f',ClustPar.MinR), 'tag','MinR','Enable',EnRes }}];
+%            guiGeom = [guiGeom [1 1]];
+%            guiGeomV = [guiGeomV 1];
+%        end
+
         if matches('Restarts', ClustParDefaults)
             guiElements = [guiElements ...
                 {{ 'Style', 'text', 'string', 'Number of restarts', 'fontweight', 'normal', 'tag', 'RestartsLabel'  }} ...
@@ -329,13 +348,16 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
         end
     
         if isfield(outstruct, 'UseAAHC')
-            ClustPar.UseAAHC = outstruct.UseAAHC == 2;
+            ClustPar.UseAAHC = outstruct.UseAAHC -1;
         end
         if isfield(outstruct, 'MinClasses')
             ClustPar.MinClasses = str2double(outstruct.MinClasses);
         end
         if isfield(outstruct, 'MaxClasses')
             ClustPar.MaxClasses = str2double(outstruct.MaxClasses);
+        end
+        if isfield(outstruct, 'MinR')
+            ClustPar.MinR = str2double(outstruct.MinR);
         end
         if isfield(outstruct, 'Restarts')
             ClustPar.Restarts = str2double(outstruct.Restarts);
@@ -364,7 +386,7 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
 
     ClustPar = checkClustPar(ClustPar);
 
-    if ClustPar.UseAAHC && ClustPar.Normalize
+    if ClustPar.UseAAHC == 1 && ClustPar.Normalize
         warndlg2('There is an issue with the currently implemented AAHC algorithm and normalization, normalization has been set to false.','Clustering algorithm selection');
         ClustPar.Normalize = false;
     end
@@ -434,8 +456,8 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
                 flags = [flags 'e'];
             end
         end
-        
-        if ClustPar.UseAAHC == false
+
+        if ClustPar.UseAAHC == 0
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
                 [b_model,~,~,exp_var] = eeg_kMeans(MapsToUse',nClusters,ClustPar.Restarts,[],flags,AllEEG(sIndex).chanlocs);
        
@@ -449,12 +471,27 @@ function [EEGout, CurrentSet, com] = pop_FindMSMaps(AllEEG, varargin)
                 msinfo.MSMaps(nClusters).SortedBy = '';
                 msinfo.MSMaps(nClusters).SpatialCorrelation= [];
             end
-        else
-            [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize);
+
+        elseif ClustPar.UseAAHC == 1
+            [b_model,exp_var] = eeg_computeAAHC(double(MapsToUse'),ClustPar.MinClasses:ClustPar.MaxClasses,false, ClustPar.IgnorePolarity,ClustPar.Normalize,flags);
     
             for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
                 msinfo.MSMaps(nClusters).Maps = double(b_model{nClusters-ClustPar.MinClasses+1});
                 msinfo.MSMaps(nClusters).ExpVar = double(exp_var{nClusters-ClustPar.MinClasses+1});
+                msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
+                for j = 1:nClusters
+                    msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
+                end
+                msinfo.MSMaps(nClusters).SortMode = 'none';
+                msinfo.MSMaps(nClusters).SortedBy = '';
+                msinfo.MSMaps(nClusters).SpatialCorrelation= [];               
+            end
+        elseif ClustPar.UseAAHC == 2
+            [b_model,~,~,exp_var] = eeg_dbClustering(double(MapsToUse'),ClustPar.MinR,0, ClustPar.MaxClasses,inf,flags);
+
+            for nClusters = ClustPar.MinClasses:ClustPar.MaxClasses
+                msinfo.MSMaps(nClusters).Maps = double(b_model(1:nClusters,:));
+                msinfo.MSMaps(nClusters).ExpVar = double(exp_var(1:nClusters));
                 msinfo.MSMaps(nClusters).ColorMap = repmat([.75 .75 .75], nClusters, 1);
                 for j = 1:nClusters
                     msinfo.MSMaps(nClusters).Labels{j} = sprintf('MS_%i.%i',nClusters,j);
@@ -493,7 +530,10 @@ end
 
 function algorithmChanged(obj, ~)
     restartsLabel = findobj(obj.Parent, 'Tag', 'RestartsLabel');
+    MinRLabel     = findobj(obj.Parent, 'Tag', 'MinRLabel');
+
     restartsEdit = findobj(obj.Parent, 'Tag', 'Restarts');
+    MinREdit     = findobj(obj.Parent, 'Tag', 'MinR');
     normalizeBox = findobj(obj.Parent, 'Tag', 'Normalize');
 
     if obj.Value == 1
@@ -501,19 +541,51 @@ function algorithmChanged(obj, ~)
             restartsLabel.Enable = 'on';
             restartsEdit.Enable  = 'on';
         end
+
+        if ~isempty(MinREdit)
+            MinRLabel.Enable = 'off';
+            MinREdit.Value   = 0.0;
+            MinREdit.Enable  = 'off';
+        end
+        
         if ~isempty(normalizeBox)
             normalizeBox.Value = 1;
             normalizeBox.Enable  = 'on';
-        end
-    else
+        end    
+    
+    elseif obj.Value == 2
         if ~isempty(restartsLabel)
             restartsLabel.Enable = 'off';
             restartsEdit.Enable  = 'off';
         end
+        
+        if ~isempty(MinREdit)
+            MinRLabel.Enable = 'off';
+            MinREdit.Value   = 0.0;
+            MinREdit.Enable  = 'off';
+        end
+        
         if ~isempty(normalizeBox)
             normalizeBox.Value = 0;
             normalizeBox.Enable  = 'off';
         end
+    elseif obj.Value == 3
+        if ~isempty(restartsLabel)
+            restartsLabel.Enable = 'off';
+            restartsEdit.Enable  = 'off';
+        end
+
+        if ~isempty(MinREdit)
+            MinRLabel.Enable = 'on';
+            MinREdit.Value   = 0.8;
+            MinREdit.Enable  = 'on';
+        end
+        
+        if ~isempty(normalizeBox)
+            normalizeBox.Value = 1;
+            normalizeBox.Enable  = 'on';
+        end
+    
     end
 end
 
@@ -532,13 +604,19 @@ function [ClustPar, UsingDefaults] = checkClustPar(varargin)
     p.KeepUnmatched = true;
 
     numClass = {'numeric'};
-    numAttributes = {'integer', 'positive', 'scalar'};
+    numAttributes  = {'integer', 'positive', 'scalar'};
+    numAttributesR = {'nonnegative', '<=',1.0', 'scalar'};
+    numAttributesA = {'integer', 'nonnegative', 'scalar'};
+
+
     logClass = {'logical', 'numeric'};
     logAttributes = {'binary', 'scalar'};
 
     % Numeric inputs
-    addParameter(p, 'MinClasses', 4, @(x) validateattributes(x, numClass, numAttributes, funcName, 'ClustPar.MinClasses'));
-    addParameter(p, 'MaxClasses', 7, @(x) validateattributes(x, numClass, numAttributes, funcName, 'ClustPar.MaxClasses'));
+    addParameter(p, 'MinClasses', 4, @(x) validateattributes(x, numClass, numAttributes  , funcName, 'ClustPar.MinClasses'));
+    addParameter(p, 'MaxClasses', 7, @(x) validateattributes(x, numClass, numAttributes  , funcName, 'ClustPar.MaxClasses'));
+%    addParameter(p, 'MinR'      ,0.0, @(x) validateattributes(x, numClass, numAttributesR, funcName, 'ClustPar.MinR'));
+
     addParameter(p, 'MaxMaps', inf, @(x) validateattributes(x, numClass, {'positive', 'scalar', 'nonnan'}, funcName, 'ClustPar.MaxMaps'));
     addParameter(p, 'Restarts', 20, @(x) validateattributes(x, numClass, numAttributes, funcName, 'ClustPar.Restarts'));
 
@@ -548,6 +626,7 @@ function [ClustPar, UsingDefaults] = checkClustPar(varargin)
     addParameter(p, 'UseAAHC', false, @(x) validateattributes(x, logClass, logAttributes, funcName, 'ClustPar.UseAAHC'));
     addParameter(p, 'Normalize', true, @(x) validateattributes(x, logClass, logAttributes, funcName, 'ClustPar.Normalize'));
 
+    
     parse(p, varargin{:});
     ClustPar = p.Results;
     UsingDefaults = p.UsingDefaults;

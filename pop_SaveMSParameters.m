@@ -400,7 +400,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         end
     end
 
-    com = sprintf('MSStats = pop_SaveMSStats(%s, %s, ''Classes'', %i, ''FileName'', ''%s'');', inputname(1), mat2str(SelectedSets), nClasses, FileName);
+    com = sprintf('MSStats = pop_SaveMSParameters(%s, %s, ''Classes'', %i, ''FileName'', ''%s'');', inputname(1), mat2str(SelectedSets), nClasses, FileName);
 
 end
 
