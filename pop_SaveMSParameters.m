@@ -346,7 +346,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     nFields = length(fieldnames(MSStats));
     MSStats = orderfields(MSStats, [(nFields-3):nFields, 1:(nFields-4)]);                               % reorder struct fields so dataset info is first
 
-    outputStats = rmfield(MSStats, {'DurationDist', 'GFPDist', 'MSClass', 'GFP', 'TemplateLabels'});    % remove fields with extra info for output file
+    outputStats = rmfield(MSStats, {'DurationDist', 'GFPDist', 'MSClass', 'GFP'});    % remove fields with extra info for output file
 
     % Set labels for output
     Labels = SelectedEEG(1).msinfo.MSStats(nClasses).TemplateLabels;
@@ -383,6 +383,9 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         end
     
         if ~strcmp(FileName, 'none')
+            if idx <= 3 || idx == 5
+                outputStats = rmfield(outputStats, 'TemplateLabels');    % remove fields with extra info for output file
+            end
             switch idx
                 case 1
                     SaveStructToTable(outputStats,FileName,',',Labels);

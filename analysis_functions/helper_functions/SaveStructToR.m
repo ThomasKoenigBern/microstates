@@ -4,7 +4,7 @@ function [success,err] = SaveStructToR(dat,FileName)
     
     SingleFieldsToWrite = {'Dataset','Subject','Group','Condition', 'TotalTime', ...
         'TotalExpVar','MeanDurationAll', 'MeanOccurrenceAll', 'FittingTemplate', 'SortedBy'};
-    MultipleFieldsToWrite = {'IndExpVar','MeanDuration','MeanOccurrence','Coverage','MeanGFP'};
+    MultipleFieldsToWrite = {'TemplateLabels','IndExpVar','MeanDuration','MeanOccurrence','Coverage','MeanGFP'};
     
     
     nObs = numel(dat);
@@ -25,7 +25,7 @@ function [success,err] = SaveStructToR(dat,FileName)
         end
         fprintf(fid,'%s',SingleFieldsToWrite{i});
     end
-    fprintf(fid,';Class');
+%    fprintf(fid,';Class');
 
     for i = 1: numel(MultipleFieldsToWrite)
         fprintf(fid,';%s',MultipleFieldsToWrite{i});
@@ -45,10 +45,14 @@ function [success,err] = SaveStructToR(dat,FileName)
                     fprintf(fid,'%5.5f',dat(j).(SingleFieldsToWrite{i}));
                 end
             end
-            fprintf(fid,';%i',k);
+%            fprintf(fid,';%i',k);
 
             for i = 1: numel(MultipleFieldsToWrite)
-                fprintf(fid,';%5.5f',dat(j).(MultipleFieldsToWrite{i})(k));
+                if all(iscell(dat(j).(MultipleFieldsToWrite{i})))
+                    fprintf(fid,';%s',dat(j).(MultipleFieldsToWrite{i}){k});
+                else
+                    fprintf(fid,';%5.5f',dat(j).(MultipleFieldsToWrite{i})(k));
+                end
             end
             fprintf(fid,'\n');
         end
