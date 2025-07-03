@@ -1,9 +1,15 @@
-function [success,err] = SaveStructToR(dat,FileName)
+function [success,err] = SaveStructToR(dat,FileName, ExtraFieldsToWrite)
 
     dat = dat(:);
     
     SingleFieldsToWrite = {'Dataset','Subject','Group','Condition', 'TotalTime', ...
         'TotalExpVar','MeanDurationAll', 'MeanOccurrenceAll', 'FittingTemplate', 'SortedBy'};
+    
+    if nargin > 2
+        SingleFieldsToWrite = [SingleFieldsToWrite,ExtraFieldsToWrite(:)'];
+    end
+    
+    
     MultipleFieldsToWrite = {'TemplateLabels','IndExpVar','MeanDuration','MeanOccurrence','Coverage','MeanGFP'};
     
     

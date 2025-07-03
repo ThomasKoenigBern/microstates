@@ -125,6 +125,11 @@
 %   would not like to save the temporal dynamics to a file, specify as
 %   "none" to avoid the file explorer popping up.
 %
+%   "ExtraField"
+%   -> if you give the name of a (sub-) field of the EEG structure here,
+%   the content of the elements of the the structure will be appendeded to
+%   the output file. 
+%
 % Outputs:
 %
 %   "MSStats"
@@ -183,7 +188,9 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'scalar'}));
     addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
-    
+    addParameter(p, 'ExtraField', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
+
+
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
@@ -342,6 +349,19 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         MSStats(s).Subject   = SelectedEEG(s).subject;
         MSStats(s).Group     = SelectedEEG(s).group;
         MSStats(s).Condition = SelectedEEG(s).condition;        
+    
+        if ~isempty(p.Results.ExtraField)
+            DataToAdd = SelectedEEG(s).(p.Results.ExtraField);
+            FieldsToAdd = fieldnames(DataToAdd);
+            for f = 1:numel(FieldsToAdd)
+                MSStats(s).(FieldsToAdd{f}) = strrep(DataToAdd.(FieldsToAdd{f}),';',' - ');
+            end
+        else
+            FieldsToAdd = [];
+        end
+
+    
+    
     end
     nFields = length(fieldnames(MSStats));
     MSStats = orderfields(MSStats, [(nFields-3):nFields, 1:(nFields-4)]);                               % reorder struct fields so dataset info is first
@@ -398,7 +418,7 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
                 case 5
                     writecell(SaveStructToTable(outputStats,[],[],Labels), FileName);
                 case 6
-                    SaveStructToR(outputStats,FileName);
+                    SaveStructToR(outputStats,FileName, FieldsToAdd);
             end
         end
     end
