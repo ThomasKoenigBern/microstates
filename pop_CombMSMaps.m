@@ -111,7 +111,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     
     addRequired(p, 'AllEEG', @(x) validateattributes(x, {'struct'}, {}));
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
-    addOptional(p, 'MaxAttempts', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector'}));
+    addOptional(p, 'MaxAttempts', [], @(x) validateattributes(x, {'numeric'}, {'integer'}));
     addParameter(p, 'IgnorePolarity', true, @(x) validateattributes(x, logClass, logAttributes));
     addParameter(p, 'MeanName', 'GrandMean', @(x) validateattributes(x, strClass, strAttributes));
 
@@ -237,7 +237,7 @@ function [EEGout, com] = pop_CombMSMaps(AllEEG, varargin)
     end
 
     % Add option to show maps when done if other elements are being shown
-    if ~isempty(p.UsingDefaults)
+    if ~isempty(p.UsingDefaults) && any(~strcmp(p.UsingDefaults,'MaxAttempts'))
         guiElements = [guiElements ...
             {{ 'Style', 'checkbox', 'string', 'Show maps when done', 'tag', 'ShowMaps'}}];
         guiGeom = [guiGeom 1];
