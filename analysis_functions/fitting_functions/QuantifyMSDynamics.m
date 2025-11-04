@@ -137,7 +137,10 @@ function res = QuantifyMSDynamics(MSClass, gfp, SamplingRate, TemplateInfo, IndG
     res.DurationDist    = durations;
     res.GFPDist         = gfps;
     res.MSClass         = MSClass;
-    res.GFP             = squeeze(gfp);
+
+%   Fix TK, to make it work both with data that has one or more segments
+%    res.GFP             = squeeze(gfp);
+    res.GFP             = reshape(gfp, size(gfp,2),size(gfp,3));
 
     % Set template and sorting information
     res.FittingTemplate = TemplateInfo.name;
