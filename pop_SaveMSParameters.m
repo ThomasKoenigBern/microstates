@@ -125,6 +125,11 @@
 %   would not like to save the temporal dynamics to a file, specify as
 %   "none" to avoid the file explorer popping up.
 %
+%   "ExtraField"
+%   -> if you give the name of a (sub-) field of the EEG structure here,
+%   the content of the elements of the the structure will be appendeded to
+%   the output file. 
+%
 % Outputs:
 %
 %   "MSStats"
@@ -183,7 +188,9 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
     addOptional(p, 'SelectedSets', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'vector', '<=', numel(AllEEG)}));
     addParameter(p, 'Classes', [], @(x) validateattributes(x, {'numeric'}, {'integer', 'positive', 'scalar'}));
     addParameter(p, 'Filename', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
-    
+    addParameter(p, 'ExtraField', '', @(x) validateattributes(x, {'char', 'string'}, {'scalartext'}));
+
+
     parse(p, AllEEG, varargin{:});
 
     SelectedSets = p.Results.SelectedSets;
@@ -342,11 +349,24 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         MSStats(s).Subject   = SelectedEEG(s).subject;
         MSStats(s).Group     = SelectedEEG(s).group;
         MSStats(s).Condition = SelectedEEG(s).condition;        
+    
+        if ~isempty(p.Results.ExtraField)
+            DataToAdd = SelectedEEG(s).(p.Results.ExtraField);
+            FieldsToAdd = fieldnames(DataToAdd);
+            for f = 1:numel(FieldsToAdd)
+                MSStats(s).(FieldsToAdd{f}) = strrep(DataToAdd.(FieldsToAdd{f}),';',' - ');
+            end
+        else
+            FieldsToAdd = [];
+        end
+
+    
+    
     end
     nFields = length(fieldnames(MSStats));
     MSStats = orderfields(MSStats, [(nFields-3):nFields, 1:(nFields-4)]);                               % reorder struct fields so dataset info is first
 
-    outputStats = rmfield(MSStats, {'DurationDist', 'GFPDist', 'MSClass', 'GFP', 'TemplateLabels'});    % remove fields with extra info for output file
+    outputStats = rmfield(MSStats, {'DurationDist', 'GFPDist', 'MSClass', 'GFP'});    % remove fields with extra info for output file
 
     % Set labels for output
     Labels = SelectedEEG(1).msinfo.MSStats(nClasses).TemplateLabels;
@@ -383,6 +403,9 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
         end
     
         if ~strcmp(FileName, 'none')
+            if idx <= 3 || idx == 5
+                outputStats = rmfield(outputStats, 'TemplateLabels');    % remove fields with extra info for output file
+            end
             switch idx
                 case 1
                     SaveStructToTable(outputStats,FileName,',',Labels);
@@ -395,12 +418,12 @@ function [MSStats, com] = pop_SaveMSParameters(AllEEG, varargin)
                 case 5
                     writecell(SaveStructToTable(outputStats,[],[],Labels), FileName);
                 case 6
-                    SaveStructToR(outputStats,FileName);
+                    SaveStructToR(outputStats,FileName, FieldsToAdd);
             end
         end
     end
 
-    com = sprintf('MSStats = pop_SaveMSStats(%s, %s, ''Classes'', %i, ''FileName'', ''%s'');', inputname(1), mat2str(SelectedSets), nClasses, FileName);
+    com = sprintf('MSStats = pop_SaveMSParameters(%s, %s, ''Classes'', %i, ''FileName'', ''%s'');', inputname(1), mat2str(SelectedSets), nClasses, FileName);
 
 end
 
